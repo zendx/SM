@@ -1,0 +1,753 @@
+import { CookieNotice, LegalPage, LegalFooter } from "./pages/legal";
+import React, { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  LayoutDashboard,
+  GraduationCap,
+  CalendarCheck,
+  Wallet,
+  Users,
+  FileBarChart,
+  Settings,
+  LogOut,
+  Bell,
+  Menu,
+  ChevronDown,
+  ArrowUpRight,
+  ShieldCheck,
+  School,
+  BookOpen,
+  ChevronRight,
+} from "lucide-react";
+import { api, get, post, setCsrf } from "./api";
+import { Form, Button, Loading, human } from "./components";
+import {
+  Dashboard,
+  TeacherWorkspace,
+  Students,
+  Admissions,
+  Attendance,
+  Finance,
+  Staff,
+  Reports,
+  Administration,
+  Notifications,
+  Academics,
+  Curriculum,
+  Intelligence,
+  Platform,
+  ManagementAlerts,
+} from "./pages";
+import "./styles.css";
+import { applicationFields } from "./pages/students";
+import { useData } from "./hooks";
+import {Quality,People,Facilities} from './pages/operations';
+
+function PublicApplication({ code }) {
+  const q = useData(
+      `/auth/public-admissions/${encodeURIComponent(code)}`,
+      null,
+    ),
+    [result, setResult] = useState(null);
+  return (
+    <div className="public-application">
+      <div className="brand">
+        <span className="brand-mark">
+          <GraduationCap />
+        </span>
+        SMPIS
+      </div>
+      <h1>{q.data?.school.name || "School admissions"}</h1>
+      <p>Start your child’s next chapter. Complete the application below.</p>
+      {q.error ? (
+        <div className="form-error">{q.error}</div>
+      ) : result ? (
+        <div className="notice">
+          <h2>Application received</h2>
+          <p>
+            Your reference: <strong>{result.reference}</strong>
+          </p>
+          {result.message}
+        </div>
+      ) : q.data ? (
+        <>
+          <div className="notice">
+            Information is used to review this application. Supporting documents
+            are collected securely by the admissions office.
+          </div>
+          <Form
+            fields={applicationFields(q.data.classes)}
+            onSubmit={async (v) =>
+              setResult(
+                await post(
+                  `/auth/public-admissions/${encodeURIComponent(code)}`,
+                  v,
+                ),
+              )
+            }
+            submit="Submit application"
+          />
+        </>
+      ) : (
+        <Loading />
+      )}
+      <a className="text-button auth-link" href="/">
+        Staff / parent sign in
+      </a>
+    </div>
+  );
+}
+
+function Auth({ onLogin, setup }) {
+  const reset = new URLSearchParams(location.search).get("reset");
+  const [mode, setMode] = useState(setup ? "setup" : reset ? "reset" : "login"),
+    [message, setMessage] = useState("");
+  const year = new Date().getFullYear();
+  const setupFields = [
+    { name: "school_name", label: "School name", wide: true },
+    {
+      name: "short_code",
+      label: "School code",
+      placeholder: "SMP",
+      maxLength: 12,
+    },
+    { name: "currency_code", label: "Currency", default: "NGN", maxLength: 3 },
+    {
+      name: "timezone",
+      label: "Timezone",
+      default: "Africa/Lagos",
+      wide: true,
+    },
+    { name: "name", label: "Your full name", wide: true },
+    { name: "email", label: "Administrator email", type: "email", wide: true },
+    {
+      name: "password",
+      label: "Administrator password",
+      type: "password",
+      minLength: 12,
+      hint: "At least 12 characters",
+      wide: true,
+    },
+    {
+      name: "year_name",
+      label: "Academic year",
+      default: `${year}/${year + 1}`,
+      wide: true,
+    },
+    {
+      name: "start_date",
+      label: "Year starts",
+      type: "date",
+      default: `${year}-09-01`,
+    },
+    {
+      name: "end_date",
+      label: "Year ends",
+      type: "date",
+      default: `${year + 1}-07-31`,
+    },
+  ];
+  async function submit(v) {
+    if (mode === "setup") {
+      await post("/auth/setup", v);
+      setMessage("Your school is ready. Sign in to begin.");
+      setMode("login");
+    } else if (mode === "forgot") {
+      setMessage((await post("/auth/password-reset/request", v)).message);
+    } else if (mode === "reset") {
+      await post("/auth/password-reset/confirm", { ...v, token: reset });
+      history.replaceState({}, "", location.pathname);
+      setMessage("Password updated. Sign in to continue.");
+      setMode("login");
+    } else {
+      const result = await post("/auth/login", v);
+      setCsrf(result.csrf);
+      onLogin(result);
+    }
+  }
+  return (
+    <div className="auth-layout">
+      <aside className="auth-story">
+        <div className="brand">
+          <div className="brand-mark">
+            <GraduationCap />
+          </div>
+          <div>
+            SMPIS<small>SCHOOL INTELLIGENCE</small>
+          </div>
+        </div>
+        <div>
+          <div className="eyebrow">A CLEARER VIEW OF YOUR SCHOOL</div>
+          <h1>
+            Every school day.
+            <br />
+            Better connected.
+          </h1>
+          <p>
+            Bring your people, operations and performance together in one
+            thoughtful workspace.
+          </p>
+          <div className="story-grid">
+            <span>
+              <Users />
+              Student records
+            </span>
+            <span>
+              <CalendarCheck />
+              Daily attendance
+            </span>
+            <span>
+              <Wallet />
+              Fee collection
+            </span>
+            <span>
+              <FileBarChart />
+              Management insights
+            </span>
+          </div>
+        </div>
+        <small>School Management, Performance & Intelligence System</small>
+      </aside>
+      <main className="auth-main">
+        <div className="auth-card">
+          <div className="eyebrow">
+            {mode === "setup" ? "LET’S GET STARTED" : "WELCOME TO SMPIS"}
+          </div>
+          <h1>
+            {mode === "setup"
+              ? "Set up your school"
+              : mode === "forgot"
+                ? "Reset your password"
+                : mode === "reset"
+                  ? "Choose a new password"
+                  : "Welcome back"}
+          </h1>
+          <p>
+            {mode === "setup"
+              ? "Create your school workspace and its first administrator."
+              : "Your school, in focus. Sign in to your workspace."}
+          </p>
+          {message && <div className="notice">{message}</div>}
+          <Form
+            key={mode}
+            fields={
+              mode === "setup"
+                ? setupFields
+                : mode === "forgot"
+                  ? [
+                      {
+                        name: "email",
+                        label: "Email address",
+                        type: "email",
+                        wide: true,
+                      },
+                    ]
+                  : mode === "reset"
+                    ? [
+                        {
+                          name: "password",
+                          label: "New password",
+                          type: "password",
+                          wide: true,
+                          minLength: 12,
+                        },
+                      ]
+                    : [
+                        {
+                          name: "email",
+                          label: "Email address",
+                          type: "email",
+                          wide: true,
+                          autoComplete: "username",
+                        },
+                        {
+                          name: "password",
+                          label: "Password",
+                          type: "password",
+                          wide: true,
+                          autoComplete: "current-password",
+                        },
+                      ]
+            }
+            onSubmit={submit}
+            submit={
+              mode === "setup"
+                ? "Create school workspace"
+                : mode === "forgot"
+                  ? "Send reset link"
+                  : mode === "reset"
+                    ? "Update password"
+                    : "Sign in to your workspace"
+            }
+          />
+          {mode === "login" && (
+            <button
+              className="text-button auth-link"
+              onClick={() => setMode("forgot")}
+            >
+              Forgot your password?
+            </button>
+          )}
+          {mode === "forgot" && (
+            <button
+              className="text-button auth-link"
+              onClick={() => {
+                setMode("login");
+                setMessage("");
+              }}
+            >
+              Back to sign in
+            </button>
+          )}
+          <div className="auth-note">
+            <ShieldCheck size={16} /> Secure access for your school community
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+function App() {
+  const [session, setSession] = useState(null),
+    [setup, setSetup] = useState(false),
+    [loading, setLoading] = useState(true),
+    [config, setConfig] = useState(null),
+    [page, setPage] = useState(
+      location.hash.slice(1).split("/")[0] || "dashboard",
+    ),
+    [initialRoute, setInitialRoute] = useState(true),
+    [term, setTerm] = useState(""),
+    [mobile, setMobile] = useState(false),
+    [toast, setToast] = useState(""),
+    [fatal, setFatal] = useState("");
+  const can = (p) =>
+    session?.user.permissions.includes("*") ||
+    session?.user.permissions.includes(p);
+  const nav = [
+    [
+      "teaching",
+      "Teacher workspace",
+      BookOpen,
+      session?.user.role === "TEACHER",
+    ],
+    [
+      "dashboard",
+      "Overview",
+      LayoutDashboard,
+      can("dashboard.read") || can("finance.summary"),
+    ],
+    [
+      "students",
+      session?.user.role === "PARENT"
+        ? "My children"
+        : session?.user.role === "TEACHER"
+          ? "My learners"
+          : "Students",
+      GraduationCap,
+      can("students.read") || can("children.read"),
+    ],
+    ["admissions", "Admissions", BookOpen, can("admissions.write")],
+    ["attendance", "Attendance", CalendarCheck, can("attendance.read")],
+    ["finance", "Finance", Wallet, can("finance.read") || can("finance.own")],
+    [
+      "academics",
+      can("reports.academic.own") && !can("academics.read")
+        ? "Academic results"
+        : "Academics",
+      GraduationCap,
+      can("academics.read") ||
+        can("analytics.summary") ||
+        can("reports.academic.own"),
+    ],
+    [
+      "curriculum",
+      "Curriculum",
+      BookOpen,
+      can("curriculum.read") || can("curriculum.summary"),
+    ],
+    [
+      "staff",
+      "Staff & attendance",
+      Users,
+      can("staff.read") || can("staff.attendance.read") || can("staff.self"),
+    ],
+    [
+      "reports",
+      "Reports",
+      FileBarChart,
+      [
+        "reports.students",
+        "reports.attendance",
+        "reports.finance",
+        "reports.staff",
+        "discipline.manage",
+        "complaints.manage",
+        "facilities.manage",
+        "hr.manage",
+      ].some(can),
+    ],
+    ["administration", "Administration", Settings, true],
+    ['quality','School experience',ShieldCheck,can('operations.staff')||can('experience.own')||can('operations.summary')],
+    ['people','People & HR',Users,can('operations.staff')],
+    ['facilities','Facilities & assets',School,can('operations.staff')],
+    ["intelligence", "Intelligence", ArrowUpRight, can("intelligence.read")],
+    ["platform", "Schools", School, !!session?.user.platform_operator],
+    [
+      "alerts",
+      "Alerts",
+      Bell,
+      (can("attendance.read") && session?.user.role !== "TEACHER") ||
+        can("finance.read") ||
+        can("discipline.manage") ||
+        can("complaints.manage") ||
+        can("facilities.manage") ||
+        can("academics.manage") ||
+        can("curriculum.manage"),
+    ],
+  ].filter(
+    (n) =>
+      n[3] && (!session?.user.mfa_setup_required || n[0] === "administration"),
+  );
+  function notify(msg) {
+    setToast(msg);
+  }
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(""), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+  async function reloadConfig() {
+    const c = await get("/config");
+    setConfig(c);
+    setTerm(
+      (t) =>
+        t ||
+        String(c.terms.find((x) => x.is_current)?.id || c.terms[0]?.id || ""),
+    );
+  }
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await get("/auth/setup");
+        setSetup(s.required);
+        if (!s.required) {
+          try {
+            const me = await get("/me");
+            setCsrf(me.csrf);
+            setSession(me);
+          } catch (e) {
+            if (e.status !== 401) throw e;
+          }
+        }
+      } catch (e) {
+        setFatal(e.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+  useEffect(() => {
+    if (session && !session.mfa_required)
+      reloadConfig().catch((e) => setFatal(e.message));
+  }, [session]);
+  useEffect(() => {
+    if (
+      initialRoute &&
+      session &&
+      !session.mfa_required &&
+      session.user.role === "TEACHER" &&
+      ["dashboard", "students"].includes(page)
+    ) {
+      location.hash = "teaching";
+      setPage("teaching");
+      setInitialRoute(false);
+      return;
+    }
+    if (initialRoute && session && !session.mfa_required)
+      setInitialRoute(false);
+    if (
+      session &&
+      !session.mfa_required &&
+      !session.user.mfa_setup_required &&
+      new URLSearchParams(location.search).has("payment_reference") &&
+      (can("finance.read") || can("finance.own"))
+    )
+      go("finance");
+  }, [session]);
+  useEffect(() => {
+    if (
+      session &&
+      !session.mfa_required &&
+      !session.user.mfa_setup_required &&
+      new URLSearchParams(location.search).has("payment_reference") &&
+      (can("finance.read") || can("finance.own"))
+    )
+      go("finance");
+  }, [session]);
+  useEffect(() => {
+    const fn = () =>
+      setPage(location.hash.slice(1).split("/")[0] || "dashboard");
+    window.addEventListener("hashchange", fn);
+    return () => window.removeEventListener("hashchange", fn);
+  }, []);
+  useEffect(() => {
+    if (
+      session &&
+      !session.mfa_required &&
+      !nav.some((n) => n[0] === page) &&
+      (page !== "notifications" || session.user.mfa_setup_required)
+    )
+      go(nav[0]?.[0] || "administration");
+  }, [session, page]);
+  function go(p, section) {
+    location.hash = section ? `${p}/${section}` : p;
+    setPage(p);
+    setInitialRoute(false);
+    setMobile(false);
+  }
+  const money = (v) =>
+    new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: config?.school.currency_code || "NGN",
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) / 100);
+  if (loading) return <Loading />;
+  if (fatal)
+    return (
+      <div className="fatal">
+        <h1>We couldn’t load SMPIS</h1>
+        <p>{fatal}</p>
+        <Button onClick={() => location.reload()}>Try again</Button>
+      </div>
+    );
+  if (!session)
+    return (
+      <Auth
+        setup={setup}
+        onLogin={(s) => {
+          setSetup(false);
+          setInitialRoute(true);
+          setSession(s);
+        }}
+      />
+    );
+  if (session.mfa_required)
+    return (
+      <div className="mfa-card">
+        <ShieldCheck size={36} />
+        <h1>Two-step verification</h1>
+        <p>Enter your authenticator code or a saved recovery code.</p>
+        <Form
+          fields={[
+            {
+              name: "code",
+              label: "Verification code",
+              wide: true,
+              maxLength: 24,
+            },
+          ]}
+          onSubmit={async (v) => {
+            await post("/auth/mfa/verify", v);
+            setSession({ ...session, mfa_required: false });
+          }}
+          submit="Verify and continue"
+        />
+        <Button
+          secondary
+          onClick={async () => {
+            await post("/auth/logout", {});
+            setSession(null);
+            setPage("dashboard");
+            location.hash = "dashboard";
+            setInitialRoute(true);
+          }}
+        >
+          Sign out
+        </Button>
+      </div>
+    );
+  if (!config) return <Loading />;
+  // Wait for the route redirect before mounting a page that this account cannot use.
+  if (
+    !nav.some((n) => n[0] === page) &&
+    (page !== "notifications" || session.user.mfa_setup_required)
+  )
+    return <Loading />;
+  const context = {
+    user: session.user,
+    config,
+    term,
+    can,
+    money,
+    notify,
+    go,
+    reloadConfig,
+    reloadSession: async () => {
+      const me = await get("/me");
+      setCsrf(me.csrf);
+      setSession(me);
+    },
+  };
+  const Current =
+    {
+      dashboard: Dashboard,
+      teaching: TeacherWorkspace,
+      students: Students,
+      admissions: Admissions,
+      attendance: Attendance,
+      finance: Finance,
+      staff: Staff,
+      reports: Reports,
+      administration: Administration,
+      notifications: Notifications,
+      academics: Academics,
+      curriculum: Curriculum,
+      quality: Quality,
+      people: People,
+      facilities: Facilities,
+      intelligence: Intelligence,
+      platform: Platform,
+      alerts: ManagementAlerts,
+    }[page] || Dashboard;
+  return (
+    <div className="app-shell">
+      {mobile && (
+        <div className="sidebar-scrim" onClick={() => setMobile(false)} />
+      )}
+      <aside className={`sidebar ${mobile ? "open" : ""}`}>
+        <a className="brand" href="#dashboard">
+          <span className="brand-mark">
+            <GraduationCap size={26} />
+          </span>
+          <span>
+            SMPIS<small>SCHOOL INTELLIGENCE</small>
+          </span>
+        </a>
+        <div className="school-chip">
+          <div className="school-icon">
+            <School size={18} />
+          </div>
+          <div>
+            <strong>{config.school.name}</strong>
+            <small>School workspace</small>
+          </div>
+        </div>
+        <div className="nav-label">WORKSPACE</div>
+        <nav>
+          {nav.map(([key, label, Icon]) => (
+            <button
+              key={key}
+              className={page === key ? "active" : ""}
+              onClick={() => go(key)}
+            >
+              <Icon size={19} />
+              {label}
+              {page === key && <span className="nav-dot" />}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="core-label">
+            <span /> Core operations & academics
+          </div>
+          <p>Clarity for every school day.</p>
+          <button
+            className="signout"
+            onClick={async () => {
+              try {
+                await post("/auth/logout", {});
+                setSession(null);
+                setConfig(null);
+                setCsrf("");
+                setPage("dashboard");
+                location.hash = "dashboard";
+                setInitialRoute(true);
+              } catch (e) {
+                notify(e.message);
+              }
+            }}
+          >
+            <LogOut size={17} />
+            Sign out
+          </button>
+        </div>
+      </aside>
+      <div className="workspace">
+        <header className="topbar">
+          <div className="breadcrumb">
+            <button
+              className="icon-btn mobile-toggle"
+              aria-label="Open navigation"
+              onClick={() => setMobile(true)}
+            >
+              <Menu />
+            </button>
+            <span>Workspace</span>
+            <ChevronRight size={14} />
+            <strong>
+              {nav.find((n) => n[0] === page)?.[1] || "Notifications"}
+            </strong>
+          </div>
+          <div className="topbar-actions">
+            <select
+              aria-label="Academic term"
+              className="term-select"
+              value={term}
+              onChange={(e) => setTerm(e.target.value)}
+            >
+              {config.terms.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {config.years.find((y) => y.id === t.academic_year_id)?.name}{" "}
+                  · {t.name}
+                </option>
+              ))}
+            </select>
+            <button
+              className="icon-btn notification-button"
+              aria-label="Notifications"
+              onClick={() => go("notifications")}
+            >
+              <Bell size={20} />
+            </button>
+            <div className="user-menu">
+              <span className="avatar">
+                {session.user.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join("")}
+              </span>
+              <div>
+                <strong>{session.user.name}</strong>
+                <small>{human(session.user.role)}</small>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="main-content">
+          <Current key={page} {...context} />
+        </main>
+        <footer className="app-footer">
+          <span>SMPIS · School management, thoughtfully connected.</span>
+          <span>{config.school.timezone}</span>
+        </footer>
+      </div>
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+const applyCode = new URLSearchParams(location.search).get("apply");
+createRoot(document.getElementById("root")).render(
+  <>
+    <CookieNotice />
+    {["/terms", "/privacy", "/cookies"].includes(location.pathname.replace(/\/$/, ""))
+      ? <LegalPage type={location.pathname.replace(/\/$/, "").slice(1)} />
+      : applyCode ? <PublicApplication code={applyCode} /> : <App />}
+    <LegalFooter />
+  </>,
+);
