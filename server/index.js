@@ -3,7 +3,6 @@ import { createServer as createHttpServer } from "node:http";
 import path from "node:path";
 import { openDatabase } from "./db.js";
 import { createApp } from "./app.js";
-import { runJobs } from "./jobs.js";
 import { serveFrontend } from "./frontend.js";
 const production =
   process.argv.includes("--production") ||
@@ -52,24 +51,8 @@ try {
   throw error;
 }
 console.log(`SMPIS is ready at http://${host}:${port} (Supabase)`);
-let running = false;
-const jobs = async () => {
-  if (running) return;
-  running = true;
-  try {
-    await runJobs(db);
-  } catch (error) {
-    console.error("Background job failed:", error.message);
-  } finally {
-    running = false;
-  }
-};
-const timer = setInterval(jobs, 60_000);
-timer.unref();
-jobs();
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () => {
-    clearInterval(timer);
     vite?.close();
     server.close(async () => {
       await db.close();

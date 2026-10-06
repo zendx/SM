@@ -2,12 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": ".",
   "buildCommand": "npm run build:vercel",
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "0 2 * * *"
-    }
-  ],
   "framework": "express",
   "functions": {
     "**": {

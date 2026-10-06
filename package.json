@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node server/index.js",
     "start": "node server/index.js --production",
+    "worker": "node worker/index.js",
     "build": "vite build",
     "build:vercel": "vite build --outDir public --emptyOutDir",
     "test": "node --test tests/*.test.js",
