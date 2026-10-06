@@ -1638,3 +1638,166 @@
 .pricing-card .price-note {
   overflow-wrap: anywhere;
 }
+.whatsapp-help {
+  position: fixed;
+  right: 24px;
+  bottom: var(--help-bottom, 24px);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 13px;
+  max-width: calc(100vw - 32px);
+  transition: bottom 0.3s ease;
+  animation: help-arrive 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.whatsapp-greeting {
+  background: #fff;
+  border: 1px solid #d5e5d4;
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: 0 10px 35px #193e2c18;
+  padding: 19px 34px 17px 19px;
+  display: grid;
+  gap: 7px;
+  position: relative;
+  max-width: 250px;
+}
+.whatsapp-greeting > button {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+}
+.whatsapp-greeting strong {
+  font-size: 14px;
+  color: #224f39;
+}
+.whatsapp-greeting span {
+  font-size: 12px;
+  color: #526b58;
+}
+.whatsapp-greeting small {
+  font-size: 10px;
+  color: #7a8e7d;
+}
+.sales-page .whatsapp-launcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #158b49;
+  color: #fff;
+  padding: 14px 18px;
+  border: 1px solid #11773f;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 25px #16844735;
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.sales-page .whatsapp-launcher:hover {
+  background: #11773f;
+  box-shadow: 0 10px 30px #16844755;
+}
+.whatsapp-launcher:focus-visible {
+  outline: 3px solid #dfba65;
+  outline-offset: 5px;
+}
+.whatsapp-icon {
+  width: 25px;
+  height: 25px;
+  flex-shrink: 0;
+}
+.smpis-help-mascot {
+  position: absolute;
+  width: 78px;
+  height: 86px;
+  right: calc(100% - 8px);
+  bottom: -3px;
+  overflow: visible;
+  pointer-events: none;
+  animation: mascot-bob 4s ease-in-out 3;
+}
+.mascot-wave {
+  transform-origin: 70px 65px;
+  animation: mascot-wave 3.5s ease-in-out 3;
+}
+.mascot-eyes {
+  transform-origin: 49px 43px;
+  animation: mascot-blink 5s ease-in-out 3;
+}
+.sales-page .whatsapp-launcher:hover > svg {
+  transform: none;
+}
+@keyframes help-arrive {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes mascot-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  45% {
+    translate: 0 -5px;
+  }
+}
+@keyframes mascot-wave {
+  0%,
+  25%,
+  100% {
+    rotate: 0deg;
+  }
+  5%,
+  15% {
+    rotate: 14deg;
+  }
+  10%,
+  20% {
+    rotate: -10deg;
+  }
+}
+@keyframes mascot-blink {
+  0%,
+  44%,
+  48%,
+  100% {
+    scale: 1 1;
+  }
+  46% {
+    scale: 1 0.15;
+  }
+}
+@media (max-width: 700px) {
+  .whatsapp-help {
+    right: 16px;
+  }
+  .whatsapp-greeting {
+    max-width: 225px;
+    padding: 16px 32px 15px 17px;
+  }
+  .sales-page .whatsapp-launcher {
+    padding: 12px 15px;
+    font-size: 12px;
+  }
+  .smpis-help-mascot {
+    width: 66px;
+    height: 73px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .whatsapp-help,
+  .smpis-help-mascot,
+  .mascot-wave,
+  .mascot-eyes {
+    animation: none !important;
+    transition: none !important;
+  }
+}

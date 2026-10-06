@@ -19,6 +19,7 @@ import { Form, Button } from "../components";
 import { post, setCsrf } from "../api";
 import { useData } from "../hooks";
 import "../saas.css";
+import { WhatsAppHelp } from "./whatsapp-help";
 
 export const cycles = [
   { value: "MONTHLY", label: "Monthly — $100" },
@@ -697,6 +698,7 @@ export function Landing() {
         </p>
         <span>Clarity for every school day.</span>
       </footer>
+      <WhatsAppHelp />
     </div>
   );
 }
