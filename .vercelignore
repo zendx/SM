@@ -1,0 +1,19 @@
+# Local-only files and development artifacts
+.git/
+node_modules/
+.npm-cache/
+.vercel/
+.env
+.env.*
+!.env.example
+data/
+backups/
+test-results/
+tests/
+docs/
+dist/
+public/
+deploy/
+*.log
+branch_structure.json
+temp_*.bat
