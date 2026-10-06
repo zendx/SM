@@ -27,6 +27,20 @@ try {
   await page
     .getByRole("heading", { name: "Less paperwork. More possibility." })
     .waitFor();
+  const whatsapp = page.getByRole("link", {
+    name: "Get help from SMPIS on WhatsApp (opens in a new tab)",
+  });
+  await whatsapp.waitFor();
+  const helpAddress = new URL(await whatsapp.getAttribute("href"));
+  assert.equal(helpAddress.hostname, "wa.me");
+  assert.equal(helpAddress.pathname, "/2347077778234");
+  assert.ok(helpAddress.searchParams.get("text").includes("SMPIS"));
+  assert.equal(await whatsapp.getAttribute("target"), "_blank");
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".whatsapp-help").getBoundingClientRect().bottom <
+      document.querySelector(".cookie-notice").getBoundingClientRect().top,
+  );
   await page.getByRole("button", { name: "Accept required cookies" }).click();
   await page.waitForFunction(() =>
     document.querySelector(".sales-page").classList.contains("motion-ready"),
@@ -50,7 +64,14 @@ try {
       .evaluate((el) => getComputedStyle(el).transitionDuration),
     "0s",
   );
+  assert.equal(
+    await page
+      .locator(".mascot-wave")
+      .evaluate((el) => getComputedStyle(el).animationName),
+    "none",
+  );
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.screenshot({ path: "test-results/smpis-whatsapp-desktop.png" });
   await page.screenshot({
     path: "test-results/smpis-landing-desktop.png",
     fullPage: true,
@@ -81,6 +102,18 @@ try {
     path: "test-results/smpis-landing-mobile.png",
     fullPage: true,
   });
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({ path: "test-results/smpis-whatsapp-mobile.png" });
+  const helpBounds = await page.locator(".whatsapp-help").boundingBox();
+  assert.ok(helpBounds.x >= 0 && helpBounds.x + helpBounds.width <= 390);
+  await page.getByRole("button", { name: "Dismiss help greeting" }).click();
+  assert.equal(
+    await page
+      .getByText("Need a hand with your school?", { exact: true })
+      .count(),
+    0,
+  );
+  await whatsapp.waitFor();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(origin + "/owner");
   console.log("Checking owner setup");
