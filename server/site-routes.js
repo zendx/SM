@@ -26,7 +26,7 @@ export function legalRoutes(db) {
 export function siteSettingsRoutes(db) {
   const router = express.Router();
   router.patch("/admin/legal", async (req, res) => {
-    if (req.user.role !== "SUPER_ADMIN")
+    if (req.user.role !== "SUPER_ADMIN" && !req.user.platform_operator)
       fail(403, "Super administrator access required.", "FORBIDDEN");
     const schools = await one(db, "SELECT count(*)::int AS n FROM schools");
     if (schools.n > 1 && !req.user.platform_operator)

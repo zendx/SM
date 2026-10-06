@@ -107,7 +107,10 @@ const click = (label) =>
   dialog = () => page.locator("dialog"),
   closed = () => dialog().waitFor({ state: "hidden" });
 async function login(who) {
-  await page.goto(origin);
+  await page.goto(origin + '/login');
+  await field('Email address').waitFor();
+  const cookies=page.getByRole('button',{name:'Accept required cookies',exact:true});
+  if(await cookies.count()) await cookies.click();
   await field("Email address").fill(`${who}@opsbrowser.test`);
   await page.getByLabel(/^Password \*$/).fill(password);
   await click("Sign in to your workspace");
@@ -336,32 +339,32 @@ try {
   await db.query("DELETE FROM platform_operators WHERE user_id=$1", [users.admin.id]);
   const platformRequests = [];
   const recordPlatformRequest = (request) => {
-    if (request.url().includes("/api/v1/platform/")) platformRequests.push(request.url());
+    if (request.url().includes("/api/v1/saas/owner")) platformRequests.push(request.url());
   };
   page.on("request", recordPlatformRequest);
   await page.goto(`${origin}/?permission-route-test=1#platform`);
   await page.waitForFunction(() => location.hash === "#dashboard");
   await page.locator("nav").waitFor();
-  assert.equal(await page.locator("nav").getByRole("button", { name: "Schools", exact: true }).count(), 0);
+  assert.equal(await page.locator("nav").getByRole("button", { name: "SaaS business", exact: true }).count(), 0);
   assert.deepEqual(platformRequests, []);
   page.off("request", recordPlatformRequest);
   await insert(db, "platform_operators", { user_id: users.admin.id });
   await page.reload();
-  await page.locator("nav").getByRole("button", { name: "Schools", exact: true }).waitFor();
-  await nav("Schools");
-  await click("Add school");
+  await page.locator("nav").getByRole("button", { name: "SaaS business", exact: true }).waitFor();
+  await nav("SaaS business");
+  await click("Create school portal");
   await field("School name").fill("Oakridge School");
-  await field("School code").fill("OAK");
-  await field("School administrator name").fill("Oakridge Administrator");
-  await field("School administrator email").fill("oak@example.test");
-  await field("Initial administrator password").fill("Oakridge-initial-pass!");
+  await field("School portal name").fill("oakridge-school");
+  await field("Administrator name").fill("Oakridge Administrator");
+  await field("Administrator email").fill("oak@example.test");
+  await field("Administrator password").fill("Oakridge-initial-pass!");
   await field("Academic year").fill("Next school year");
-  await field("Year start").fill(today);
-  await field("Year end").fill(day(365));
+  await field("Year starts").fill(today);
+  await field("Year ends").fill(day(365));
   await click("Create school");
   await closed();
   await page
-    .getByRole("cell", { name: "Oakridge School", exact: true })
+    .getByRole("cell", { name: "Oakridge School", exact: false })
     .waitFor();
   await page.screenshot({
     path: "test-results/school-portfolio.png",

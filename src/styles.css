@@ -2076,3 +2076,7 @@ textarea:focus-visible {
 .tabs button {
   color: #61736b;
 }
+/* Keep standalone panel forms aligned with panel headings. */
+.panel > form { margin: 0 22px 22px; }
+.panel > .form-grid { margin: 0 22px 22px; }
+@media (max-width: 600px) { .panel > form, .panel > .form-grid { margin: 0 16px 18px; } }

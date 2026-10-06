@@ -19,6 +19,13 @@ import {
 } from "./document-storage.js";
 import { runJobs } from "./jobs.js";
 import { DOCUMENT_MAX_MB } from "./document-limits.js";
+import {
+  saasPublicRoutes,
+  saasRoutes,
+  subscriptionWebhook,
+  alternativeWebhook,
+} from "./saas-routes.js";
+import { subscriptionGate } from "./saas-service.js";
 
 export async function createApp(db, options = {}) {
   await seedRoles(db);
@@ -57,6 +64,17 @@ export async function createApp(db, options = {}) {
       strictTransportSecurity: options.production ? undefined : false,
     }),
   );
+  app.post(
+    "/api/v1/saas/webhooks/stripe",
+    express.raw({ type: "application/json", limit: "1mb" }),
+    subscriptionWebhook(db),
+  );
+  for (const provider of ["paystack", "flutterwave"])
+    app.post(
+      `/api/v1/saas/webhooks/${provider}`,
+      express.raw({ type: "application/json", limit: "1mb" }),
+      alternativeWebhook(db, provider),
+    );
   app.use(
     express.json({
       limit: "1mb",
@@ -100,10 +118,13 @@ export async function createApp(db, options = {}) {
     }
   });
   app.use("/api/v1", legalRoutes(db));
+  app.use("/api/v1", saasPublicRoutes(db));
   app.use("/api/v1/auth", authRoutes(db, options));
   app.use(
     "/api/v1",
     authenticate(db),
+    subscriptionGate(db),
+    saasRoutes(db),
     accountRoutes(db),
     coreRoutes(db, options),
     integrationRoutes(db),

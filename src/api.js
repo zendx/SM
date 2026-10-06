@@ -1,4 +1,12 @@
 let csrf = "";
+const firstSegment = location.pathname.split("/").filter(Boolean)[0];
+export const tenantSlug =
+  firstSegment &&
+  !["terms", "privacy", "cookies", "signup", "login", "owner"].includes(
+    firstSegment,
+  )
+    ? firstSegment
+    : "";
 export function setCsrf(value) {
   csrf = value;
 }
@@ -9,6 +17,7 @@ export async function api(path, options = {}) {
     headers: {
       ...(!isForm ? { "Content-Type": "application/json" } : {}),
       "x-csrf-token": csrf,
+      ...(tenantSlug ? { "x-smpis-portal": tenantSlug } : {}),
       ...options.headers,
     },
     body: options.body
@@ -18,6 +27,8 @@ export async function api(path, options = {}) {
       : undefined,
   });
   const payload = await response.json();
+  if (response.status === 402)
+    window.dispatchEvent(new Event("smpis-subscription-inactive"));
   if (!response.ok)
     throw Object.assign(
       new Error(
@@ -28,7 +39,7 @@ export async function api(path, options = {}) {
           )
           .join("\n") || "Request failed.",
       ),
-      { status: response.status },
+      { status: response.status, code: payload.errors?.[0]?.code },
     );
   return payload;
 }

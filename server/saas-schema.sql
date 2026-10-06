@@ -1,0 +1,88 @@
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS portal_slug TEXT;
+UPDATE schools SET portal_slug='school-' || lower(short_code) WHERE portal_slug IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS school_portal_slug_unique ON schools(portal_slug);
+
+CREATE TABLE IF NOT EXISTS saas_settings (
+ id INT PRIMARY KEY CHECK(id=1), bank_name TEXT NOT NULL DEFAULT '',
+ account_name TEXT NOT NULL DEFAULT '', account_number TEXT NOT NULL DEFAULT '',
+ bank_currency TEXT NOT NULL DEFAULT 'USD', bank_instructions TEXT NOT NULL DEFAULT '',
+ bank_usd_rate NUMERIC(18,6) NOT NULL DEFAULT 1 CHECK(bank_usd_rate>0),
+ grace_days INT NOT NULL DEFAULT 0 CHECK(grace_days BETWEEN 0 AND 30),
+ updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO saas_settings(id) VALUES(1) ON CONFLICT DO NOTHING;
+ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS landing_currency TEXT NOT NULL DEFAULT 'USD' CHECK(landing_currency IN ('USD','NGN'));
+ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS landing_usd_rate NUMERIC(18,6) NOT NULL DEFAULT 1 CHECK(landing_usd_rate>0);
+CREATE TABLE IF NOT EXISTS school_subscriptions (
+ school_id INT PRIMARY KEY REFERENCES schools(id),
+ plan TEXT NOT NULL CHECK(plan IN ('FREE','PRO')),
+ billing_cycle TEXT NOT NULL DEFAULT 'MONTHLY' CHECK(billing_cycle IN ('MONTHLY','YEARLY')),
+ status TEXT NOT NULL CHECK(status IN ('TRIAL','ACTIVE','PENDING_PAYMENT','SUSPENDED','TERMINATED')),
+ trial_ends_at TIMESTAMPTZ NOT NULL DEFAULT now()+interval '14 days',
+ period_end TIMESTAMPTZ NOT NULL DEFAULT now()+interval '14 days',
+ suspension_reason TEXT NOT NULL DEFAULT '', updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO school_subscriptions(school_id,plan,status)
+ SELECT id,'FREE','TRIAL' FROM schools ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS subscription_payments (
+ id SERIAL PRIMARY KEY, school_id INT NOT NULL REFERENCES schools(id),
+ reference TEXT NOT NULL UNIQUE, billing_cycle TEXT NOT NULL CHECK(billing_cycle IN ('MONTHLY','YEARLY')),
+ amount_cents INT NOT NULL CHECK(amount_cents IN (10000,102000)), currency TEXT NOT NULL DEFAULT 'USD' CHECK(currency='USD'),
+ method TEXT NOT NULL CHECK(method IN ('BANK','CARD')),
+ status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','PAID','REJECTED','TEST_CONFIRMED','REVIEW')),
+ transfer_reference TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '',
+ provider_id TEXT UNIQUE, initiated_by INT NOT NULL REFERENCES users(id),
+ provider TEXT CHECK(provider IN ('stripe','paystack','flutterwave')),
+ mode TEXT NOT NULL DEFAULT 'SANDBOX' CHECK(mode IN ('SANDBOX','LIVE')),
+ charge_amount_cents BIGINT, charge_currency TEXT,
+ reviewed_by INT REFERENCES users(id), paid_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS subscription_payments_school ON subscription_payments(school_id,created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS subscription_bank_reference_unique
+ ON subscription_payments(school_id,lower(transfer_reference))
+ WHERE method='BANK' AND status<>'REJECTED' AND transfer_reference<>'';
+CREATE TABLE IF NOT EXISTS saas_payment_providers (
+ provider TEXT PRIMARY KEY CHECK(provider IN ('stripe','paystack','flutterwave')),
+ encrypted_config TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS subscription_events (
+ id SERIAL PRIMARY KEY, school_id INT NOT NULL REFERENCES schools(id),
+ actor_id INT REFERENCES users(id), action TEXT NOT NULL, details JSONB NOT NULL DEFAULT '{}',
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- A platform owner is an account in the business, with no school or subscription.
+ALTER TABLE users ALTER COLUMN school_id DROP NOT NULL;
+ALTER TABLE audit_logs ALTER COLUMN school_id DROP NOT NULL;
+ALTER TABLE subscription_events ALTER COLUMN school_id DROP NOT NULL;
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='smpis_user_school_or_owner' AND conrelid='users'::regclass) THEN
+  ALTER TABLE users ADD CONSTRAINT smpis_user_school_or_owner CHECK(school_id IS NOT NULL OR role='PLATFORM_OWNER');
+ END IF;
+END $$;
+CREATE TABLE IF NOT EXISTS saas_support_tickets (
+ id SERIAL PRIMARY KEY,school_id INT NOT NULL REFERENCES schools(id),
+ user_id INT NOT NULL REFERENCES users(id),subject TEXT NOT NULL,description TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','IN_PROGRESS','RESOLVED')),
+ resolution TEXT NOT NULL DEFAULT '',updated_by INT REFERENCES users(id),
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS saas_support_status ON saas_support_tickets(status,updated_at);
+
+-- Legacy provisioning paths must also create a valid subscription and portal.
+CREATE OR REPLACE FUNCTION smpis_school_portal_default() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.portal_slug IS NULL THEN NEW.portal_slug := 'school-' || lower(NEW.short_code); END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS smpis_school_portal_default ON schools;
+CREATE TRIGGER smpis_school_portal_default BEFORE INSERT ON schools
+ FOR EACH ROW EXECUTE FUNCTION smpis_school_portal_default();
+CREATE OR REPLACE FUNCTION smpis_school_trial_default() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ INSERT INTO school_subscriptions(school_id,plan,status) VALUES(NEW.id,'FREE','TRIAL');
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS smpis_school_trial_default ON schools;
+CREATE TRIGGER smpis_school_trial_default AFTER INSERT ON schools
+ FOR EACH ROW EXECUTE FUNCTION smpis_school_trial_default();

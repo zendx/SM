@@ -112,7 +112,10 @@ const navigate = (name) =>
   page.locator("nav").getByRole("button", { name, exact: true }).click();
 const closed = () => dialog().waitFor({ state: "hidden" });
 async function login(who) {
-  await page.goto(origin);
+  await page.goto(origin + '/login');
+  await field('Email address').waitFor();
+  const cookies=page.getByRole('button',{name:'Accept required cookies',exact:true});
+  if(await cookies.count()) await cookies.click();
   await field("Email address").fill(`${who}@phase2.test`);
   await page.getByLabel(/^Password \*$/).fill("Phase-two-browser!");
   await click("Sign in to your workspace");
