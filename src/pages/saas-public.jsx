@@ -12,6 +12,8 @@ import {
   Building2,
   MessageSquare,
   ArrowRight,
+  Menu,
+  X,
 } from "lucide-react";
 import { Form, Button } from "../components";
 import { post, setCsrf } from "../api";
@@ -22,7 +24,31 @@ export const cycles = [
   { value: "MONTHLY", label: "Monthly — $100" },
   { value: "YEARLY", label: "Yearly — $1,020 (save 15%)" },
 ];
-export function registrationFields(plan = "FREE", cycle = "MONTHLY") {
+export function subscriptionMoney(value, config = {}) {
+  const currency = config.landing_currency || config.display_currency || "USD";
+  const rate =
+    currency === "NGN"
+      ? Number(config.landing_usd_rate || config.display_usd_rate || 1)
+      : 1;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format((Number(value || 0) / 100) * rate);
+}
+export const billingCycles = (config) => [
+  { value: "MONTHLY", label: `Monthly — ${subscriptionMoney(10000, config)}` },
+  {
+    value: "YEARLY",
+    label: `Yearly — ${subscriptionMoney(102000, config)} (save 15%)`,
+  },
+];
+export function registrationFields(
+  plan = "FREE",
+  cycle = "MONTHLY",
+  config = {},
+) {
   const year = new Date().getUTCFullYear();
   return [
     { name: "school_name", label: "School name", wide: true },
@@ -55,14 +81,14 @@ export function registrationFields(plan = "FREE", cycle = "MONTHLY") {
     {
       name: "billing_cycle",
       label: "Pro billing period",
-      options: cycles,
+      options: billingCycles(config),
       default: cycle,
     },
     {
       name: "currency_code",
       label: "School fee currency",
       default: "NGN",
-      hint: "Your student fee currency; SMPIS subscriptions are priced in USD.",
+      hint: "Currency for student fee invoices.",
     },
     { name: "timezone", label: "School timezone", default: "Africa/Lagos" },
     {
@@ -127,7 +153,8 @@ export function Signup() {
               <Check /> All modules in your 14-day trial
             </li>
             <li>
-              <Check /> $100/month or $1,020/year for Pro
+              <Check /> {subscriptionMoney(10000, q.data || {})}/month or{" "}
+              {subscriptionMoney(102000, q.data || {})}/year for Pro
             </li>
           </ul>
           <div className="signup-note">
@@ -154,6 +181,7 @@ export function Signup() {
               fields={registrationFields(
                 params.get("plan") === "PRO" ? "PRO" : "FREE",
                 params.get("cycle") === "YEARLY" ? "YEARLY" : "MONTHLY",
+                q.data || {},
               )}
               submit="Create school portal"
               onSubmit={async (v) => {
@@ -212,6 +240,7 @@ const features = [
 ];
 export function Landing() {
   const [yearly, setYearly] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const plans = useData("/saas/plans", null);
   const displayCurrency = plans.data?.display_currency || "USD";
   const displayRate =
@@ -280,13 +309,29 @@ export function Landing() {
     <div className="sales-page" ref={page}>
       <header className="sales-nav">
         <PublicBrand />
-        <nav aria-label="Main navigation">
+        <nav
+          id="sales-navigation"
+          className={menuOpen ? "open" : ""}
+          aria-label="Main navigation"
+          onClick={(event) => {
+            if (event.target.closest("a")) setMenuOpen(false);
+          }}
+        >
           <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQs</a>
         </nav>
         <div>
+          <button
+            className="icon-btn sales-menu-toggle"
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={menuOpen}
+            aria-controls="sales-navigation"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
           <a className="sales-signin" href="/login">
             Sign in
           </a>
@@ -516,7 +561,9 @@ export function Landing() {
               <div className="eyebrow">EXPLORE SMPIS</div>
               <h3>Free</h3>
               <p>Experience your school’s new workspace.</p>
-              <div className="plan-price">
+              <div
+                className={`plan-price ${displayCurrency === "NGN" ? "ngn-price" : ""}`}
+              >
                 {displayPrice(0)}
                 <span>/ 14 days</span>
               </div>
@@ -549,7 +596,9 @@ export function Landing() {
               <div className="eyebrow">KEEP YOUR SCHOOL CONNECTED</div>
               <h3>Pro</h3>
               <p>A complete workspace for your school.</p>
-              <div className="plan-price">
+              <div
+                className={`plan-price ${displayCurrency === "NGN" ? "ngn-price" : ""}`}
+              >
                 {displayPrice(yearly ? 1020 : 100)}
                 <span>/ {yearly ? "year" : "month"}</span>
               </div>

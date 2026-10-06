@@ -204,7 +204,7 @@ export function LegalPage({ type }) {
           <h2>School subscriptions</h2>
           <p>
             Schools may create a separate SMPIS portal with a 14-day Free trial.
-            Pro costs USD 100 per month, or USD 1,020 paid yearly with a 15%
+            Pro has a USD 100 monthly base price, or USD 1,020 yearly with a 15%
             discount. Payments cover one selected period; this checkout does not
             automatically charge a card for future periods. Operational access
             pauses when the trial ends or a paid subscription expires after any
@@ -281,14 +281,14 @@ export function LegalPage({ type }) {
             document storage. Hosting, database and storage providers process
             information needed to provide those services. If configured, the
             school's SMTP provider processes recipient addresses and email
-            content, and configured payment providers process payment information
-            under their own notices. Paystack handles school fee checkout;
-            Stripe, Paystack and Flutterwave support SMPIS subscription checkout.
-            Subscription records include the school, billing period, payment
-            references and verification status. Twilio SMS delivery is not yet
-            implemented. The
-            operator must assess any cross-border processing and applicable
-            safeguards with its providers.
+            content, and configured payment providers process payment
+            information under their own notices. Paystack handles school fee
+            checkout; Stripe, Paystack and Flutterwave support SMPIS
+            subscription checkout. Subscription records include the school,
+            billing period, payment references and verification status. Twilio
+            SMS delivery is not yet implemented. The operator must assess any
+            cross-border processing and applicable safeguards with its
+            providers.
           </p>
           <h2>Security and access</h2>
           <p>

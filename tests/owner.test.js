@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { verifyCheckout } from "../server/saas-routes.js";
 import * as OTPAuth from "otpauth";
 import { test, before, after, openTestDatabase } from "./database.js";
 import assert from "node:assert/strict";
@@ -5,6 +7,7 @@ import { createApp } from "../server/app.js";
 import { one } from "../server/db.js";
 import { digest } from "../server/security.js";
 process.env.REQUIRE_MFA = "false";
+process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 let db, server, base, owner, school;
 const password = "Owner-separation-test-2026!";
 async function call(path, { client, method = "GET", body } = {}) {
@@ -427,8 +430,11 @@ test("owner selects public pricing currency without exposing private billing set
   let plans = (await call("/saas/plans")).data;
   assert.equal(plans.display_currency, "NGN");
   assert.equal(plans.display_usd_rate, 1500);
-  assert.equal(plans.monthly_cents, 10000);
-  assert.equal(plans.yearly_cents, 102000);
+  assert.equal(plans.currency, "NGN");
+  assert.equal(plans.monthly_cents, 15000000);
+  assert.equal(plans.yearly_cents, 153000000);
+  assert.equal(plans.base_monthly_cents, 10000);
+  assert.equal(plans.base_yearly_cents, 102000);
   assert.equal("account_number" in plans, false);
   assert.equal(
     (
@@ -454,4 +460,140 @@ test("owner selects public pricing currency without exposing private billing set
   plans = (await call("/saas/plans")).data;
   assert.equal(plans.display_currency, "USD");
   assert.equal(plans.display_usd_rate, 1500);
+});
+
+test("global currency controls all new payment quotes and preserves earlier quotes after a switch", async () => {
+  const settings = (await call("/saas/owner", { client: owner })).data.settings;
+  const fields = [
+    "bank_name",
+    "account_name",
+    "account_number",
+    "bank_instructions",
+    "grace_days",
+  ];
+  const bank = {
+    ...Object.fromEntries(fields.map((k) => [k, settings[k]])),
+    bank_name: "Test Bank",
+    account_name: "SMPIS",
+    account_number: "1234567890",
+    landing_usd_rate: 1500,
+  };
+  for (const provider of ["stripe", "paystack", "flutterwave"]) {
+    const r = await call("/saas/owner/providers/" + provider, {
+      client: owner,
+      method: "PATCH",
+      body: {
+        enabled: true,
+        mode: "SANDBOX",
+        secret_key:
+          provider === "flutterwave" ? "FLWSECK-global_TEST" : "sk_test_global",
+        webhook_secret: "test-webhook",
+      },
+    });
+    assert.equal(r.status, 200, JSON.stringify(r));
+  }
+  const originalFetch = globalThis.fetch;
+  let stripeAmount,
+    stripeCurrency,
+    count = 0,
+    ngnStripe;
+  globalThis.fetch = async (url, options) => {
+    const address = String(url);
+    if (address.startsWith("https://api.stripe.com/")) {
+      stripeAmount = Number(
+        options.body.get("line_items[0][price_data][unit_amount]"),
+      );
+      stripeCurrency = options.body.get("line_items[0][price_data][currency]");
+      return new Response(
+        JSON.stringify({
+          id: "cs_test_global_" + ++count,
+          url: "https://checkout.stripe.com/c/pay/global",
+        }),
+        { status: 200 },
+      );
+    }
+    if (address.startsWith("https://api.paystack.co/"))
+      return new Response(
+        JSON.stringify({
+          status: true,
+          data: { authorization_url: "https://checkout.paystack.com/global" },
+        }),
+        { status: 200 },
+      );
+    if (address.startsWith("https://api.flutterwave.com/"))
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { link: "https://checkout.flutterwave.com/global" },
+        }),
+        { status: 200 },
+      );
+    return originalFetch(url, options);
+  };
+  try {
+    for (const currency of ["NGN", "USD"]) {
+      assert.equal(
+        (
+          await call("/saas/owner/settings", {
+            client: owner,
+            method: "PATCH",
+            body: { ...bank, landing_currency: currency },
+          })
+        ).status,
+        200,
+      );
+      const expected = currency === "NGN" ? 153000000 : 102000;
+      const payment = await call("/subscription/bank", {
+        client: school,
+        method: "POST",
+        body: {
+          billing_cycle: "YEARLY",
+          transfer_reference: "GLOBAL-" + currency,
+        },
+      });
+      assert.equal(payment.status, 201, JSON.stringify(payment));
+      assert.equal(Number(payment.data.charge_amount_cents), expected);
+      assert.equal(payment.data.charge_currency, currency);
+      for (const provider of ["stripe", "paystack", "flutterwave"]) {
+        const checkout = await call("/subscription/checkout", {
+          client: school,
+          method: "POST",
+          body: { provider, billing_cycle: "YEARLY" },
+        });
+        assert.equal(checkout.status, 200, JSON.stringify(checkout));
+        const record = await one(
+          db,
+          "SELECT * FROM subscription_payments WHERE provider=$1 ORDER BY id DESC LIMIT 1",
+          [provider],
+        );
+        assert.equal(record.amount_cents, 102000);
+        assert.equal(Number(record.charge_amount_cents), expected);
+        assert.equal(record.charge_currency, currency);
+        if (provider === "stripe") {
+          assert.equal(stripeAmount, expected);
+          assert.equal(stripeCurrency, currency.toLowerCase());
+          if (currency === "NGN") ngnStripe = record;
+        }
+      }
+    }
+    const session = {
+      id: ngnStripe.provider_id,
+      client_reference_id: ngnStripe.reference,
+      currency: "ngn",
+      amount_total: Number(ngnStripe.charge_amount_cents),
+      metadata: { school_id: String(ngnStripe.school_id) },
+      payment_status: "paid",
+      livemode: false,
+    };
+    assert.equal((await verifyCheckout(db, session)).status, "TEST_CONFIRMED");
+    const historical = await one(
+      db,
+      "SELECT charge_currency,charge_amount_cents FROM subscription_payments WHERE id=$1",
+      [ngnStripe.id],
+    );
+    assert.equal(historical.charge_currency, "NGN");
+    assert.equal(Number(historical.charge_amount_cents), 153000000);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

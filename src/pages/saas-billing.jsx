@@ -21,13 +21,13 @@ import {
 } from "../components";
 import { get, post, patch } from "../api";
 import { useData } from "../hooks";
-import { cycles, registrationFields } from "./saas-public";
+import {
+  registrationFields,
+  billingCycles,
+  subscriptionMoney,
+} from "./saas-public";
 import { OwnerAccounts, OwnerIssues, SchoolSupport } from "./owner-support";
 
-const usd = (value) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-    Number(value || 0) / 100,
-  );
 const when = (value) =>
   value
     ? new Date(value).toLocaleString(undefined, {
@@ -48,7 +48,6 @@ function PaymentTable({ payments, review }) {
         ...(review ? [{ label: "School", key: "school_name" }] : []),
         { label: "Reference", key: "reference" },
         { label: "Plan period", key: "billing_cycle" },
-        { label: "USD value", render: (p) => usd(p.amount_cents) },
         {
           label: "Payable amount",
           render: (p) =>
@@ -158,6 +157,7 @@ export function Subscription({
   const sub = q.data,
     admin = user.role === "SUPER_ADMIN",
     amount = cycle === "YEARLY" ? 102000 : 10000;
+  const usd = (value) => subscriptionMoney(value, sub.settings);
   const config = sub.settings,
     bankReady = !!(
       config.bank_name &&
@@ -172,7 +172,7 @@ export function Subscription({
       <PageHead
         eyebrow="YOUR SCHOOL SUBSCRIPTION"
         title="Keep your school connected"
-        description="Free for 14 days. Pro is $100/month or $1,020/year with a 15% yearly discount."
+        description={`Free for 14 days. Pro is ${usd(10000)}/month or ${usd(102000)}/year with a 15% yearly discount.`}
       />
       {blocked && (
         <div className="notice">
@@ -230,7 +230,7 @@ export function Subscription({
                   value={cycle}
                   onChange={(e) => setCycle(e.target.value)}
                 >
-                  {cycles.map((c) => (
+                  {billingCycles(config).map((c) => (
                     <option key={c.value} value={c.value}>
                       {c.label}
                     </option>
@@ -240,7 +240,8 @@ export function Subscription({
               <strong>
                 {usd(amount)}{" "}
                 <small>
-                  USD {cycle === "YEARLY" ? "for one year" : "for one month"}
+                  {config.landing_currency}{" "}
+                  {cycle === "YEARLY" ? "for one year" : "for one month"}
                 </small>
               </strong>
             </div>
@@ -319,12 +320,12 @@ export function Subscription({
                     <dd>
                       {new Intl.NumberFormat("en", {
                         style: "currency",
-                        currency: config.bank_currency,
+                        currency: config.landing_currency,
                       }).format(
                         (amount / 100) *
-                          (config.bank_currency === "USD"
+                          (config.landing_currency === "USD"
                             ? 1
-                            : Number(config.bank_usd_rate)),
+                            : Number(config.landing_usd_rate)),
                       )}
                     </dd>
                   </dl>
@@ -395,6 +396,7 @@ export function SaasOwner({ notify = () => {}, section }) {
   if (q.loading && !q.data) return <Loading />;
   if (!q.data) return <p className="form-error">{q.error}</p>;
   const d = q.data;
+  const usd = (value) => subscriptionMoney(value, d.settings);
   return (
     <>
       <PageHead
@@ -558,7 +560,7 @@ export function SaasOwner({ notify = () => {}, section }) {
               <p className="owner-chart-caption">
                 {selectedMonth ? `Viewing ${selectedMonth}. ` : ""}
                 {chartMode === "revenue"
-                  ? "Receipts in USD price equivalents. Sandbox payments are excluded."
+                  ? `Receipts in ${d.settings.landing_currency} equivalents at the current rate. Sandbox payments are excluded.`
                   : "School registrations, excluding the owner workspace."}
               </p>
             </Panel>
@@ -718,7 +720,7 @@ export function SaasOwner({ notify = () => {}, section }) {
           </Panel>
           <Panel
             title="Monthly receipts"
-            description="USD price equivalents; payment rows show the actual currency and amount collected."
+            description={`Totals in ${d.settings.landing_currency} equivalents; payment rows retain the original currency and amount collected.`}
           >
             <Table
               rows={d.monthly}
@@ -740,17 +742,17 @@ export function SaasOwner({ notify = () => {}, section }) {
               fields={[
                 {
                   name: "landing_currency",
-                  label: "Landing page pricing currency",
+                  label: "Global subscription currency",
                   options: ["USD", "NGN"],
-                  hint: "Choose the currency customers see on the public pricing page.",
+                  hint: "Applies to public pricing, signup, subscriptions and new payments.",
                 },
                 {
                   name: "landing_usd_rate",
-                  label: "Public pricing exchange rate",
+                  label: "Global exchange rate",
                   type: "number",
                   min: 0.000001,
                   step: "any",
-                  hint: "NGN per USD for public pricing. Set your business exchange rate.",
+                  hint: "NGN per USD. The $100 monthly base and 15% yearly discount are converted using this rate.",
                 },
                 { name: "bank_name", label: "Bank name", required: false },
                 {
@@ -762,19 +764,6 @@ export function SaasOwner({ notify = () => {}, section }) {
                   name: "account_number",
                   label: "Account number",
                   required: false,
-                },
-                {
-                  name: "bank_currency",
-                  label: "Bank currency",
-                  options: ["USD", "NGN"],
-                },
-                {
-                  name: "bank_usd_rate",
-                  label: "NGN per USD",
-                  type: "number",
-                  min: 0.000001,
-                  step: 0.000001,
-                  hint: "Used only for NGN transfers. Set your business exchange rate.",
                 },
                 {
                   name: "grace_days",
@@ -864,7 +853,7 @@ export function SaasOwner({ notify = () => {}, section }) {
       {create && (
         <Modal title="Create school portal" onClose={() => setCreate(false)}>
           <Form
-            fields={registrationFields()}
+            fields={registrationFields("FREE", "MONTHLY", d.settings)}
             submit="Create school"
             onSubmit={async (v) => {
               const result = await post("/saas/owner/tenants", v);
@@ -945,7 +934,7 @@ export function SaasOwner({ notify = () => {}, section }) {
           onClose={() => setReview(null)}
         >
           <dl className="bank-details">
-            <dt>USD value</dt>
+            <dt>Subscription value</dt>
             <dd>{usd(review.amount_cents)}</dd>
             <dt>Expected transfer</dt>
             <dd>
@@ -1009,19 +998,6 @@ export function SaasOwner({ notify = () => {}, section }) {
                   { value: "SANDBOX", label: "Sandbox" },
                   { value: "LIVE", label: "Live" },
                 ],
-              },
-              {
-                name: "currency",
-                label: "Checkout currency",
-                options: provider.name === "stripe" ? ["USD"] : ["NGN", "USD"],
-              },
-              {
-                name: "usd_rate",
-                label: "NGN per USD",
-                type: "number",
-                min: 0.000001,
-                step: 0.000001,
-                hint: "Used for NGN checkout. USD requires provider approval for your account.",
               },
               {
                 name: "secret_key",

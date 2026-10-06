@@ -277,6 +277,8 @@ test("manual yearly approval is idempotent, restores expired access, and audits 
       account_number: "1234567890",
       bank_currency: "NGN",
       bank_usd_rate: 1500,
+      landing_currency: "NGN",
+      landing_usd_rate: 1500,
       bank_instructions: "Use your school name.",
       grace_days: 2,
     },

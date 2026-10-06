@@ -885,7 +885,10 @@ createRoot(document.getElementById("root")).render(
     ) : location.pathname.replace(/\/$/, "") === "/signup" ? (
       <Signup />
     ) : location.pathname === "/" &&
-      !location.hash &&
+      (!location.hash ||
+        ["#features", "#how-it-works", "#pricing", "#faq"].includes(
+          location.hash,
+        )) &&
       !new URLSearchParams(location.search).has("reset") ? (
       <Landing />
     ) : (
