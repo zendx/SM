@@ -116,8 +116,8 @@ export async function verifyCheckout(db, session) {
   if (
     p.provider !== "stripe" ||
     p.provider_id !== session.id ||
-    session.currency !== "usd" ||
-    session.amount_total !== p.amount_cents ||
+    session.currency !== (p.charge_currency || "USD").toLowerCase() ||
+    session.amount_total !== Number(p.charge_amount_cents || p.amount_cents) ||
     session.metadata?.school_id !== String(p.school_id)
   )
     fail(422, "Card verification does not match the recorded payment.");
@@ -189,9 +189,18 @@ export function saasPublicRoutes(db) {
     res.json({
       data: {
         trial_days: 14,
-        monthly_cents: 10000,
-        yearly_cents: 102000,
-        currency: "USD",
+        monthly_cents: chargeQuote(10000, {
+          currency: config.landing_currency,
+          usd_rate: config.landing_usd_rate,
+        }).charge_amount_cents,
+        yearly_cents: chargeQuote(102000, {
+          currency: config.landing_currency,
+          usd_rate: config.landing_usd_rate,
+        }).charge_amount_cents,
+        currency: config.landing_currency,
+        base_currency: "USD",
+        base_monthly_cents: 10000,
+        base_yearly_cents: 102000,
         display_currency: config.landing_currency,
         display_usd_rate: Number(config.landing_usd_rate),
         registration_open: !!(await one(
@@ -261,8 +270,8 @@ export function saasRoutes(db) {
         method: "BANK",
         mode: "LIVE",
         ...chargeQuote(price(b.billing_cycle), {
-          currency: config.bank_currency,
-          usd_rate: config.bank_usd_rate,
+          currency: config.landing_currency,
+          usd_rate: config.landing_usd_rate,
         }),
         transfer_reference: b.transfer_reference,
         note: b.note,
@@ -284,6 +293,7 @@ export function saasRoutes(db) {
       .parse(req.body);
     await payable(db, req.user.school_id);
     const c = await providerConfig(db, b.provider);
+    const config = await settings(db);
     if (!c.enabled || !c.secret_key)
       fail(503, "This card provider is not configured.");
     const school = await one(
@@ -300,7 +310,10 @@ export function saasRoutes(db) {
       method: "CARD",
       provider: b.provider,
       mode: c.mode,
-      ...chargeQuote(price(b.billing_cycle), c),
+      ...chargeQuote(price(b.billing_cycle), {
+        currency: config.landing_currency,
+        usd_rate: config.landing_usd_rate,
+      }),
     });
     const returnUrl = `${siteOrigin()}/${school.portal_slug}/?subscription_provider=${b.provider}#subscription`;
     if (b.provider !== "stripe") {
@@ -357,8 +370,8 @@ export function saasRoutes(db) {
         "metadata[school_id]": String(p.school_id),
         "payment_method_types[0]": "card",
         "line_items[0][quantity]": "1",
-        "line_items[0][price_data][currency]": "usd",
-        "line_items[0][price_data][unit_amount]": String(p.amount_cents),
+        "line_items[0][price_data][currency]": p.charge_currency.toLowerCase(),
+        "line_items[0][price_data][unit_amount]": String(p.charge_amount_cents),
         "line_items[0][price_data][product_data][name]": `SMPIS Pro — ${b.billing_cycle === "YEARLY" ? "one year" : "one month"}`,
       },
       p.reference,
@@ -429,7 +442,7 @@ export function saasRoutes(db) {
           )
         : await rows(
             db,
-            "SELECT s.name AS school,e.action,u.name AS actor,e.details,e.created_at FROM subscription_events e JOIN schools s ON s.id=e.school_id LEFT JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC",
+            "SELECT s.name AS school,e.action,u.name AS actor,e.details,e.created_at FROM subscription_events e LEFT JOIN schools s ON s.id=e.school_id LEFT JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC",
           );
     const keys =
       kind === "payments"
@@ -495,7 +508,7 @@ export function saasRoutes(db) {
     );
     const events = await rows(
       db,
-      "SELECT e.*,s.name AS school_name,u.name AS actor_name FROM subscription_events e JOIN schools s ON s.id=e.school_id LEFT JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC LIMIT 250",
+      "SELECT e.*,s.name AS school_name,u.name AS actor_name FROM subscription_events e LEFT JOIN schools s ON s.id=e.school_id LEFT JOIN users u ON u.id=e.actor_id ORDER BY e.created_at DESC LIMIT 250",
     );
     res.json({
       data: {
@@ -538,7 +551,7 @@ export function saasRoutes(db) {
         bank_name: z.string().trim().max(200),
         account_name: z.string().trim().max(200),
         account_number: z.string().trim().max(100),
-        bank_currency: z.enum(["USD", "NGN"]),
+        bank_currency: z.enum(["USD", "NGN"]).optional(),
         bank_instructions: z.string().trim().max(2000),
         grace_days: z.coerce.number().int().min(0).max(30),
         bank_usd_rate: z.coerce.number().positive().max(1000000).default(1),
@@ -548,16 +561,22 @@ export function saasRoutes(db) {
       .strict()
       .parse(req.body);
     await db.transaction(async (tx) => {
+      const current = await one(
+        tx,
+        "SELECT * FROM saas_settings WHERE id=1 FOR UPDATE",
+      );
+      const globalCurrency = b.landing_currency ?? current.landing_currency;
+      const globalRate = b.landing_usd_rate ?? current.landing_usd_rate;
       await tx.query(
         "UPDATE saas_settings SET bank_name=$1,account_name=$2,account_number=$3,bank_currency=$4,bank_instructions=$5,grace_days=$6,bank_usd_rate=$7,landing_currency=COALESCE($8,landing_currency),landing_usd_rate=COALESCE($9,landing_usd_rate),updated_at=now() WHERE id=1",
         [
           b.bank_name,
           b.account_name,
           b.account_number,
-          b.bank_currency,
+          globalCurrency,
           b.bank_instructions,
           b.grace_days,
-          b.bank_currency === "USD" ? 1 : b.bank_usd_rate,
+          globalCurrency === "USD" ? 1 : globalRate,
           b.landing_currency ?? null,
           b.landing_usd_rate ?? null,
         ],

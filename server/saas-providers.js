@@ -43,8 +43,16 @@ export function redactProvider(c) {
 }
 export async function providerSummaries(db) {
   const result = {};
+  const config = await one(
+    db,
+    "SELECT landing_currency,landing_usd_rate FROM saas_settings WHERE id=1",
+  );
   for (const provider of providerNames)
-    result[provider] = redactProvider(await providerConfig(db, provider));
+    result[provider] = {
+      ...redactProvider(await providerConfig(db, provider)),
+      currency: config.landing_currency,
+      usd_rate: Number(config.landing_usd_rate),
+    };
   return result;
 }
 export async function saveProvider(db, provider, body) {
@@ -52,8 +60,8 @@ export async function saveProvider(db, provider, body) {
     .object({
       enabled: z.boolean(),
       mode: z.enum(["SANDBOX", "LIVE"]),
-      currency: z.enum(["USD", "NGN"]),
-      usd_rate: z.coerce.number().positive().max(1000000),
+      currency: z.enum(["USD", "NGN"]).optional(),
+      usd_rate: z.coerce.number().positive().max(1000000).optional(),
       secret_key: z.string().trim().max(4000).default(""),
       webhook_secret: z.string().trim().max(4000).default(""),
       clear_secrets: z.boolean().default(false),
@@ -62,10 +70,10 @@ export async function saveProvider(db, provider, body) {
     .parse(body);
   const old = await providerConfig(db, provider);
   const { clear_secrets, ...c } = b;
+  c.currency = c.currency || old.currency;
+  c.usd_rate = c.usd_rate ?? old.usd_rate;
   for (const name of ["secret_key", "webhook_secret"])
     c[name] = clear_secrets ? "" : c[name] || old[name] || "";
-  if (provider === "stripe" && c.currency !== "USD")
-    fail(422, "Stripe subscription checkout uses USD.");
   if (c.currency === "USD") c.usd_rate = 1;
   if (c.enabled) {
     if (!c.secret_key || !c.webhook_secret)

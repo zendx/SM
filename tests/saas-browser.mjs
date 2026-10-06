@@ -131,7 +131,7 @@ try {
   await page
     .getByRole("button", { name: "Payment settings", exact: true })
     .click();
-  const currencySelect = page.getByLabel("Landing page pricing currency", {
+  const currencySelect = page.getByLabel("Global subscription currency", {
     exact: false,
   });
   assert.equal(
@@ -143,9 +143,7 @@ try {
     "NGN",
   );
   await currencySelect.selectOption("NGN");
-  await page
-    .getByLabel("Public pricing exchange rate", { exact: false })
-    .fill("1500");
+  await page.getByLabel("Global exchange rate", { exact: false }).fill("1500");
   const spacing = await page
     .getByLabel("Bank name", { exact: false })
     .evaluate((el) => {
@@ -160,18 +158,17 @@ try {
   await page.getByLabel("Bank name", { exact: false }).fill("Sandbox Bank");
   await page.getByLabel("Account name", { exact: false }).fill("SMPIS");
   await page.getByLabel("Account number", { exact: false }).fill("1234567890");
-  await page.getByLabel("Bank currency", { exact: false }).selectOption("NGN");
-  await page.getByRole("spinbutton", { name: /^NGN per USD/ }).fill("1500");
   await page
     .getByRole("button", { name: "Save bank & subscription settings" })
     .click();
   await page.getByText("Payment settings updated.", { exact: true }).waitFor();
   const publicPage = await browser.newPage();
   await publicPage.goto(origin + "/#pricing");
-  await publicPage
-    .locator(".pro-card .plan-price")
-    .getByText("NGN", { exact: false })
-    .waitFor();
+  await publicPage.waitForFunction(() =>
+    document
+      .querySelector(".pro-card .plan-price")
+      ?.textContent.includes("NGN"),
+  );
   assert.ok(
     (await publicPage.locator(".pro-card .plan-price").innerText()).includes(
       "150,000",
@@ -194,7 +191,41 @@ try {
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
     true,
+    JSON.stringify(
+      await publicPage.evaluate(() =>
+        [...document.querySelectorAll("*")]
+          .filter((el) => el.getBoundingClientRect().right > innerWidth + 1)
+          .slice(0, 10)
+          .map((el) => ({
+            cls: el.className,
+            right: el.getBoundingClientRect().right,
+          })),
+      ),
+    ),
   );
+  await publicPage
+    .getByRole("button", { name: "Open navigation", exact: true })
+    .click();
+  await publicPage
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "FAQs", exact: true })
+    .click();
+  await publicPage.waitForFunction(
+    () =>
+      document.querySelector(".sales-nav").getBoundingClientRect().top >= 10 &&
+      document.querySelector(".sales-nav").getBoundingClientRect().top <= 14 &&
+      scrollY > 500,
+  );
+  assert.equal(
+    await publicPage
+      .getByRole("button", { name: "Open navigation", exact: true })
+      .getAttribute("aria-expanded"),
+    "false",
+  );
+  await publicPage.screenshot({
+    path: "test-results/smpis-ngn-pricing-mobile.png",
+    fullPage: true,
+  });
   await publicPage.close();
   for (const provider of ["Stripe", "Paystack", "Flutterwave"]) {
     await page
@@ -208,10 +239,7 @@ try {
         provider === "Flutterwave" ? "FLWSECK-sandbox_TEST" : "sk_test_sandbox",
       );
     await dialog.getByLabel(/Webhook/).fill("webhook_sandbox_secret");
-    if (provider !== "Stripe")
-      await dialog
-        .getByRole("spinbutton", { name: /^NGN per USD/ })
-        .fill("1500");
+
     await dialog
       .getByRole("button", { name: "Save provider configuration" })
       .click();
@@ -241,6 +269,26 @@ try {
     .getByRole("heading", { name: "Keep your school connected" })
     .waitFor();
   await page.getByText("Free trial", { exact: true }).waitFor();
+  assert.ok(
+    (
+      await page
+        .getByLabel("Billing period", { exact: false })
+        .locator('option[value="YEARLY"]')
+        .textContent()
+    ).includes("1,530,000"),
+  );
+  const proseInset = await page
+    .getByText("Payments cover one billing period.", { exact: false })
+    .evaluate((el) => {
+      const box = el.getBoundingClientRect(),
+        panel = el.closest(".panel").getBoundingClientRect();
+      return { left: box.left - panel.left, right: panel.right - box.right };
+    });
+  assert.ok(
+    proseInset.left >= 16 && proseInset.right >= 16,
+    JSON.stringify(proseInset),
+  );
+
   await page.screenshot({
     path: "test-results/smpis-school-billing.png",
     fullPage: true,

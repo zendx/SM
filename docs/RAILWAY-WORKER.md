@@ -16,7 +16,7 @@ The web app runs on Vercel. Deploy a second Railway service from the same reposi
 5. Set the restart policy to **On Failure**.
 6. Do not expose a public domain or configure an HTTP health check for this worker.
 
-Railway can install the project dependencies using the `package-lock.json`. The worker does not need a build command.
+Railway installs dependencies using `package-lock.json`. The included `railway.json` checks the worker syntax and starts `npm run worker`; it does not build the website.
 
 ## Environment variables
 
@@ -31,9 +31,10 @@ Add the same values used by the Vercel app for the following variables:
 | `INTEGRATION_ENCRYPTION_KEY` | Must be exactly the same key as Vercel uses, so the worker can decrypt saved school integration settings. |
 | `DB_POOL_MAX` | Set to `1` to limit the worker's database connections. |
 | `DB_SSL_CA` | Set only if your database connection requires a custom trusted certificate. |
+| `APP_URL` | Optional shared public origin: `https://smpis.digital`. Set this on Vercel for canonical links, recovery links and payment callbacks. |
 | `FEE_REMINDER_DAYS` | Optional. Defaults to `7,14,30`. |
 
-Set `NODE_ENV=production` if desired; no HTTP port, `HOST`, `APP_URL`, `CRON_SECRET`, or Vercel-specific variables are required by the worker. Configure SMTP in Administration > Integrations (or supply the optional server email defaults described in the main README) for actual notification delivery.
+Set `NODE_ENV=production` if desired; no HTTP port, `HOST`, `CRON_SECRET`, or Vercel-specific variables are required by the worker. Configure SMTP in Administration > Integrations (or supply the optional server email defaults described in the main README) for actual notification delivery.
 
 Do not change the encryption key when copying the variables from Vercel. Changing it makes previously saved integration credentials unreadable.
 
