@@ -14,7 +14,8 @@ export const human = (value) =>
   String(value ?? "")
     .replaceAll("_", " ")
     .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\b(Usd|Ngn)\b/g, (c) => c.toUpperCase());
 export function Badge({ value }) {
   return (
     <span

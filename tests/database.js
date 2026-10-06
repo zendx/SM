@@ -8,7 +8,9 @@ import {
 import { initializeSchema } from "../server/schema.js";
 import { postgresConfiguration } from "../server/postgres-config.js";
 
-const available = Boolean(process.env.TEST_DATABASE_URL);
+const available = Boolean(
+  process.env.TEST_DATABASE_URL || process.env.SMPIS_TEST_EMBEDDED === "true",
+);
 export const test = available
   ? nodeTest
   : (name) =>
@@ -22,6 +24,23 @@ export const after = available ? nodeAfter : () => {};
 
 // Test schemas are separate from application tables; never default to DATABASE_URL.
 export async function openTestDatabase() {
+  if (process.env.SMPIS_TEST_EMBEDDED === "true") {
+    const { PGlite } = await import("@electric-sql/pglite");
+    const engine = new PGlite({ parsers: { 1082: (value) => value } });
+    const db = {
+      query: (sql, args = []) => engine.query(sql, args),
+      exec: (sql) => engine.exec(sql),
+      transaction: (fn) =>
+        engine.transaction((tx) =>
+          fn({ query: (sql, args = []) => tx.query(sql, args) }),
+        ),
+      close: () => engine.close(),
+      isTestDatabase: true,
+      backendMode: "supabase",
+    };
+    await initializeSchema(db);
+    return db;
+  }
   if (!available)
     throw new Error(
       "Set TEST_DATABASE_URL to a separate PostgreSQL test database before running integration or browser tests.",

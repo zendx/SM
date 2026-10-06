@@ -40,15 +40,25 @@ async function closed() {
   await page.locator("dialog").waitFor({ state: "hidden" });
 }
 try {
-  await page.goto(origin);
-  await field("School name").fill("Greenfield Academy");
-  await field("School code").fill("GFA");
-  await field("Your full name").fill("School Administrator");
-  await field("Administrator email").fill("admin@greenfield.test");
-  await field("Administrator password").fill("Browser-test-2026!");
-  await field("Year starts").fill(`${year}-01-01`);
-  await field("Year ends").fill(`${year}-12-31`);
-  await save("Create school workspace");
+  const setup = await page.request.post(origin + "/api/v1/auth/setup", {
+    data: {
+      school_name: "Greenfield Academy",
+      short_code: "GFA",
+      currency_code: "NGN",
+      timezone: "Africa/Lagos",
+      name: "School Administrator",
+      email: "admin@greenfield.test",
+      password: "Browser-test-2026!",
+      year_name: String(year),
+      start_date: `${year}-01-01`,
+      end_date: `${year}-12-31`,
+    },
+  });
+  assert.equal(setup.status(), 201, await setup.text());
+  await page.goto(origin + "/login");
+  await page
+    .getByRole("button", { name: "Accept required cookies", exact: true })
+    .click();
   await field("Email address").fill("admin@greenfield.test");
   await page.getByLabel(/^Password \*$/).fill("Browser-test-2026!");
   await save("Sign in to your workspace");
@@ -61,10 +71,13 @@ try {
   assert.equal(await page.locator("nav button").count(), 1);
   const notificationRequests = [];
   const recordNotificationRequest = (request) => {
-    if (request.url().includes("/api/v1/notifications")) notificationRequests.push(request.url());
+    if (request.url().includes("/api/v1/notifications"))
+      notificationRequests.push(request.url());
   };
   page.on("request", recordNotificationRequest);
-  await page.evaluate(() => { location.hash = "notifications"; });
+  await page.evaluate(() => {
+    location.hash = "notifications";
+  });
   await page.waitForFunction(() => location.hash === "#administration");
   assert.deepEqual(notificationRequests, []);
   page.off("request", recordNotificationRequest);
@@ -89,10 +102,14 @@ try {
     fullPage: true,
   });
   await page.getByRole("button", { name: "Academic records" }).click();
-  await page.getByRole("heading", { name: "Historical class records" }).waitFor();
+  await page
+    .getByRole("heading", { name: "Historical class records" })
+    .waitFor();
   assert.equal(new URL(page.url()).hash, "#academics/records");
   await page.reload();
-  await page.getByRole("heading", { name: "Historical class records" }).waitFor();
+  await page
+    .getByRole("heading", { name: "Historical class records" })
+    .waitFor();
   await navigate("Administration");
   await save("Classes");
   await save("New class");
@@ -215,18 +232,42 @@ try {
     );
   }
   await save("Integrations");
-  await page.getByRole("heading", { name: "SMTP email", exact: true }).waitFor();
-  const paystackPanel = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Paystack", exact: true }) });
+  await page
+    .getByRole("heading", { name: "SMTP email", exact: true })
+    .waitFor();
+  const paystackPanel = page
+    .locator("section.panel")
+    .filter({
+      has: page.getByRole("heading", { name: "Paystack", exact: true }),
+    });
   await paystackPanel.getByLabel("Enable this integration").check();
   await paystackPanel.getByLabel("Public key").fill("pk_test_browser");
-  await paystackPanel.getByLabel("Secret key", { exact: true }).fill("sk_test_browser_private");
-  const integrationSaved = page.waitForResponse(r => r.url().endsWith("/admin/integrations/paystack") && r.request().method() === "PATCH");
-  await paystackPanel.getByRole("button", { name: "Save", exact: true }).click();
+  await paystackPanel
+    .getByLabel("Secret key", { exact: true })
+    .fill("sk_test_browser_private");
+  const integrationSaved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/admin/integrations/paystack") &&
+      r.request().method() === "PATCH",
+  );
+  await paystackPanel
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
   assert.equal((await integrationSaved).status(), 200);
-  await paystackPanel.getByText("Saved securely. Leave blank to keep the current value.").waitFor();
-  assert.equal(await paystackPanel.getByLabel("Secret key", { exact: true }).inputValue(), "");
-  await page.screenshot({ path: "test-results/administration-integrations.png", fullPage: true });
-  await paystackPanel.getByRole("button", { name: "Remove credentials and disable" }).click();
+  await paystackPanel
+    .getByText("Saved securely. Leave blank to keep the current value.")
+    .waitFor();
+  assert.equal(
+    await paystackPanel.getByLabel("Secret key", { exact: true }).inputValue(),
+    "",
+  );
+  await page.screenshot({
+    path: "test-results/administration-integrations.png",
+    fullPage: true,
+  });
+  await paystackPanel
+    .getByRole("button", { name: "Remove credentials and disable" })
+    .click();
   await paystackPanel.getByText("No credential saved.").waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Open navigation" }).click();

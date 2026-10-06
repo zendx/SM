@@ -5,6 +5,7 @@ import { PostgresRateLimitStore } from "./rate-limit-store.js";
 import * as OTPAuth from "otpauth";
 import nodemailer from "nodemailer";
 import { one, rows, insert, audit } from "./db.js";
+import { provisionSubscription, schoolAccessAllowed } from "./saas-service.js";
 import {
   token,
   digest,
@@ -25,6 +26,9 @@ import {
 } from "./validation.js";
 
 export async function seedRoles(db) {
+  await db.query(
+    "INSERT INTO roles(name,permissions) VALUES('PLATFORM_OWNER','[]') ON CONFLICT(name) DO UPDATE SET permissions='[]'",
+  );
   for (const [name, permissions] of Object.entries(ROLE_PERMISSIONS))
     await db.query(
       "INSERT INTO roles(name,permissions) VALUES($1,$2) ON CONFLICT(name) DO UPDATE SET permissions=EXCLUDED.permissions",
@@ -35,6 +39,7 @@ export function publicUser(u) {
   return {
     id: u.id,
     school_id: u.school_id,
+    portal_slug: u.portal_slug,
     name: u.name,
     email: u.email,
     role: u.role,
@@ -43,7 +48,7 @@ export function publicUser(u) {
     platform_operator: !!u.platform_operator,
     mfa_setup_required:
       process.env.REQUIRE_MFA !== "false" &&
-      u.role === "SUPER_ADMIN" &&
+      (u.role === "SUPER_ADMIN" || u.platform_operator) &&
       !u.mfa_enabled,
   };
 }
@@ -72,7 +77,7 @@ export function authRoutes(
     }),
   );
   r.use(
-    ["/login", "/password-reset/request"],
+    ["/login", "/owner/login", "/password-reset/request"],
     rateLimit({
       windowMs: 15 * 60 * 1000,
       limit: 30,
@@ -88,9 +93,52 @@ export function authRoutes(
   );
   r.get("/setup", async (req, res) =>
     res.json({
-      data: { required: !(await one(db, "SELECT id FROM schools LIMIT 1")) },
+      data: {
+        required:
+          !(await one(db, "SELECT id FROM schools LIMIT 1")) &&
+          !(await one(db, "SELECT user_id FROM platform_operators LIMIT 1")),
+      },
     }),
   );
+  r.get("/owner/setup", async (req, res) =>
+    res.json({
+      data: {
+        required: !(await one(
+          db,
+          "SELECT user_id FROM platform_operators LIMIT 1",
+        )),
+      },
+    }),
+  );
+  r.post("/owner/setup", async (req, res) => {
+    const b = z
+      .object({ name: text.max(200), email, password })
+      .strict()
+      .parse(req.body);
+    await db.transaction(async (tx) => {
+      await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
+      if (await one(tx, "SELECT user_id FROM platform_operators LIMIT 1"))
+        fail(
+          409,
+          "Owner registration is already complete. Sign in to your owner account.",
+        );
+      const user = await insert(tx, "users", {
+        school_id: null,
+        name: b.name,
+        email: b.email,
+        password_hash: hashPassword(b.password),
+        role: "PLATFORM_OWNER",
+      });
+      await insert(tx, "platform_operators", { user_id: user.id });
+      await audit(tx, user, "users", user.id, "OWNER_REGISTERED", null, {
+        name: user.name,
+        email: user.email,
+      });
+    });
+    res.status(201).json({
+      data: { message: "Owner account created. Sign in to manage SMPIS." },
+    });
+  });
   r.get("/public-admissions/:code", async (req, res) => {
     const school = await one(
       db,
@@ -98,6 +146,11 @@ export function authRoutes(
       [req.params.code],
     );
     if (!school) fail(404, "School not found.");
+    if (!(await schoolAccessAllowed(db, school.id)))
+      fail(
+        402,
+        "This school portal is inactive. Contact the school administrator.",
+      );
     const classes = await rows(
       db,
       "SELECT c.id,c.name FROM classes c JOIN terms t ON t.academic_year_id=c.academic_year_id AND t.school_id=c.school_id AND t.is_current WHERE c.school_id=$1 ORDER BY c.name",
@@ -110,6 +163,11 @@ export function authRoutes(
       req.params.code,
     ]);
     if (!school) fail(404, "School not found.");
+    if (!(await schoolAccessAllowed(db, school.id)))
+      fail(
+        402,
+        "This school portal is inactive. Contact the school administrator.",
+      );
     const b = studentSchema.parse(req.body);
     if (
       !(await one(
@@ -177,14 +235,21 @@ export function authRoutes(
     if (b.end_date <= b.start_date)
       fail(422, "The academic year end must follow its start.");
     await db.transaction(async (tx) => {
+      await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
       await tx.query("LOCK TABLE schools IN EXCLUSIVE MODE");
       if (await one(tx, "SELECT id FROM schools LIMIT 1"))
         fail(409, "Setup has already been completed.");
+      if (await one(tx, "SELECT user_id FROM platform_operators LIMIT 1"))
+        fail(
+          409,
+          "Owner setup is complete. Register schools through the public signup or owner dashboard.",
+        );
       const school = await insert(tx, "schools", {
         name: b.school_name,
         short_code: b.short_code,
         currency_code: b.currency_code,
         timezone: b.timezone,
+        portal_slug: `school-${b.short_code.toLowerCase()}`,
       });
       const user = await insert(tx, "users", {
         school_id: school.id,
@@ -200,6 +265,7 @@ export function authRoutes(
         end_date: b.end_date,
       });
       await insert(tx, "platform_operators", { user_id: user.id });
+      await provisionSubscription(tx, school, {}, user.id);
       const termEnd = new Date(b.start_date);
       termEnd.setUTCDate(termEnd.getUTCDate() + 100);
       await insert(tx, "terms", {
@@ -221,13 +287,13 @@ export function authRoutes(
       .status(201)
       .json({ data: { message: "School created. You can now sign in." } });
   });
-  r.post("/login", async (req, res) => {
+  r.post(["/login", "/owner/login"], async (req, res) => {
     const b = z
       .object({ email, password: z.string().max(128) })
       .parse(req.body);
     const u = await one(
       db,
-      "SELECT u.*,r.permissions,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator FROM users u JOIN roles r ON r.name=u.role WHERE email=$1",
+      "SELECT u.*,c.portal_slug,r.permissions,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator FROM users u JOIN roles r ON r.name=u.role LEFT JOIN schools c ON c.id=u.school_id WHERE email=$1",
       [b.email],
     );
     if (
@@ -236,6 +302,25 @@ export function authRoutes(
       u.status !== "ACTIVE"
     )
       fail(401, "Email or password is incorrect.", "UNAUTHENTICATED");
+    if (req.path === "/owner/login" && !u.platform_operator)
+      fail(
+        403,
+        "This account is not an SMPIS owner account. Use your school portal.",
+        "OWNER_REQUIRED",
+      );
+    if (req.get("x-smpis-portal")) {
+      const school = await one(
+        db,
+        "SELECT portal_slug FROM schools WHERE id=$1",
+        [u.school_id],
+      );
+      if (school?.portal_slug !== req.get("x-smpis-portal"))
+        fail(
+          403,
+          "This account belongs to a different school portal.",
+          "TENANT_MISMATCH",
+        );
+    }
     const raw = token(),
       csrf = token();
     await insert(db, "sessions", {
@@ -322,7 +407,7 @@ export function authenticate(db) {
     if (!raw) fail(401, "Sign in to continue.", "UNAUTHENTICATED");
     const u = await one(
       db,
-      "SELECT u.*,r.permissions,s.csrf,s.mfa_verified,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator FROM sessions s JOIN users u ON u.id=s.user_id JOIN roles r ON r.name=u.role WHERE s.token_hash=$1 AND s.expires_at>now() AND u.status=$2",
+      "SELECT u.*,c.portal_slug,r.permissions,s.csrf,s.mfa_verified,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN schools c ON c.id=u.school_id JOIN roles r ON r.name=u.role WHERE s.token_hash=$1 AND s.expires_at>now() AND u.status=$2",
       [digest(raw), "ACTIVE"],
     );
     if (!u)
@@ -339,7 +424,7 @@ export function authenticate(db) {
       fail(403, "Complete two-step verification.", "MFA_REQUIRED");
     if (
       process.env.REQUIRE_MFA !== "false" &&
-      u.role === "SUPER_ADMIN" &&
+      (u.role === "SUPER_ADMIN" || u.platform_operator) &&
       !u.mfa_enabled &&
       ![
         "/auth/mfa/setup",
@@ -347,6 +432,7 @@ export function authenticate(db) {
         "/auth/logout",
         "/me",
         "/config",
+        "/subscription",
       ].includes(req.path)
     )
       fail(

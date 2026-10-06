@@ -19,7 +19,10 @@ import {
   BookOpen,
   ChevronRight,
 } from "lucide-react";
-import { api, get, post, setCsrf } from "./api";
+import { api, get, post, setCsrf, tenantSlug } from "./api";
+import { Landing, Signup, PublicBrand } from "./pages/saas-public";
+import { Subscription, SaasOwner } from "./pages/saas-billing";
+import { OwnerPortal } from "./pages/owner";
 import { Form, Button, Loading, human } from "./components";
 import {
   Dashboard,
@@ -41,7 +44,7 @@ import {
 import "./styles.css";
 import { applicationFields } from "./pages/students";
 import { useData } from "./hooks";
-import {Quality,People,Facilities} from './pages/operations';
+import { Quality, People, Facilities } from "./pages/operations";
 
 function PublicApplication({ code }) {
   const q = useData(
@@ -309,6 +312,8 @@ function Auth({ onLogin, setup }) {
 }
 function App() {
   const [session, setSession] = useState(null),
+    [subscription, setSubscription] = useState(null),
+    [portal, setPortal] = useState(null),
     [setup, setSetup] = useState(false),
     [loading, setLoading] = useState(true),
     [config, setConfig] = useState(null),
@@ -319,7 +324,8 @@ function App() {
     [term, setTerm] = useState(""),
     [mobile, setMobile] = useState(false),
     [toast, setToast] = useState(""),
-    [fatal, setFatal] = useState("");
+    [fatal, setFatal] = useState(""),
+    [fatalCode, setFatalCode] = useState("");
   const can = (p) =>
     session?.user.permissions.includes("*") ||
     session?.user.permissions.includes(p);
@@ -387,11 +393,19 @@ function App() {
       ].some(can),
     ],
     ["administration", "Administration", Settings, true],
-    ['quality','School experience',ShieldCheck,can('operations.staff')||can('experience.own')||can('operations.summary')],
-    ['people','People & HR',Users,can('operations.staff')],
-    ['facilities','Facilities & assets',School,can('operations.staff')],
+    [
+      "quality",
+      "School experience",
+      ShieldCheck,
+      can("operations.staff") ||
+        can("experience.own") ||
+        can("operations.summary"),
+    ],
+    ["people", "People & HR", Users, can("operations.staff")],
+    ["facilities", "Facilities & assets", School, can("operations.staff")],
     ["intelligence", "Intelligence", ArrowUpRight, can("intelligence.read")],
-    ["platform", "Schools", School, !!session?.user.platform_operator],
+    ["subscription", "Subscription", Wallet, true],
+    ["platform", "SaaS business", School, !!session?.user.platform_operator],
     [
       "alerts",
       "Alerts",
@@ -426,14 +440,40 @@ function App() {
         String(c.terms.find((x) => x.is_current)?.id || c.terms[0]?.id || ""),
     );
   }
+  async function reloadSubscription() {
+    const sub = await get("/subscription");
+    setSubscription(sub);
+  }
   useEffect(() => {
     (async () => {
       try {
+        if (tenantSlug)
+          setPortal(
+            await get(`/saas/portal/${encodeURIComponent(tenantSlug)}`),
+          );
         const s = await get("/auth/setup");
         setSetup(s.required);
         if (!s.required) {
           try {
             const me = await get("/me");
+            if (
+              !tenantSlug &&
+              me.user.platform_operator &&
+              me.user.school_id === null
+            ) {
+              location.replace("/owner");
+              return;
+            }
+            if (
+              !tenantSlug &&
+              !me.user.platform_operator &&
+              me.user.portal_slug
+            ) {
+              location.replace(
+                `/${me.user.portal_slug}/${location.search}${location.hash || "#dashboard"}`,
+              );
+              return;
+            }
             setCsrf(me.csrf);
             setSession(me);
           } catch (e) {
@@ -442,15 +482,25 @@ function App() {
         }
       } catch (e) {
         setFatal(e.message);
+        setFatalCode(e.code || "");
       } finally {
         setLoading(false);
       }
     })();
   }, []);
   useEffect(() => {
-    if (session && !session.mfa_required)
+    if (session && !session.mfa_required) {
       reloadConfig().catch((e) => setFatal(e.message));
+      reloadSubscription().catch((e) => setFatal(e.message));
+    }
   }, [session]);
+  useEffect(() => {
+    const expired = () =>
+      reloadSubscription().catch((e) => setFatal(e.message));
+    window.addEventListener("smpis-subscription-inactive", expired);
+    return () =>
+      window.removeEventListener("smpis-subscription-inactive", expired);
+  }, []);
   useEffect(() => {
     if (
       initialRoute &&
@@ -518,19 +568,66 @@ function App() {
       <div className="fatal">
         <h1>We couldn’t load SMPIS</h1>
         <p>{fatal}</p>
+        {fatalCode === "TENANT_MISMATCH" && (
+          <Button
+            onClick={async () => {
+              try {
+                const me = (
+                  await api("/me", { headers: { "x-smpis-portal": "" } })
+                ).data;
+                setCsrf(me.csrf);
+                await api("/auth/logout", {
+                  method: "POST",
+                  body: {},
+                  headers: { "x-smpis-portal": "" },
+                });
+                location.reload();
+              } catch (e) {
+                setFatal(e.message);
+              }
+            }}
+          >
+            Switch account
+          </Button>
+        )}
         <Button onClick={() => location.reload()}>Try again</Button>
       </div>
     );
   if (!session)
     return (
-      <Auth
-        setup={setup}
-        onLogin={(s) => {
-          setSetup(false);
-          setInitialRoute(true);
-          setSession(s);
-        }}
-      />
+      <>
+        {portal && (
+          <div className="portal-heading">
+            {portal.name} · /{portal.portal_slug}/
+          </div>
+        )}
+        <Auth
+          setup={setup && location.pathname.replace(/\/$/, "") === "/owner"}
+          onLogin={(s) => {
+            if (
+              !tenantSlug &&
+              s.user.platform_operator &&
+              s.user.school_id === null
+            ) {
+              location.assign("/owner");
+              return;
+            }
+            if (
+              !tenantSlug &&
+              !s.user.platform_operator &&
+              s.user.portal_slug
+            ) {
+              location.assign(
+                `/${s.user.portal_slug}/${location.search}${location.hash || "#dashboard"}`,
+              );
+              return;
+            }
+            setSetup(false);
+            setInitialRoute(true);
+            setSession(s);
+          }}
+        />
+      </>
     );
   if (session.mfa_required)
     return (
@@ -568,6 +665,36 @@ function App() {
       </div>
     );
   if (!config) return <Loading />;
+  if (!subscription) return <Loading />;
+  if (
+    !subscription.access_allowed &&
+    !session.user.platform_operator &&
+    !session.user.mfa_setup_required
+  )
+    return (
+      <div className="billing-blocked">
+        <div className="billing-blocked-header">
+          <PublicBrand />
+          <Button
+            secondary
+            onClick={async () => {
+              await post("/auth/logout", {});
+              setSession(null);
+              setConfig(null);
+              setSubscription(null);
+              setCsrf("");
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
+        <Subscription
+          user={session.user}
+          blocked
+          reloadSubscription={reloadSubscription}
+        />
+      </div>
+    );
   // Wait for the route redirect before mounting a page that this account cannot use.
   if (
     !nav.some((n) => n[0] === page) &&
@@ -583,6 +710,7 @@ function App() {
     notify,
     go,
     reloadConfig,
+    reloadSubscription,
     reloadSession: async () => {
       const me = await get("/me");
       setCsrf(me.csrf);
@@ -607,7 +735,8 @@ function App() {
       people: People,
       facilities: Facilities,
       intelligence: Intelligence,
-      platform: Platform,
+      platform: SaasOwner,
+      subscription: Subscription,
       alerts: ManagementAlerts,
     }[page] || Dashboard;
   return (
@@ -745,9 +874,23 @@ const applyCode = new URLSearchParams(location.search).get("apply");
 createRoot(document.getElementById("root")).render(
   <>
     <CookieNotice />
-    {["/terms", "/privacy", "/cookies"].includes(location.pathname.replace(/\/$/, ""))
-      ? <LegalPage type={location.pathname.replace(/\/$/, "").slice(1)} />
-      : applyCode ? <PublicApplication code={applyCode} /> : <App />}
+    {["/terms", "/privacy", "/cookies"].includes(
+      location.pathname.replace(/\/$/, ""),
+    ) ? (
+      <LegalPage type={location.pathname.replace(/\/$/, "").slice(1)} />
+    ) : location.pathname.replace(/\/$/, "") === "/owner" ? (
+      <OwnerPortal />
+    ) : applyCode ? (
+      <PublicApplication code={applyCode} />
+    ) : location.pathname.replace(/\/$/, "") === "/signup" ? (
+      <Signup />
+    ) : location.pathname === "/" &&
+      !location.hash &&
+      !new URLSearchParams(location.search).has("reset") ? (
+      <Landing />
+    ) : (
+      <App />
+    )}
     <LegalFooter />
   </>,
 );

@@ -201,6 +201,23 @@ export function LegalPage({ type }) {
             students. Parents and guardians should submit only information they
             are authorized to provide.
           </p>
+          <h2>School subscriptions</h2>
+          <p>
+            Schools may create a separate SMPIS portal with a 14-day Free trial.
+            Pro costs USD 100 per month, or USD 1,020 paid yearly with a 15%
+            discount. Payments cover one selected period; this checkout does not
+            automatically charge a card for future periods. Operational access
+            pauses when the trial ends or a paid subscription expires after any
+            configured grace period. The school administrator can still sign in
+            to manage billing. Suspension and termination retain school records.
+          </p>
+          <p>
+            Bank transfers require owner approval. Card payments require server
+            verification. Sandbox payments do not activate paid access. When
+            checkout or bank payment is in NGN, the billing screen shows the
+            owner-configured exchange rate and payable amount. Contact the SMPIS
+            owner about subscription payments and billing questions.
+          </p>
           <h2>Fees and external providers</h2>
           <p>
             Your school sets fees, payment terms, concessions, and refund rules.
@@ -264,9 +281,12 @@ export function LegalPage({ type }) {
             document storage. Hosting, database and storage providers process
             information needed to provide those services. If configured, the
             school's SMTP provider processes recipient addresses and email
-            content, and Paystack processes payment information under its own
-            notice. Flutterwave and Twilio credentials can be stored, but
-            checkout and SMS delivery through them are not yet implemented. The
+            content, and configured payment providers process payment information
+            under their own notices. Paystack handles school fee checkout;
+            Stripe, Paystack and Flutterwave support SMPIS subscription checkout.
+            Subscription records include the school, billing period, payment
+            references and verification status. Twilio SMS delivery is not yet
+            implemented. The
             operator must assess any cross-border processing and applicable
             safeguards with its providers.
           </p>

@@ -4,7 +4,21 @@ import { rows, one } from "./db.js";
 import { refreshAlerts } from "./services.js";
 import { localClock, token } from "./security.js";
 import { refreshOperationAlerts } from "./operations-service.js";
+import { expireSubscriptions } from "./saas-service.js";
 export async function runJobs(db) {
+  await expireSubscriptions(db);
+  // Database dedupe keys make reminders safe across overlapping job runners.
+  await db.query(`INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key)
+    SELECT s.school_id,u.id,u.email,
+      CASE WHEN s.status='SUSPENDED' THEN 'SMPIS subscription access paused' ELSE 'Your SMPIS subscription expires soon' END,
+      CASE WHEN s.status='SUSPENDED' THEN 'Your school subscription has expired. Sign in to your portal and open Subscription to renew. Your school records are retained.'
+        ELSE 'Your SMPIS access expires on ' || to_char(s.period_end AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI') || ' UTC. Open Subscription in your school portal to renew. Pro is USD 100 monthly or USD 1020 yearly.' END,
+      'saas-reminder:' || s.period_end::text || ':' || u.id::text || ':' || CASE WHEN s.status='SUSPENDED' THEN 'expired' ELSE ceil(extract(epoch FROM (s.period_end-now()))/86400)::text END
+    FROM school_subscriptions s JOIN users u ON u.school_id=s.school_id AND u.role='SUPER_ADMIN' AND u.status='ACTIVE'
+    WHERE NOT EXISTS(SELECT 1 FROM platform_operators o JOIN users a ON a.id=o.user_id WHERE a.school_id=s.school_id)
+      AND ((s.status IN ('TRIAL','ACTIVE') AND ceil(extract(epoch FROM (s.period_end-now()))/86400) IN (1,3,7))
+      OR (s.status='SUSPENDED' AND s.suspension_reason IN ('TRIAL_EXPIRED','OVERDUE')))
+    ON CONFLICT(school_id,dedupe_key) DO NOTHING`);
   await db.query("DELETE FROM auth_rate_limits WHERE reset_at<now()");
   for (const school of await rows(db, "SELECT * FROM schools")) {
     await refreshAlerts(db, school.id);

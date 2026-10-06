@@ -10,6 +10,7 @@ import {
 } from "./security.js";
 import { currentSchool } from "./services.js";
 import { operationsSummary } from "./operations-service.js";
+import { provisionSubscription, portalSlug } from "./saas-service.js";
 export function forecastSeries(series) {
   if (series.length < 6)
     return {
@@ -141,6 +142,7 @@ export function intelligenceRoutes(db) {
         year_name: text,
         start_date: date,
         end_date: date,
+        portal_slug: portalSlug.optional(),
       })
       .parse(req.body);
     try {
@@ -156,6 +158,7 @@ export function intelligenceRoutes(db) {
         short_code: b.short_code,
         currency_code: b.currency_code,
         timezone: b.timezone,
+        portal_slug: b.portal_slug || `school-${b.short_code.toLowerCase()}`,
       });
       await insert(tx, "users", {
         school_id: school.id,
@@ -178,6 +181,7 @@ export function intelligenceRoutes(db) {
         end_date: b.end_date,
         is_current: true,
       });
+      await provisionSubscription(tx, school, {}, req.user.id);
       await audit(
         tx,
         req.user,

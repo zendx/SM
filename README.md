@@ -25,7 +25,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. The first-run screen creates the school and initial super admin; no default accounts are supplied.
+Open http://127.0.0.1:3000 for the public SMPIS landing page. On a new installation, `/owner` creates a standalone SMPIS business owner account without a school; no default accounts are supplied. Existing owner accounts retain platform access. Schools register at `/signup` and get portals such as `/greenfield-academy/`. See [SaaS setup and payments](docs/SAAS.md).
 
 ## Administration
 
