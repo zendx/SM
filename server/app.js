@@ -17,7 +17,6 @@ import {
   createDocumentStorage,
   createMemoryDocumentStorage,
 } from "./document-storage.js";
-import { runJobs } from "./jobs.js";
 import { DOCUMENT_MAX_MB } from "./document-limits.js";
 import {
   saasPublicRoutes,
@@ -105,17 +104,6 @@ export async function createApp(db, options = {}) {
         });
     }
     next();
-  });
-  app.get("/api/cron", async (req, res, next) => {
-    const secret = process.env.CRON_SECRET;
-    if (!secret || req.get("authorization") !== `Bearer ${secret}`)
-      return res.status(401).json({ error: "Unauthorized" });
-    try {
-      await runJobs(db);
-      res.json({ status: "ok" });
-    } catch (error) {
-      next(error);
-    }
   });
   app.use("/api/v1", legalRoutes(db));
   app.use("/api/v1", saasPublicRoutes(db));

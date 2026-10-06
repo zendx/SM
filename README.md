@@ -27,6 +27,8 @@ npm run dev
 
 Open http://127.0.0.1:3000 for the public SMPIS landing page. On a new installation, `/owner` creates a standalone SMPIS business owner account without a school; no default accounts are supplied. Existing owner accounts retain platform access. Schools register at `/signup` and get portals such as `/greenfield-academy/`. See [SaaS setup and payments](docs/SAAS.md).
 
+For local background jobs, start `npm run worker` in a second terminal. For production, deploy the worker separately on Railway; see [Railway worker setup](docs/RAILWAY-WORKER.md).
+
 ## Administration
 
 Super admins manage school-specific SMTP, Paystack, Flutterwave, and Twilio credentials in **Administration > Integrations**. Secrets are encrypted and hidden after saving. SMTP and Paystack power the existing email and payment workflows. Flutterwave checkout and Twilio SMS delivery are not implemented.

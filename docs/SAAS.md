@@ -59,7 +59,7 @@ Implementation references: [Stripe Checkout](https://docs.stripe.com/api/checkou
 
 ## Expiry and notifications
 
-The local application worker runs every minute. The existing Vercel cron invokes `/api/cron` daily; set `CRON_SECRET`. Expiry is also enforced on operational API requests, so a delayed cron cannot grant overdue access. Reminders are queued seven, three and one day before expiry, plus an expiry notice, using database dedupe keys. Delivery uses the existing school SMTP configuration or server email fallback; configure these to send actual reminders. The owner dashboard audits expiry, payments, configuration and owner subscription actions. No unsolicited email is sent during isolated tests.
+The separate application worker runs every minute; deploy it on Railway as described in [the worker guide](RAILWAY-WORKER.md). Expiry is also enforced on operational API requests, so a delayed worker cannot grant overdue access. Reminders are queued seven, three and one day before expiry, plus an expiry notice, using database dedupe keys. Delivery uses the existing school SMTP configuration or server email fallback; configure these to send actual reminders. The owner dashboard audits expiry, payments, configuration and owner subscription actions. No unsolicited email is sent during isolated tests.
 
 ## Verification
 
