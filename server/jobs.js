@@ -1,3 +1,4 @@
+import { deliverPlatformNotifications } from "./platform-notifications.js";
 import { finalizeClosures } from "./account-lifecycle.js";
 import { smtpConfig } from "./integrations.js";
 import nodemailer from "nodemailer";
@@ -76,6 +77,7 @@ export async function runJobs(db) {
     }
   }
   await deliverNotifications(db);
+  await deliverPlatformNotifications(db);
 }
 
 export async function deliverNotifications(

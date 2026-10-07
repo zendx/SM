@@ -152,3 +152,14 @@ ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS deletion_requested_at 
 ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS deletion_effective_at TIMESTAMPTZ;
 ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS tenant_previous_status TEXT;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT NOT NULL DEFAULT '';
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+CREATE TABLE IF NOT EXISTS platform_notifications (
+ id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES users(id), school_id INT REFERENCES schools(id),
+ sender_id INT REFERENCES users(id),email TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,link TEXT NOT NULL,
+ dedupe_key TEXT NOT NULL,read_at TIMESTAMPTZ,email_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(email_status IN ('PENDING','SENT','FAILED')),
+ attempts INT NOT NULL DEFAULT 0,claim_token TEXT,claimed_until TIMESTAMPTZ,sent_at TIMESTAMPTZ,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(user_id,dedupe_key)
+);
+CREATE INDEX IF NOT EXISTS platform_notifications_inbox ON platform_notifications(user_id,created_at DESC);

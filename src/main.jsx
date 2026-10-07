@@ -1,3 +1,7 @@
+import {
+  NotificationBell,
+  PlatformInbox,
+} from "./pages/platform-notifications";
 import { SchoolSupport } from "./pages/owner-support";
 import { CookieNotice, LegalPage, LegalFooter } from "./pages/legal";
 import React, { useEffect, useState } from "react";
@@ -115,6 +119,12 @@ function Auth({ onLogin, setup }) {
   const year = new Date().getFullYear();
   const setupFields = [
     { name: "school_name", label: "School name", wide: true },
+    {
+      name: "phone_number",
+      label: "Administrator phone number",
+      type: "tel",
+      wide: true,
+    },
     {
       name: "short_code",
       label: "School code",
@@ -745,7 +755,10 @@ function App() {
             </Button>
           </div>
         )}
-        {page === "support" && session.user.role === "SUPER_ADMIN" ? (
+        <NotificationBell onClick={() => go("notifications")} />
+        {page === "notifications" ? (
+          <PlatformInbox />
+        ) : page === "support" && session.user.role === "SUPER_ADMIN" ? (
           <SchoolSupport />
         ) : (
           <Subscription
@@ -894,13 +907,7 @@ function App() {
                 </option>
               ))}
             </select>
-            <button
-              className="icon-btn notification-button"
-              aria-label="Notifications"
-              onClick={() => go("notifications")}
-            >
-              <Bell size={20} />
-            </button>
+            <NotificationBell onClick={() => go("notifications")} />
             <div className="user-menu">
               <span className="avatar">
                 {session.user.name

@@ -27,7 +27,7 @@ before(async () => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      school_name: "Permission Academy",
+      school_name: "Permission Academy", phone_number: "+2348012345678",
       short_code: "PERM",
       currency_code: "NGN",
       timezone: "Africa/Lagos",

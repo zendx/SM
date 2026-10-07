@@ -1,7 +1,7 @@
 import { sendVerification, verificationMailer } from "./email-verification.js";
 import { one, rows, insert } from "./db.js";
 import { fail, hashPassword, token } from "./security.js";
-import { z, email, password, text, date } from "./validation.js";
+import { z, email, password, text, date, phoneNumber } from "./validation.js";
 import { providerSummaries } from "./saas-providers.js";
 
 const reserved = new Set([
@@ -34,6 +34,7 @@ export const registrationSchema = z.object({
   portal_slug: portalSlug,
   name: text.max(200),
   email,
+  phone_number: phoneNumber,
   password,
   plan: z.enum(["FREE", "PRO"]),
   billing_cycle: z.enum(["MONTHLY", "YEARLY"]).default("MONTHLY"),
@@ -133,6 +134,7 @@ export async function registerSchool(db, values, owner = null) {
       school_id: school.id,
       name: b.name,
       email: b.email,
+      phone_number: b.phone_number,
       password_hash: hashPassword(b.password),
       role: "SUPER_ADMIN",
       email_verified: false,
@@ -236,7 +238,8 @@ export function subscriptionGate(db) {
       req.user.school_id === null &&
       !["/me", "/admin/legal"].includes(req.path) &&
       !req.path.startsWith("/auth/") &&
-      !req.path.startsWith("/saas/owner")
+      !req.path.startsWith("/saas/owner") &&
+      !req.path.startsWith("/subscription/notices")
     )
       fail(
         403,
@@ -253,7 +256,8 @@ export function subscriptionGate(db) {
       if (
         req.path === "/me" ||
         req.path.startsWith("/auth/") ||
-        req.path.startsWith("/saas/owner")
+        req.path.startsWith("/saas/owner") ||
+        req.path.startsWith("/subscription/notices")
       )
         return next();
       fail(

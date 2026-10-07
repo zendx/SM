@@ -30,6 +30,7 @@ await insert(db, "users", {
   school_id: school.id,
   name: "School Admin",
   email: "admin@browser.test",
+  phone_number: "+2348012345678",
   role: "SUPER_ADMIN",
   password_hash: hashPassword(password),
 });
@@ -84,6 +85,34 @@ try {
     "SALES",
   );
   await signIn("owner@browser.test");
+  await page
+    .locator('nav[aria-label="Owner navigation"]')
+    .getByRole("button", { name: "Notifications", exact: true })
+    .click();
+  await page.getByText(/New sales support ticket/).waitFor();
+  await page
+    .getByRole("button", { name: "Tenant communications", exact: true })
+    .click();
+  await page
+    .getByRole("cell", { name: "+2348012345678", exact: true })
+    .waitFor();
+  const exported = await page.request.get(
+    origin + "/api/v1/saas/owner/contacts?format=csv",
+  );
+  assert.ok((await exported.text()).includes("admin@browser.test"));
+  await page.getByRole("checkbox", { name: "Select Support Academy" }).check();
+  await page.getByLabel("Notification subject").fill("Owner announcement");
+  await page
+    .getByLabel("Notification message")
+    .fill("An update for your school from SMPIS.");
+  await page
+    .getByRole("button", { name: "Send notification", exact: true })
+    .click();
+  await page
+    .getByText("Notification queued for 1 school administrator(s).", {
+      exact: true,
+    })
+    .waitFor();
   await page.getByRole("button", { name: "Console team", exact: true }).click();
   await page
     .getByRole("button", { name: "Create team account", exact: true })
@@ -103,7 +132,7 @@ try {
     await page
       .locator('nav[aria-label="Owner navigation"] button')
       .allTextContents(),
-    ["Customer support", "Account security"],
+    ["Customer support", "Notifications", "Account security"],
   );
   await page.getByRole("button", { name: "Review issue" }).click();
   await page.getByLabel("Issue status").selectOption("RESOLVED");
@@ -128,6 +157,9 @@ try {
       exact: true,
     })
     .waitFor();
+  await page.getByRole("button", { name: /^Notifications/ }).click();
+  await page.getByText("Owner announcement", { exact: true }).waitFor();
+  await page.getByText(/SMPIS replied to support ticket/).waitFor();
   await page.getByRole("button", { name: "Subscription", exact: true }).click();
   await page
     .getByRole("button", { name: "Request account deletion", exact: true })

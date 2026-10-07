@@ -26,6 +26,7 @@ import {
   id,
   date,
   studentSchema,
+  phoneNumber,
 } from "./validation.js";
 
 export async function seedRoles(db) {
@@ -226,6 +227,7 @@ export function authRoutes(
     const b = z
       .object({
         school_name: text,
+        phone_number: phoneNumber,
         short_code: text.max(12).regex(/^[A-Z0-9]+$/),
         currency_code: z.string().regex(/^[A-Z]{3}$/),
         timezone: text,
@@ -272,6 +274,7 @@ export function authRoutes(
         email: b.email,
         password_hash: hashPassword(b.password),
         role: "SUPER_ADMIN",
+        phone_number: b.phone_number,
         email_verified: false,
       });
       const year = await insert(tx, "academic_years", {

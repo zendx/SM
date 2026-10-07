@@ -63,6 +63,13 @@ export function registrationFields(
     { name: "name", label: "Administrator name" },
     { name: "email", label: "Administrator email", type: "email" },
     {
+      name: "phone_number",
+      label: "Administrator phone number",
+      type: "tel",
+      hint: "Include country code, e.g. +2348012345678",
+      wide: true,
+    },
+    {
       name: "password",
       label: "Administrator password",
       type: "password",

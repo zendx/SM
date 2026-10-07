@@ -42,7 +42,7 @@ async function closed() {
 try {
   const setup = await page.request.post(origin + "/api/v1/auth/setup", {
     data: {
-      school_name: "Greenfield Academy",
+      school_name: "Greenfield Academy", phone_number: "+2348012345678",
       short_code: "GFA",
       currency_code: "NGN",
       timezone: "Africa/Lagos",

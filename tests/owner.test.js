@@ -55,7 +55,7 @@ test("owner registration creates a business account without a school and restric
           name: "Owner",
           email: "owner@console.test",
           password,
-          school_name: "Unexpected",
+          school_name: "Unexpected", phone_number: "+2348012345678",
         },
       })
     ).status,
@@ -100,7 +100,7 @@ test("owner registration creates a business account without a school and restric
 });
 test("owner metrics and support tools cover customer accounts with audited recovery and scoped issues", async () => {
   const body = {
-    school_name: "Customer Academy",
+    school_name: "Customer Academy", phone_number: "+2348012345678",
     portal_slug: "customer-academy",
     name: "School Admin",
     email: "admin@customer.test",

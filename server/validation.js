@@ -47,3 +47,13 @@ export const studentSchema = z.object({
   applied_class_id: id,
   previous_school: optionalText,
 });
+
+export const phoneNumber = z
+  .string()
+  .trim()
+  .max(32)
+  .regex(/^\+?[0-9 ()-]+$/, "Enter a valid phone number with country code.")
+  .refine((value) => {
+    const digits = value.replace(/\D/g, "");
+    return digits.length >= 7 && digits.length <= 15;
+  }, "Phone numbers must contain 7 to 15 digits.");
