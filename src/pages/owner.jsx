@@ -5,6 +5,7 @@ import {
 } from "./platform-notifications";
 import { PlatformTeam, ManagedSchools } from "./platform-team";
 import { OwnerIssues } from "./owner-support";
+import { EmailTemplates } from "./email-templates";
 import React, { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -213,6 +214,7 @@ export function OwnerPortal() {
     ["audit", "Audit history", ShieldCheck],
     ["team", "Console team", Users],
     ["communications", "Tenant communications", Users],
+    ["email-templates", "Email templates", Settings],
     ["inbox", "Notifications", LifeBuoy],
     ["security", "Account security", ShieldCheck],
   ].filter(
@@ -479,6 +481,8 @@ export function OwnerPortal() {
             <OwnerSecurity session={session} reload={reload} />
           ) : active === "communications" ? (
             <OwnerCommunications />
+          ) : active === "email-templates" ? (
+            <EmailTemplates notify={setMessage} />
           ) : active === "inbox" ? (
             <PlatformInbox />
           ) : active === "team" ? (

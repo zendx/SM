@@ -7,6 +7,7 @@ import { rateLimit } from "express-rate-limit";
 import { PostgresRateLimitStore } from "./rate-limit-store.js";
 import * as OTPAuth from "otpauth";
 import nodemailer from "nodemailer";
+import { renderEmail } from "./email-templates.js";
 import { one, rows, insert, audit } from "./db.js";
 import { provisionSubscription, schoolAccessAllowed } from "./saas-service.js";
 import {
@@ -444,8 +445,10 @@ export function authRoutes(
           await nodemailer.createTransport(smtp.transport).sendMail({
             from: smtp.from,
             to: u.email,
-            subject: "Reset your SMPIS password",
-            text: `Open ${process.env.APP_URL}/?reset=${raw} to reset your password. This link expires in 30 minutes.`,
+            ...(await renderEmail(db, "password_reset", {
+              name: u.name,
+              link: `${process.env.APP_URL}/?reset=${raw}`,
+            })),
           });
         }
       }

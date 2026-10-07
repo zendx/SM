@@ -442,18 +442,18 @@ try {
   await page
     .getByRole("button", { name: "Customer support", exact: true })
     .click();
-  await page.getByRole("button", { name: "Review issue" }).click();
+  await page.getByRole("button", { name: "Reply / manage ticket" }).click();
   await page
     .locator("dialog")
     .getByLabel("Issue status")
     .selectOption("RESOLVED");
   await page
     .locator("dialog")
-    .getByLabel("Response / resolution")
+    .getByLabel("Reply to customer")
     .fill("Account holder verified. Recovery instructions supplied.");
   await page
     .locator("dialog")
-    .getByRole("button", { name: "Update support issue" })
+    .getByRole("button", { name: "Send reply / update status" })
     .click();
   await page.locator("dialog").waitFor({ state: "hidden" });
   assert.equal(

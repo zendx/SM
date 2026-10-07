@@ -6,16 +6,27 @@ import { fail, token } from "./security.js";
 import { requireOwner } from "./platform-access.js";
 import { smtpConfig } from "./integrations.js";
 import { subscriptionEvent } from "./saas-service.js";
+import { renderEmail } from "./email-templates.js";
 
 export async function queueNotice(
   db,
   user,
-  { title, body, link, key, sender = null },
+  { title, body, link, key, sender = null, template_key = "notification" },
 ) {
   await db.query(
-    `INSERT INTO platform_notifications(user_id,school_id,email,title,body,link,dedupe_key,sender_id)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(user_id,dedupe_key) DO NOTHING`,
-    [user.id, user.school_id, user.email, title, body, link, key, sender],
+    `INSERT INTO platform_notifications(user_id,school_id,email,title,body,link,dedupe_key,sender_id,template_key)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(user_id,dedupe_key) DO NOTHING`,
+    [
+      user.id,
+      user.school_id,
+      user.email,
+      title,
+      body,
+      link,
+      key,
+      sender,
+      template_key,
+    ],
   );
 }
 export async function supportNotice(db, ticket, actor, reply = false) {
@@ -49,6 +60,7 @@ export async function supportNotice(db, ticket, actor, reply = false) {
         : "/owner#issues",
       key: `support:${ticket.id}:${reply ? ticket.updated_at.toISOString() : "created"}`,
       sender: actor.id,
+      template_key: reply ? "support_reply" : "support_received",
     });
 }
 
@@ -74,12 +86,13 @@ export async function deliverPlatformNotifications(
         .sendMail({
           from: smtp.from,
           to: notice.email,
-          subject: notice.title,
-          text:
-            notice.body +
-            (process.env.APP_URL
-              ? `\n\nOpen ${new URL(notice.link, process.env.APP_URL).href}`
-              : ""),
+          ...(await renderEmail(db, notice.template_key, {
+            title: notice.title,
+            body: notice.body,
+            link: process.env.APP_URL
+              ? new URL(notice.link, process.env.APP_URL).href
+              : notice.link,
+          })),
         }),
   } = {},
 ) {
@@ -139,6 +152,13 @@ export function platformNotificationRoutes(db) {
       ),
     }),
   );
+  r.post("/subscription/notices/read-all", async (req, res) => {
+    const result = await db.query(
+      "UPDATE platform_notifications SET read_at=now() WHERE user_id=$1 AND read_at IS NULL RETURNING id",
+      [req.user.id],
+    );
+    res.json({ data: { count: result.rows.length } });
+  });
   r.post("/subscription/notices/:id/read", async (req, res) => {
     const id = z.coerce.number().int().positive().parse(req.params.id);
     const notice = await one(

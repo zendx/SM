@@ -223,6 +223,24 @@ export function OwnerAccounts({ notify = () => {} }) {
     </Panel>
   );
 }
+function SupportReplies({ ticket }) {
+  const replies = ticket.replies || [];
+  if (!replies.length)
+    return <span>{ticket.resolution || "Awaiting response"}</span>;
+  return (
+    <div>
+      {replies.map((reply) => (
+        <div key={reply.id} className="support-description">
+          <strong>{reply.author}</strong>
+          <small className="table-sub">
+            {new Date(reply.created_at).toLocaleString()}
+          </small>
+          <p>{reply.body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 export function OwnerIssues({ notify = () => {} }) {
   const q = useData("/saas/owner/issues"),
     [department, setDepartment] = useState("ALL"),
@@ -230,7 +248,7 @@ export function OwnerIssues({ notify = () => {} }) {
   return (
     <Panel
       title="Customer support queue"
-      description="Track reported problems, investigate accounts and record the resolution."
+      description="Reply to customer support requests, follow progress and resolve issues."
     >
       {q.error && <p className="form-error">{q.error}</p>}
       <label className="field">
@@ -279,7 +297,7 @@ export function OwnerIssues({ notify = () => {} }) {
             label: "Manage",
             render: (t) => (
               <Button small secondary onClick={() => setSelected(t)}>
-                Review issue
+                Reply / manage ticket
               </Button>
             ),
           },
@@ -292,8 +310,9 @@ export function OwnerIssues({ notify = () => {} }) {
         >
           <h3>{selected.subject}</h3>
           <p className="support-description">{selected.description}</p>
+          <SupportReplies ticket={selected} />
           <Form
-            initial={selected}
+            initial={{ status: selected.status, resolution: "" }}
             fields={[
               {
                 name: "status",
@@ -303,22 +322,28 @@ export function OwnerIssues({ notify = () => {} }) {
               },
               {
                 name: "resolution",
-                label: "Response / resolution",
+                label: "Reply to customer",
                 type: "textarea",
                 wide: true,
                 required: false,
               },
             ]}
-            submit="Update support issue"
+            submit="Send reply / update status"
             onSubmit={async (v) => {
               await patch(`/saas/owner/issues/${selected.id}`, v);
               setSelected(null);
               q.reload();
-              notify("Support issue updated.");
+              notify(
+                v.resolution?.trim()
+                  ? "Reply sent to customer."
+                  : "Support status updated.",
+              );
             }}
           />
           <p className="muted">
-            Your response appears in the customer’s Support menu.
+            Replies appear in the customer's Support menu and inbox, and are
+            emailed when they are inactive. Leave the reply blank to change only
+            the status.
           </p>
         </Modal>
       )}
@@ -348,9 +373,9 @@ export function SchoolSupport() {
           {
             label: "Owner response",
             render: (t) => (
-              <span className="support-description">
-                {t.resolution || "Awaiting response"}
-              </span>
+              <div className="support-description">
+                <SupportReplies ticket={t} />
+              </div>
             ),
           },
         ]}

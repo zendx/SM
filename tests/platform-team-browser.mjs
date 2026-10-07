@@ -86,10 +86,52 @@ try {
   );
   await signIn("owner@browser.test");
   await page
+    .getByRole("button", { name: "Payment settings", exact: true })
+    .click();
+  await page.getByLabel("Monthly Pro price (USD)").fill("55");
+  await page.getByLabel("Yearly Pro price (USD)").fill("550");
+  await page
+    .getByRole("button", { name: "Save bank & subscription settings" })
+    .click();
+  await page.getByText("Payment settings updated.", { exact: true }).waitFor();
+  assert.equal(
+    (await one(db, "SELECT monthly_price_cents FROM saas_settings WHERE id=1"))
+      .monthly_price_cents,
+    5500,
+  );
+  const pricingPage = await browser.newPage();
+  pricingPage.on("pageerror", (error) => errors.push(error.message));
+  await pricingPage.goto(origin);
+  await pricingPage.locator(".plan-price").filter({ hasText: "$55" }).waitFor();
+  await pricingPage.getByRole("button", { name: /Yearly.*Save/ }).click();
+  await pricingPage
+    .locator(".plan-price")
+    .filter({ hasText: "$550" })
+    .waitFor();
+  await pricingPage.close();
+  await page
+    .getByRole("button", { name: "Email templates", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Edit Support reply to tenant", exact: true })
+    .click();
+  await page.getByLabel("Email subject").fill("Support update: {{title}}");
+  await page
+    .getByLabel("Email message template")
+    .fill("Hello from SMPIS\n{{body}}\n{{link}}");
+  await page
+    .getByRole("button", { name: "Save email template", exact: true })
+    .click();
+  await page.getByText("Email template saved.", { exact: true }).waitFor();
+  await page
     .locator('nav[aria-label="Owner navigation"]')
     .getByRole("button", { name: "Notifications", exact: true })
     .click();
   await page.getByText(/New sales support ticket/).waitFor();
+  await page
+    .getByRole("button", { name: "Mark all as read", exact: true })
+    .click();
+  await page.getByRole("cell", { name: "Read", exact: true }).waitFor();
   await page
     .getByRole("button", { name: "Tenant communications", exact: true })
     .click();
@@ -134,12 +176,14 @@ try {
       .allTextContents(),
     ["Customer support", "Notifications", "Account security"],
   );
-  await page.getByRole("button", { name: "Review issue" }).click();
+  await page.getByRole("button", { name: "Reply / manage ticket" }).click();
   await page.getByLabel("Issue status").selectOption("RESOLVED");
   await page
-    .getByLabel("Response / resolution")
+    .getByLabel("Reply to customer")
     .fill("Our Sales Department can help with your billing plan.");
-  await page.getByRole("button", { name: "Update support issue" }).click();
+  await page
+    .getByRole("button", { name: "Send reply / update status" })
+    .click();
   await page.getByRole("cell", { name: "Resolved", exact: true }).waitFor();
   await signIn("admin@browser.test", "/support-academy/#subscription");
   await page
@@ -160,6 +204,14 @@ try {
   await page.getByRole("button", { name: /^Notifications/ }).click();
   await page.getByText("Owner announcement", { exact: true }).waitFor();
   await page.getByText(/SMPIS replied to support ticket/).waitFor();
+  await page
+    .getByRole("button", { name: "Mark all as read", exact: true })
+    .click();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("td")].every(
+      (cell) => cell.textContent !== "Unread",
+    ),
+  );
   await page.getByRole("button", { name: "Subscription", exact: true }).click();
   await page
     .getByRole("button", { name: "Request account deletion", exact: true })

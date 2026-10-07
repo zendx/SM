@@ -47,7 +47,10 @@ export const registrationSchema = z.object({
   start_date: date,
   end_date: date,
 });
-export const price = (cycle) => (cycle === "YEARLY" ? 102000 : 10000);
+export const price = (cycle, config = {}) =>
+  cycle === "YEARLY"
+    ? Number(config.yearly_price_cents ?? 102000)
+    : Number(config.monthly_price_cents ?? 10000);
 export const portalPath = (slug) => `/${slug}/`;
 export function nextPeriod(start, cycle) {
   const result = new Date(start);

@@ -15,9 +15,11 @@ export function NotificationBell({ onClick }) {
     update();
     const timer = setInterval(update, 30000);
     document.addEventListener("visibilitychange", update);
+    window.addEventListener("notices-read", update);
     return () => {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", update);
+      window.removeEventListener("notices-read", update);
     };
   }, []);
   const unread = (q.data || []).filter((n) => !n.read_at).length;
@@ -34,6 +36,8 @@ export function NotificationBell({ onClick }) {
 }
 export function PlatformInbox() {
   const q = useData("/subscription/notices");
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
   useEffect(() => {
     const timer = setInterval(q.reload, 30000);
     return () => clearInterval(timer);
@@ -42,7 +46,30 @@ export function PlatformInbox() {
     <Panel
       title="SMPIS inbox"
       description="Announcements and support updates. Unread messages are emailed when you are inactive."
+      action={
+        <Button
+          small
+          secondary
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError("");
+            try {
+              await post("/subscription/notices/read-all", {});
+              q.reload();
+              window.dispatchEvent(new Event("notices-read"));
+            } catch (e) {
+              setError(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Mark all as read
+        </Button>
+      }
     >
+      {error && <p className="form-error">{error}</p>}
       {q.error && <p className="form-error">{q.error}</p>}
       <Table
         rows={q.data}
@@ -79,6 +106,7 @@ export function PlatformInbox() {
                     onClick={async () => {
                       await post(`/subscription/notices/${n.id}/read`, {});
                       q.reload();
+                      window.dispatchEvent(new Event("notices-read"));
                     }}
                   >
                     Mark as read

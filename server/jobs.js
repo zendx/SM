@@ -2,6 +2,7 @@ import { deliverPlatformNotifications } from "./platform-notifications.js";
 import { finalizeClosures } from "./account-lifecycle.js";
 import { smtpConfig } from "./integrations.js";
 import nodemailer from "nodemailer";
+import { renderEmail } from "./email-templates.js";
 import { rows, one } from "./db.js";
 import { refreshAlerts } from "./services.js";
 import { localClock, token } from "./security.js";
@@ -15,7 +16,7 @@ export async function runJobs(db) {
     SELECT s.school_id,u.id,u.email,
       CASE WHEN s.status='SUSPENDED' THEN 'SMPIS subscription access paused' ELSE 'Your SMPIS subscription expires soon' END,
       CASE WHEN s.status='SUSPENDED' THEN 'Your school subscription has expired. Sign in to your portal and open Subscription to renew. Your school records are retained.'
-        ELSE 'Your SMPIS access expires on ' || to_char(s.period_end AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI') || ' UTC. Open Subscription in your school portal to renew. Pro is ' || c.landing_currency || ' ' || round(100 * CASE WHEN c.landing_currency='NGN' THEN c.landing_usd_rate ELSE 1 END,2)::text || ' monthly or ' || c.landing_currency || ' ' || round(1020 * CASE WHEN c.landing_currency='NGN' THEN c.landing_usd_rate ELSE 1 END,2)::text || ' yearly.' END,
+        ELSE 'Your SMPIS access expires on ' || to_char(s.period_end AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI') || ' UTC. Open Subscription in your school portal to renew. Pro is ' || c.landing_currency || ' ' || round(c.monthly_price_cents::numeric / 100 * CASE WHEN c.landing_currency='NGN' THEN c.landing_usd_rate ELSE 1 END,2)::text || ' monthly or ' || c.landing_currency || ' ' || round(c.yearly_price_cents::numeric / 100 * CASE WHEN c.landing_currency='NGN' THEN c.landing_usd_rate ELSE 1 END,2)::text || ' yearly.' END,
       'saas-reminder:' || s.period_end::text || ':' || u.id::text || ':' || CASE WHEN s.status='SUSPENDED' THEN 'expired' ELSE ceil(extract(epoch FROM (s.period_end-now()))/86400)::text END
     FROM school_subscriptions s JOIN saas_settings c ON c.id=1 JOIN users u ON u.school_id=s.school_id AND u.role='SUPER_ADMIN' AND u.status='ACTIVE'
     WHERE NOT EXISTS(SELECT 1 FROM platform_operators o JOIN users a ON a.id=o.user_id WHERE a.school_id=s.school_id)
@@ -97,8 +98,12 @@ export async function deliverNotifications(
         .sendMail({
           from: smtp.from,
           to: n.email,
-          subject: n.title,
-          text: n.body,
+          ...(n.dedupe_key?.startsWith("saas-reminder:")
+            ? await renderEmail(db, "subscription_reminder", {
+                title: n.title,
+                body: n.body,
+              })
+            : { subject: n.title, text: n.body }),
         }),
   } = {},
 ) {
