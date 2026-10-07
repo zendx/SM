@@ -1,3 +1,5 @@
+import { checkAccountAccess } from "./account-lifecycle.js";
+import { consoleAccess } from "./platform-access.js";
 import { sendVerification, verificationMailer } from "./email-verification.js";
 import { smtpConfig } from "./integrations.js";
 import express from "express";
@@ -47,6 +49,8 @@ export function publicUser(u) {
     permissions: u.permissions,
     mfa_enabled: u.mfa_enabled,
     platform_operator: !!u.platform_operator,
+    platform_scope: u.platform_scope || null,
+    console_access: consoleAccess(u),
     email_verified: u.email_verified,
     mfa_setup_required: false,
   };
@@ -296,14 +300,12 @@ export function authRoutes(
         name: school.name,
       });
     });
-    res
-      .status(201)
-      .json({
-        data: {
-          message:
-            "School created. Check your email to verify your account, then sign in.",
-        },
-      });
+    res.status(201).json({
+      data: {
+        message:
+          "School created. Check your email to verify your account, then sign in.",
+      },
+    });
   });
   r.post(["/login", "/owner/login"], async (req, res) => {
     const b = z
@@ -311,7 +313,7 @@ export function authRoutes(
       .parse(req.body);
     const u = await one(
       db,
-      "SELECT u.*,c.portal_slug,r.permissions,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator FROM users u JOIN roles r ON r.name=u.role LEFT JOIN schools c ON c.id=u.school_id WHERE email=$1",
+      "SELECT u.*,c.portal_slug,r.permissions,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator,(SELECT ps.scope FROM platform_staff ps WHERE ps.user_id=u.id) AS platform_scope FROM users u JOIN roles r ON r.name=u.role LEFT JOIN schools c ON c.id=u.school_id WHERE email=$1",
       [b.email],
     );
     if (
@@ -320,12 +322,13 @@ export function authRoutes(
       u.status !== "ACTIVE"
     )
       fail(401, "Email or password is incorrect.", "UNAUTHENTICATED");
-    if (req.path === "/owner/login" && !u.platform_operator)
+    if (req.path === "/owner/login" && !consoleAccess(u))
       fail(
         403,
         "This account is not an SMPIS owner account. Use your school portal.",
         "OWNER_REQUIRED",
       );
+    await checkAccountAccess(db, u);
     if (!u.email_verified)
       fail(
         403,
@@ -477,11 +480,12 @@ export function authenticate(db) {
     if (!raw) fail(401, "Sign in to continue.", "UNAUTHENTICATED");
     const u = await one(
       db,
-      "SELECT u.*,c.portal_slug,r.permissions,s.csrf,s.mfa_verified,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN schools c ON c.id=u.school_id JOIN roles r ON r.name=u.role WHERE s.token_hash=$1 AND s.expires_at>now() AND u.status=$2",
+      "SELECT u.*,c.portal_slug,r.permissions,s.csrf,s.mfa_verified,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator,(SELECT ps.scope FROM platform_staff ps WHERE ps.user_id=u.id) AS platform_scope FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN schools c ON c.id=u.school_id JOIN roles r ON r.name=u.role WHERE s.token_hash=$1 AND s.expires_at>now() AND u.status=$2",
       [digest(raw), "ACTIVE"],
     );
     if (!u)
       fail(401, "Your session expired. Sign in again.", "UNAUTHENTICATED");
+    await checkAccountAccess(db, u);
     if (
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
       req.get("x-csrf-token") !== u.csrf

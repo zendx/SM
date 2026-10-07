@@ -137,3 +137,18 @@ BEGIN
      trigger_name,relation.conrelid::regclass,column_name);
  END LOOP;
 END $$;
+
+-- Delegated console accounts never become platform operators.
+INSERT INTO roles(name,permissions) VALUES('PLATFORM_STAFF','[]') ON CONFLICT DO NOTHING;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS smpis_user_school_or_owner;
+ALTER TABLE users ADD CONSTRAINT smpis_user_school_or_owner CHECK(school_id IS NOT NULL OR role IN ('PLATFORM_OWNER','PLATFORM_STAFF'));
+CREATE TABLE IF NOT EXISTS platform_staff (
+ user_id INT PRIMARY KEY REFERENCES users(id),
+ scope TEXT NOT NULL CHECK(scope IN ('SALES','TECHNICAL','SUBSCRIPTIONS')),
+ created_by INT NOT NULL REFERENCES users(id), created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE saas_support_tickets ADD COLUMN IF NOT EXISTS department TEXT NOT NULL DEFAULT 'TECHNICAL' CHECK(department IN ('SALES','TECHNICAL'));
+ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
+ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS deletion_effective_at TIMESTAMPTZ;
+ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
+ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS tenant_previous_status TEXT;

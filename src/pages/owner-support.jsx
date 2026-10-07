@@ -225,6 +225,7 @@ export function OwnerAccounts({ notify = () => {} }) {
 }
 export function OwnerIssues({ notify = () => {} }) {
   const q = useData("/saas/owner/issues"),
+    [department, setDepartment] = useState("ALL"),
     [selected, setSelected] = useState(null);
   return (
     <Panel
@@ -232,9 +233,23 @@ export function OwnerIssues({ notify = () => {} }) {
       description="Track reported problems, investigate accounts and record the resolution."
     >
       {q.error && <p className="form-error">{q.error}</p>}
+      <label className="field">
+        <span>Support department</span>
+        <select
+          value={department}
+          onChange={(e) => setDepartment(e.target.value)}
+        >
+          <option value="ALL">All assigned departments</option>
+          <option value="SALES">Sales Department</option>
+          <option value="TECHNICAL">Technical Department</option>
+        </select>
+      </label>
       <Table
-        rows={q.data}
+        rows={(q.data || []).filter(
+          (t) => department === "ALL" || t.department === department,
+        )}
         columns={[
+          { label: "Department", key: "department" },
           {
             label: "Issue",
             render: (t) => (
@@ -303,7 +318,7 @@ export function OwnerIssues({ notify = () => {} }) {
             }}
           />
           <p className="muted">
-            Your response appears in the customer’s subscription support screen.
+            Your response appears in the customer’s Support menu.
           </p>
         </Modal>
       )}
@@ -316,7 +331,7 @@ export function SchoolSupport() {
   return (
     <Panel
       title="Get help from SMPIS"
-      description="Report subscription or account problems to the owner, even when school access is paused."
+      description="Contact the Sales Department or Technical Department, even when school access is paused."
       action={
         <Button small secondary onClick={() => setOpen(true)}>
           <LifeBuoy size={16} /> Report an issue
@@ -327,6 +342,7 @@ export function SchoolSupport() {
       <Table
         rows={q.data}
         columns={[
+          { label: "Department", key: "department" },
           { label: "Issue", key: "subject" },
           { label: "Status", render: (t) => <Badge value={t.status} /> },
           {
@@ -343,6 +359,16 @@ export function SchoolSupport() {
         <Modal title="Report an issue to SMPIS" onClose={() => setOpen(false)}>
           <Form
             fields={[
+              {
+                name: "department",
+                label: "Department",
+                options: [
+                  { value: "SALES", label: "Sales Department" },
+                  { value: "TECHNICAL", label: "Technical Department" },
+                ],
+                default: "TECHNICAL",
+                wide: true,
+              },
               { name: "subject", label: "Issue subject", wide: true },
               {
                 name: "description",

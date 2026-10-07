@@ -1,3 +1,4 @@
+import { TenantAccountControls } from "./platform-team";
 import React, { useState, useEffect } from "react";
 import {
   Wallet,
@@ -26,7 +27,7 @@ import {
   billingCycles,
   subscriptionMoney,
 } from "./saas-public";
-import { OwnerAccounts, OwnerIssues, SchoolSupport } from "./owner-support";
+import { OwnerAccounts, OwnerIssues } from "./owner-support";
 
 const when = (value) =>
   value
@@ -166,7 +167,10 @@ export function Subscription({
     );
   const canPay =
     sub.status !== "TERMINATED" &&
-    !(sub.status === "SUSPENDED" && sub.suspension_reason === "MANUAL");
+    !(
+      sub.status === "SUSPENDED" &&
+      !["TRIAL_EXPIRED", "OVERDUE"].includes(sub.suspension_reason)
+    );
   return (
     <div className={blocked ? "billing-blocked" : ""}>
       <PageHead
@@ -176,8 +180,12 @@ export function Subscription({
       />
       {blocked && (
         <div className="notice">
-          <strong>School access is paused.</strong> Billing remains available so
-          your administrator can renew.{" "}
+          <strong>School access is paused.</strong>{" "}
+          {sub.deletion_requested_at
+            ? "Administrator Support remains available until the account closure deadline."
+            : sub.suspension_reason === "TENANT_PAUSED"
+              ? "Resume your subscription below when you are ready; the expiry date is unchanged."
+              : "Billing remains available so your administrator can renew."}{" "}
           {sub.suspension_reason === "MANUAL" || sub.status === "TERMINATED"
             ? "Contact the SMPIS owner to resolve this subscription."
             : "Your school records are retained."}
@@ -380,7 +388,15 @@ export function Subscription({
       >
         <PaymentTable payments={sub.payments} />
       </Panel>
-      {admin && <SchoolSupport />}
+      {admin && !user.platform_operator && (
+        <TenantAccountControls
+          sub={sub}
+          reload={() => {
+            q.reload();
+            reloadSubscription?.();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -671,7 +687,9 @@ export function SaasOwner({ notify = () => {}, section }) {
               {
                 label: "Manage",
                 render: (t) =>
-                  !t.owner_school && t.status !== "TERMINATED" ? (
+                  t.deletion_requested_at ? (
+                    <span>Use account reactivation below</span>
+                  ) : !t.owner_school && t.status !== "TERMINATED" ? (
                     <div className="toolbar">
                       {t.status === "SUSPENDED" ? (
                         <Button
