@@ -1,3 +1,5 @@
+import { PlatformTeam, ManagedSchools } from "./platform-team";
+import { OwnerIssues } from "./owner-support";
 import React, { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -18,6 +20,12 @@ import { Form, Button, Loading, Panel } from "../components";
 import { SaasOwner } from "./saas-billing";
 import "../saas.css";
 
+const scopesLabel = (scope) =>
+  ({
+    SALES: "Sales support",
+    TECHNICAL: "Technical support",
+    SUBSCRIPTIONS: "Schools and subscriptions",
+  })[scope] || "Console team";
 function OwnerBrand() {
   return (
     <a href="/owner" className="brand">
@@ -188,7 +196,8 @@ export function OwnerPortal() {
         ? "overview"
         : location.hash.slice(1) || "overview",
     ),
-    [mobile, setMobile] = useState(false);
+    [mobile, setMobile] = useState(false),
+    [tenantRevision, setTenantRevision] = useState(0);
   const sections = [
     ["overview", "Business overview", LayoutDashboard],
     ["tenants", "Schools & subscriptions", Building2],
@@ -197,8 +206,17 @@ export function OwnerPortal() {
     ["issues", "Customer support", LifeBuoy],
     ["settings", "Payment settings", Settings],
     ["audit", "Audit history", ShieldCheck],
+    ["team", "Console team", Users],
     ["security", "Account security", ShieldCheck],
-  ];
+  ].filter(
+    ([key]) =>
+      !session ||
+      session.user.platform_operator ||
+      key === "security" ||
+      (key === "issues" &&
+        ["SALES", "TECHNICAL"].includes(session.user.platform_scope)) ||
+      (key === "tenants" && session.user.platform_scope === "SUBSCRIPTIONS"),
+  );
   async function reload() {
     const me = await get("/me");
     setCsrf(me.csrf);
@@ -236,7 +254,7 @@ export function OwnerPortal() {
     setMessage("");
   }
   if (loading) return <Loading />;
-  if (!session || !session.user.platform_operator)
+  if (!session || !session.user.console_access)
     return (
       <div className="owner-auth">
         <aside className="owner-auth-story">
@@ -381,7 +399,7 @@ export function OwnerPortal() {
     ? "security"
     : sections.some(([key]) => key === section)
       ? section
-      : "overview";
+      : sections[0]?.[0] || "security";
   return (
     <div className="owner-shell">
       {mobile && (
@@ -412,7 +430,11 @@ export function OwnerPortal() {
         </nav>
         <div className="owner-sidebar-bottom">
           <span>{session.user.name}</span>
-          <small>Platform owner</small>
+          <small>
+            {session.user.platform_operator
+              ? "Platform owner"
+              : scopesLabel(session.user.platform_scope)}
+          </small>
           <Button secondary onClick={logout}>
             <LogOut size={15} /> Sign out
           </Button>
@@ -432,12 +454,37 @@ export function OwnerPortal() {
             <strong>{sections.find(([key]) => key === active)?.[1]}</strong>
           </div>
           <span className="owner-access-pill">
-            <ShieldCheck size={14} /> Owner access
+            <ShieldCheck size={14} />{" "}
+            {session.user.platform_operator
+              ? "Owner access"
+              : "Delegated access"}
           </span>
         </header>
         <main className="owner-content">
           {active === "security" ? (
             <OwnerSecurity session={session} reload={reload} />
+          ) : active === "team" ? (
+            <PlatformTeam notify={setMessage} />
+          ) : active === "issues" ? (
+            <OwnerIssues notify={setMessage} />
+          ) : active === "tenants" ? (
+            session.user.platform_operator ? (
+              <>
+                <SaasOwner
+                  key={`${active}-${tenantRevision}`}
+                  section={active}
+                  notify={setMessage}
+                />
+                <ManagedSchools
+                  fullOwner
+                  onlyDeletion
+                  onChange={() => setTenantRevision((value) => value + 1)}
+                  notify={setMessage}
+                />
+              </>
+            ) : (
+              <ManagedSchools notify={setMessage} />
+            )
           ) : (
             <SaasOwner key={active} section={active} notify={setMessage} />
           )}

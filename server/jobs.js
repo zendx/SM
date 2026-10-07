@@ -1,3 +1,4 @@
+import { finalizeClosures } from "./account-lifecycle.js";
 import { smtpConfig } from "./integrations.js";
 import nodemailer from "nodemailer";
 import { rows, one } from "./db.js";
@@ -6,6 +7,7 @@ import { localClock, token } from "./security.js";
 import { refreshOperationAlerts } from "./operations-service.js";
 import { expireSubscriptions } from "./saas-service.js";
 export async function runJobs(db) {
+  await finalizeClosures(db);
   await expireSubscriptions(db);
   // Database dedupe keys make reminders safe across overlapping job runners.
   await db.query(`INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key)
@@ -20,7 +22,10 @@ export async function runJobs(db) {
       OR (s.status='SUSPENDED' AND s.suspension_reason IN ('TRIAL_EXPIRED','OVERDUE')))
     ON CONFLICT(school_id,dedupe_key) DO NOTHING`);
   await db.query("DELETE FROM auth_rate_limits WHERE reset_at<now()");
-  for (const school of await rows(db, "SELECT * FROM schools")) {
+  for (const school of await rows(
+    db,
+    "SELECT c.* FROM schools c WHERE NOT EXISTS(SELECT 1 FROM school_subscriptions s WHERE s.school_id=c.id AND (s.deletion_requested_at IS NOT NULL OR s.suspension_reason='TENANT_PAUSED'))",
+  )) {
     await refreshAlerts(db, school.id);
     await refreshOperationAlerts(db, school.id);
     const today = localClock(school.timezone).date;

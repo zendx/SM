@@ -1,3 +1,6 @@
+import { platformTeamRoutes } from "./platform-team-routes.js";
+import { accountLifecycleRoutes } from "./account-lifecycle-routes.js";
+import { requireSubscriptions } from "./platform-access.js";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import { PostgresRateLimitStore } from "./rate-limit-store.js";
@@ -52,7 +55,8 @@ async function payable(db, schoolId) {
   if (
     !sub ||
     sub.status === "TERMINATED" ||
-    (sub.status === "SUSPENDED" && sub.suspension_reason === "MANUAL")
+    (sub.status === "SUSPENDED" &&
+      !["TRIAL_EXPIRED", "OVERDUE"].includes(sub.suspension_reason))
   )
     fail(
       403,
@@ -240,6 +244,8 @@ export function saasPublicRoutes(db) {
 }
 export function saasRoutes(db) {
   const r = express.Router();
+  r.use(platformTeamRoutes(db));
+  r.use(accountLifecycleRoutes(db));
   r.use(ownerSupportRoutes(db));
   r.get("/subscription", async (req, res) =>
     res.json({
@@ -427,7 +433,11 @@ export function saasRoutes(db) {
       ),
     });
   });
-  r.use("/saas/owner", owner);
+  r.use("/saas/owner", (req, res, next) => {
+    if (/^\/tenants\/\d+$/.test(req.path) && req.method === "PATCH")
+      return requireSubscriptions(req, res, next);
+    return owner(req, res, next);
+  });
   r.get("/saas/owner/export", async (req, res) => {
     const kind = z
       .enum(["payments", "audit"])
@@ -615,6 +625,11 @@ export function saasRoutes(db) {
         [school],
       );
       if (!sub) fail(404, "School not found.");
+      if (sub.deletion_requested_at || sub.closed_at)
+        fail(
+          422,
+          "Use owner account reactivation to restore a school that requested deletion.",
+        );
       if (sub.status === "TERMINATED" && b.action !== "TERMINATE")
         fail(
           422,

@@ -243,6 +243,25 @@ export function subscriptionGate(db) {
         "The owner account manages the SMPIS business. School records are available through school accounts.",
         "OWNER_SCOPE",
       );
+    if (req.user.platform_scope && !req.user.platform_operator) {
+      if (req.get("x-smpis-portal"))
+        fail(
+          403,
+          "Delegated console accounts cannot access school portals.",
+          "OWNER_SCOPE",
+        );
+      if (
+        req.path === "/me" ||
+        req.path.startsWith("/auth/") ||
+        req.path.startsWith("/saas/owner")
+      )
+        return next();
+      fail(
+        403,
+        "Delegated console accounts cannot access school records.",
+        "OWNER_SCOPE",
+      );
+    }
     const slug = req.get("x-smpis-portal");
     if (slug) {
       const school = await one(
@@ -328,7 +347,8 @@ export async function settleSubscriptionPayment(
     if (
       !testMode &&
       (sub.status === "TERMINATED" ||
-        (sub.status === "SUSPENDED" && sub.suspension_reason === "MANUAL"))
+        (sub.status === "SUSPENDED" &&
+          !["TRIAL_EXPIRED", "OVERDUE"].includes(sub.suspension_reason)))
     )
       status = "REVIEW";
     const result = await one(

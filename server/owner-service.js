@@ -1,3 +1,4 @@
+import { consoleAccess, supportDepartment } from "./platform-access.js";
 import express from "express";
 import { one, rows, insert } from "./db.js";
 import { z, text, email, password } from "./validation.js";
@@ -57,6 +58,7 @@ export function ownerSupportRoutes(db) {
       fail(403, "School administrator access required.");
     const b = z
       .object({
+        department: z.enum(["SALES", "TECHNICAL"]).default("TECHNICAL"),
         subject: text.max(200),
         description: z.string().trim().min(10).max(5000),
       })
@@ -73,14 +75,29 @@ export function ownerSupportRoutes(db) {
         req.user.school_id,
         req.user.id,
         "SUPPORT_REQUESTED",
-        { ticket_id: t.id, subject: t.subject },
+        { ticket_id: t.id, subject: t.subject, department: t.department },
       );
       return t;
     });
     res.status(201).json({ data: ticket });
   });
   r.use("/saas/owner", (req, res, next) => {
-    if (!req.user.platform_operator) fail(403, "SMPIS owner access required.");
+    if (!consoleAccess(req.user)) fail(403, "SMPIS console access required.");
+    if (!req.user.platform_operator) {
+      const support =
+        /^\/issues(?:\/\d+)?$/.test(req.path) &&
+        ["SALES", "TECHNICAL"].includes(req.user.platform_scope);
+      const subscription =
+        /^\/tenants\/\d+$/.test(req.path) &&
+        req.method === "PATCH" &&
+        req.user.platform_scope === "SUBSCRIPTIONS";
+      const profile = req.path === "/profile" && req.method === "PATCH";
+      if (!support && !subscription && !profile)
+        fail(
+          403,
+          "Your delegated account does not have permission for this console action.",
+        );
+    }
     next();
   });
   r.patch("/saas/owner/profile", async (req, res) => {
@@ -209,6 +226,16 @@ export function ownerSupportRoutes(db) {
       let response = { message: "Account updated." },
         details = { reason: b.reason, user_id: uid, action: b.action };
       if (b.action === "UPDATE") {
+        const lifecycle = await one(
+          tx,
+          "SELECT deletion_requested_at FROM school_subscriptions WHERE school_id=$1",
+          [u.school_id],
+        );
+        if (lifecycle?.deletion_requested_at && b.email && b.email !== u.email)
+          fail(
+            422,
+            "Reactivate this school before changing its reserved email addresses.",
+          );
         const updated = {
           name: b.name ?? u.name,
           email: b.email ?? u.email,
@@ -273,17 +300,21 @@ export function ownerSupportRoutes(db) {
     });
     res.json({ data: result });
   });
-  r.get("/saas/owner/issues", async (req, res) =>
+  r.get("/saas/owner/issues", async (req, res) => {
+    const department = supportDepartment(req.user);
     res.json({
       data: await rows(
         db,
         `SELECT t.*,s.name AS school_name,u.name AS user_name,u.email AS user_email
-    FROM saas_support_tickets t JOIN schools s ON s.id=t.school_id JOIN users u ON u.id=t.user_id
-    ORDER BY CASE t.status WHEN 'OPEN' THEN 0 WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END,t.updated_at DESC LIMIT 250`,
+       FROM saas_support_tickets t JOIN schools s ON s.id=t.school_id JOIN users u ON u.id=t.user_id
+       WHERE ($1::text IS NULL OR t.department=$1)
+       ORDER BY CASE t.status WHEN 'OPEN' THEN 0 WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END,t.updated_at DESC LIMIT 250`,
+        [department],
       ),
-    }),
-  );
+    });
+  });
   r.patch("/saas/owner/issues/:id", async (req, res) => {
+    const department = supportDepartment(req.user);
     const id = z.coerce.number().int().positive().parse(req.params.id);
     const b = z
       .object({
@@ -300,7 +331,8 @@ export function ownerSupportRoutes(db) {
         "SELECT * FROM saas_support_tickets WHERE id=$1 FOR UPDATE",
         [id],
       );
-      if (!before) fail(404, "Support issue not found.");
+      if (!before || (department && before.department !== department))
+        fail(404, "Support issue not found.");
       const t = await one(
         tx,
         "UPDATE saas_support_tickets SET status=$2,resolution=$3,updated_by=$4,updated_at=now() WHERE id=$1 RETURNING *",

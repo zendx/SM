@@ -1,3 +1,4 @@
+import { SchoolSupport } from "./pages/owner-support";
 import { CookieNotice, LegalPage, LegalFooter } from "./pages/legal";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -18,6 +19,7 @@ import {
   School,
   BookOpen,
   ChevronRight,
+  LifeBuoy,
 } from "lucide-react";
 import { api, get, post, setCsrf, tenantSlug } from "./api";
 import { Landing, Signup, PublicBrand } from "./pages/saas-public";
@@ -449,6 +451,7 @@ function App() {
     ["facilities", "Facilities & assets", School, can("operations.staff")],
     ["intelligence", "Intelligence", ArrowUpRight, can("intelligence.read")],
     ["subscription", "Subscription", Wallet, true],
+    ["support", "Support", LifeBuoy, session?.user.role === "SUPER_ADMIN"],
     ["platform", "SaaS business", School, !!session?.user.platform_operator],
     [
       "alerts",
@@ -502,7 +505,7 @@ function App() {
             const me = await get("/me");
             if (
               !tenantSlug &&
-              me.user.platform_operator &&
+              me.user.console_access &&
               me.user.school_id === null
             ) {
               location.replace("/owner");
@@ -650,7 +653,7 @@ function App() {
           onLogin={(s) => {
             if (
               !tenantSlug &&
-              s.user.platform_operator &&
+              s.user.console_access &&
               s.user.school_id === null
             ) {
               location.assign("/owner");
@@ -732,11 +735,25 @@ function App() {
             Sign out
           </Button>
         </div>
-        <Subscription
-          user={session.user}
-          blocked
-          reloadSubscription={reloadSubscription}
-        />
+        {session.user.role === "SUPER_ADMIN" && (
+          <div className="toolbar">
+            <Button secondary onClick={() => go("subscription")}>
+              Subscription
+            </Button>
+            <Button secondary onClick={() => go("support")}>
+              Support
+            </Button>
+          </div>
+        )}
+        {page === "support" && session.user.role === "SUPER_ADMIN" ? (
+          <SchoolSupport />
+        ) : (
+          <Subscription
+            user={session.user}
+            blocked
+            reloadSubscription={reloadSubscription}
+          />
+        )}
       </div>
     );
   // Wait for the route redirect before mounting a page that this account cannot use.
@@ -781,6 +798,7 @@ function App() {
       intelligence: Intelligence,
       platform: SaasOwner,
       subscription: Subscription,
+      support: SchoolSupport,
       alerts: ManagementAlerts,
     }[page] || Dashboard;
   return (
@@ -927,7 +945,7 @@ createRoot(document.getElementById("root")).render(
         setup={false}
         onLogin={(session) =>
           location.assign(
-            session.user.platform_operator
+            session.user.console_access
               ? "/owner"
               : `/${session.user.portal_slug}/`,
           )
