@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { smtpConfig } from "./integrations.js";
 import { insert } from "./db.js";
 import { token, digest, fail } from "./security.js";
+import { renderEmail } from "./email-templates.js";
 
 export async function verificationMailer(db) {
   const smtp = await smtpConfig(db, null);
@@ -25,7 +26,9 @@ export async function sendVerification(db, user, mailer = null) {
   await nodemailer.createTransport(smtp.transport).sendMail({
     from: smtp.from,
     to: user.email,
-    subject: "Verify your SMPIS email",
-    text: `Verify your email by opening ${url.href}. This link expires in 24 hours.`,
+    ...(await renderEmail(db, "verification", {
+      name: user.name,
+      link: url.href,
+    })),
   });
 }

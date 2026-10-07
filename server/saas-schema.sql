@@ -163,3 +163,27 @@ CREATE TABLE IF NOT EXISTS platform_notifications (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(user_id,dedupe_key)
 );
 CREATE INDEX IF NOT EXISTS platform_notifications_inbox ON platform_notifications(user_id,created_at DESC);
+
+ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS monthly_price_cents INT NOT NULL DEFAULT 10000 CHECK(monthly_price_cents BETWEEN 1 AND 100000000);
+ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS yearly_price_cents INT NOT NULL DEFAULT 102000 CHECK(yearly_price_cents BETWEEN 1 AND 100000000);
+ALTER TABLE subscription_payments DROP CONSTRAINT IF EXISTS subscription_payments_amount_cents_check;
+ALTER TABLE subscription_payments ADD CONSTRAINT subscription_payments_amount_cents_check CHECK(amount_cents BETWEEN 1 AND 100000000);
+
+CREATE TABLE IF NOT EXISTS saas_support_replies (
+ id SERIAL PRIMARY KEY,ticket_id INT NOT NULL REFERENCES saas_support_tickets(id),
+ user_id INT NOT NULL REFERENCES users(id),body TEXT NOT NULL,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS saas_support_replies_ticket ON saas_support_replies(ticket_id,id);
+INSERT INTO saas_support_replies(ticket_id,user_id,body,created_at)
+ SELECT t.id,t.updated_by,t.resolution,t.updated_at FROM saas_support_tickets t
+ WHERE t.resolution<>'' AND t.updated_by IS NOT NULL
+ AND NOT EXISTS(SELECT 1 FROM saas_support_replies r WHERE r.ticket_id=t.id);
+CREATE TABLE IF NOT EXISTS platform_email_templates (
+ key TEXT PRIMARY KEY,subject TEXT NOT NULL,body TEXT NOT NULL,
+ updated_by INT REFERENCES users(id),updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE platform_notifications ADD COLUMN IF NOT EXISTS template_key TEXT NOT NULL DEFAULT 'notification';
+UPDATE platform_notifications SET template_key=CASE WHEN title LIKE 'SMPIS replied to support ticket #%'
+ THEN 'support_reply' ELSE 'support_received' END
+ WHERE template_key='notification' AND dedupe_key LIKE 'support:%';

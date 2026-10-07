@@ -193,18 +193,18 @@ export function saasPublicRoutes(db) {
     res.json({
       data: {
         trial_days: 30,
-        monthly_cents: chargeQuote(10000, {
+        monthly_cents: chargeQuote(price("MONTHLY", config), {
           currency: config.landing_currency,
           usd_rate: config.landing_usd_rate,
         }).charge_amount_cents,
-        yearly_cents: chargeQuote(102000, {
+        yearly_cents: chargeQuote(price("YEARLY", config), {
           currency: config.landing_currency,
           usd_rate: config.landing_usd_rate,
         }).charge_amount_cents,
         currency: config.landing_currency,
         base_currency: "USD",
-        base_monthly_cents: 10000,
-        base_yearly_cents: 102000,
+        base_monthly_cents: price("MONTHLY", config),
+        base_yearly_cents: price("YEARLY", config),
         display_currency: config.landing_currency,
         display_usd_rate: Number(config.landing_usd_rate),
         registration_open: !!(await one(
@@ -272,10 +272,10 @@ export function saasRoutes(db) {
         initiated_by: req.user.id,
         reference: "SMPIS-" + token().slice(0, 20),
         billing_cycle: b.billing_cycle,
-        amount_cents: price(b.billing_cycle),
+        amount_cents: price(b.billing_cycle, config),
         method: "BANK",
         mode: "LIVE",
-        ...chargeQuote(price(b.billing_cycle), {
+        ...chargeQuote(price(b.billing_cycle, config), {
           currency: config.landing_currency,
           usd_rate: config.landing_usd_rate,
         }),
@@ -312,11 +312,11 @@ export function saasRoutes(db) {
       initiated_by: req.user.id,
       reference: "SMPIS-" + token().slice(0, 20),
       billing_cycle: b.billing_cycle,
-      amount_cents: price(b.billing_cycle),
+      amount_cents: price(b.billing_cycle, config),
       method: "CARD",
       provider: b.provider,
       mode: c.mode,
-      ...chargeQuote(price(b.billing_cycle), {
+      ...chargeQuote(price(b.billing_cycle, config), {
         currency: config.landing_currency,
         usd_rate: config.landing_usd_rate,
       }),
@@ -565,6 +565,18 @@ export function saasRoutes(db) {
         bank_instructions: z.string().trim().max(2000),
         grace_days: z.coerce.number().int().min(0).max(30),
         bank_usd_rate: z.coerce.number().positive().max(1000000).default(1),
+        monthly_price_cents: z.coerce
+          .number()
+          .int()
+          .min(1)
+          .max(100000000)
+          .optional(),
+        yearly_price_cents: z.coerce
+          .number()
+          .int()
+          .min(1)
+          .max(100000000)
+          .optional(),
         landing_currency: z.enum(["USD", "NGN"]).optional(),
         landing_usd_rate: z.coerce.number().positive().max(1000000).optional(),
       })
@@ -590,6 +602,10 @@ export function saasRoutes(db) {
           b.landing_currency ?? null,
           b.landing_usd_rate ?? null,
         ],
+      );
+      await tx.query(
+        "UPDATE saas_settings SET monthly_price_cents=COALESCE($1,monthly_price_cents),yearly_price_cents=COALESCE($2,yearly_price_cents) WHERE id=1",
+        [b.monthly_price_cents ?? null, b.yearly_price_cents ?? null],
       );
       await subscriptionEvent(
         tx,

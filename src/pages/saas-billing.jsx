@@ -26,6 +26,7 @@ import {
   registrationFields,
   billingCycles,
   subscriptionMoney,
+  planPrice,
 } from "./saas-public";
 import { OwnerAccounts, OwnerIssues } from "./owner-support";
 
@@ -157,7 +158,7 @@ export function Subscription({
   if (!q.data) return <p className="form-error">{q.error}</p>;
   const sub = q.data,
     admin = user.role === "SUPER_ADMIN",
-    amount = cycle === "YEARLY" ? 102000 : 10000;
+    amount = planPrice(cycle, q.data.settings);
   const usd = (value) => subscriptionMoney(value, sub.settings);
   const config = sub.settings,
     bankReady = !!(
@@ -176,7 +177,7 @@ export function Subscription({
       <PageHead
         eyebrow="YOUR SCHOOL SUBSCRIPTION"
         title="Keep your school connected"
-        description={`Free for 30 days. Pro is ${usd(10000)}/month or ${usd(102000)}/year with a 15% yearly discount.`}
+        description={`Free for 30 days. Pro is ${usd(planPrice("MONTHLY", sub.settings))}/month or ${usd(planPrice("YEARLY", sub.settings))}/year.`}
       />
       {blocked && (
         <div className="notice">
@@ -756,8 +757,28 @@ export function SaasOwner({ notify = () => {}, section }) {
           <Panel title="Manual bank payments & late-payment policy">
             <Form
               key={d.settings.updated_at}
-              initial={d.settings}
+              initial={{
+                ...d.settings,
+                monthly_price_usd: d.settings.monthly_price_cents / 100,
+                yearly_price_usd: d.settings.yearly_price_cents / 100,
+              }}
               fields={[
+                {
+                  name: "monthly_price_usd",
+                  label: "Monthly Pro price (USD)",
+                  type: "number",
+                  min: 0.01,
+                  max: 1000000,
+                  step: 0.01,
+                },
+                {
+                  name: "yearly_price_usd",
+                  label: "Yearly Pro price (USD)",
+                  type: "number",
+                  min: 0.01,
+                  max: 1000000,
+                  step: 0.01,
+                },
                 {
                   name: "landing_currency",
                   label: "Global subscription currency",
@@ -770,7 +791,7 @@ export function SaasOwner({ notify = () => {}, section }) {
                   type: "number",
                   min: 0.000001,
                   step: "any",
-                  hint: "NGN per USD. The $100 monthly base and 15% yearly discount are converted using this rate.",
+                  hint: "NGN per USD. Your monthly and yearly base prices are converted using this rate.",
                 },
                 { name: "bank_name", label: "Bank name", required: false },
                 {
@@ -799,7 +820,16 @@ export function SaasOwner({ notify = () => {}, section }) {
                 },
               ]}
               onSubmit={async (v) => {
-                await patch("/saas/owner/settings", v);
+                const { monthly_price_usd, yearly_price_usd, ...fields } = v;
+                await patch("/saas/owner/settings", {
+                  ...fields,
+                  monthly_price_cents: Math.round(
+                    Number(monthly_price_usd) * 100,
+                  ),
+                  yearly_price_cents: Math.round(
+                    Number(yearly_price_usd) * 100,
+                  ),
+                });
                 q.reload();
                 notify("Payment settings updated.");
               }}

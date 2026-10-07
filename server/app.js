@@ -1,4 +1,5 @@
 import { platformNotificationRoutes } from "./platform-notifications.js";
+import { emailTemplateRoutes } from "./email-templates.js";
 import { siteSettingsRoutes, legalRoutes } from "./site-routes.js";
 import { integrationRoutes } from "./integrations.js";
 import express from "express";
@@ -114,6 +115,7 @@ export async function createApp(db, options = {}) {
     authenticate(db),
     subscriptionGate(db),
     platformNotificationRoutes(db),
+    emailTemplateRoutes(db),
     saasRoutes(db),
     accountRoutes(db),
     coreRoutes(db, options),

@@ -49,7 +49,7 @@ export function ownerSupportRoutes(db) {
     res.json({
       data: await rows(
         db,
-        "SELECT * FROM saas_support_tickets WHERE school_id=$1 ORDER BY updated_at DESC LIMIT 100",
+        `SELECT t.*,COALESCE((SELECT json_agg(json_build_object('id',r.id,'body',r.body,'author',u.name,'created_at',r.created_at) ORDER BY r.id) FROM saas_support_replies r JOIN users u ON u.id=r.user_id WHERE r.ticket_id=t.id),'[]'::json) AS replies FROM saas_support_tickets t WHERE school_id=$1 ORDER BY updated_at DESC LIMIT 100`,
         [req.user.school_id],
       ),
     });
@@ -307,7 +307,8 @@ export function ownerSupportRoutes(db) {
     res.json({
       data: await rows(
         db,
-        `SELECT t.*,s.name AS school_name,u.name AS user_name,u.email AS user_email
+        `SELECT t.*,s.name AS school_name,u.name AS user_name,u.email AS user_email,
+        COALESCE((SELECT json_agg(json_build_object('id',r.id,'body',r.body,'author',a.name,'created_at',r.created_at) ORDER BY r.id) FROM saas_support_replies r JOIN users a ON a.id=r.user_id WHERE r.ticket_id=t.id),'[]'::json) AS replies
        FROM saas_support_tickets t JOIN schools s ON s.id=t.school_id JOIN users u ON u.id=t.user_id
        WHERE ($1::text IS NULL OR t.department=$1)
        ORDER BY CASE t.status WHEN 'OPEN' THEN 0 WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END,t.updated_at DESC LIMIT 250`,
@@ -325,8 +326,6 @@ export function ownerSupportRoutes(db) {
       })
       .strict()
       .parse(req.body);
-    if (b.status === "RESOLVED" && !b.resolution)
-      fail(422, "Describe how the issue was resolved.");
     const ticket = await db.transaction(async (tx) => {
       const before = await one(
         tx,
@@ -335,17 +334,26 @@ export function ownerSupportRoutes(db) {
       );
       if (!before || (department && before.department !== department))
         fail(404, "Support issue not found.");
+      if (b.status === "RESOLVED" && !b.resolution && !before.resolution)
+        fail(422, "Reply to the customer before resolving the issue.");
       const t = await one(
         tx,
         "UPDATE saas_support_tickets SET status=$2,resolution=$3,updated_by=$4,updated_at=now() WHERE id=$1 RETURNING *",
-        [id, b.status, b.resolution, req.user.id],
+        [id, b.status, b.resolution || before.resolution, req.user.id],
       );
+      if (b.resolution && b.resolution !== before.resolution)
+        await insert(tx, "saas_support_replies", {
+          ticket_id: id,
+          user_id: req.user.id,
+          body: b.resolution,
+        });
       await subscriptionEvent(tx, t.school_id, req.user.id, "SUPPORT_UPDATED", {
         ticket_id: id,
         previous_status: before.status,
         status: t.status,
       });
-      await supportNotice(tx, t, req.user, true);
+      if (b.resolution && b.resolution !== before.resolution)
+        await supportNotice(tx, t, req.user, true);
       return t;
     });
     res.json({ data: ticket });

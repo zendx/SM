@@ -21,10 +21,18 @@ import { useData } from "../hooks";
 import "../saas.css";
 import { WhatsAppHelp } from "./whatsapp-help";
 
-export const cycles = [
-  { value: "MONTHLY", label: "Monthly — $100" },
-  { value: "YEARLY", label: "Yearly — $1,020 (save 15%)" },
-];
+export const planPrice = (cycle, config = {}) =>
+  cycle === "YEARLY"
+    ? Number(config.yearly_price_cents ?? config.base_yearly_cents ?? 102000)
+    : Number(config.monthly_price_cents ?? config.base_monthly_cents ?? 10000);
+export const annualDiscount = (config = {}) =>
+  Math.max(
+    0,
+    Math.round(
+      (1 - planPrice("YEARLY", config) / (12 * planPrice("MONTHLY", config))) *
+        100,
+    ),
+  );
 export function subscriptionMoney(value, config = {}) {
   const currency = config.landing_currency || config.display_currency || "USD";
   const rate =
@@ -39,10 +47,13 @@ export function subscriptionMoney(value, config = {}) {
   }).format((Number(value || 0) / 100) * rate);
 }
 export const billingCycles = (config) => [
-  { value: "MONTHLY", label: `Monthly — ${subscriptionMoney(10000, config)}` },
+  {
+    value: "MONTHLY",
+    label: `Monthly — ${subscriptionMoney(planPrice("MONTHLY", config), config)}`,
+  },
   {
     value: "YEARLY",
-    label: `Yearly — ${subscriptionMoney(102000, config)} (save 15%)`,
+    label: `Yearly — ${subscriptionMoney(planPrice("YEARLY", config), config)} ${annualDiscount(config) > 0 ? `(save ${annualDiscount(config)}%)` : ""}`,
   },
 ];
 export function registrationFields(
@@ -162,8 +173,17 @@ export function Signup() {
               <Check /> All modules in your 30-day trial
             </li>
             <li>
-              <Check /> {subscriptionMoney(10000, q.data || {})}/month or{" "}
-              {subscriptionMoney(102000, q.data || {})}/year for Pro
+              <Check />{" "}
+              {subscriptionMoney(
+                planPrice("MONTHLY", q.data || {}),
+                q.data || {},
+              )}
+              /month or{" "}
+              {subscriptionMoney(
+                planPrice("YEARLY", q.data || {}),
+                q.data || {},
+              )}
+              /year for Pro
             </li>
           </ul>
           <div className="signup-note">
@@ -562,7 +582,10 @@ export function Landing() {
               onClick={() => setYearly(true)}
               aria-pressed={yearly}
             >
-              Yearly <span>Save 15%</span>
+              Yearly{" "}
+              {annualDiscount(plans.data || {}) > 0 && (
+                <span>Save {annualDiscount(plans.data || {})}%</span>
+              )}
             </button>
           </div>
           <div className="pricing-grid">
@@ -608,13 +631,16 @@ export function Landing() {
               <div
                 className={`plan-price ${displayCurrency === "NGN" ? "ngn-price" : ""}`}
               >
-                {displayPrice(yearly ? 1020 : 100)}
+                {displayPrice(
+                  planPrice(yearly ? "YEARLY" : "MONTHLY", plans.data || {}) /
+                    100,
+                )}
                 <span>/ {yearly ? "year" : "month"}</span>
               </div>
               <p className="price-note">
                 {yearly
-                  ? `Billed yearly. Save ${displayPrice(180)} — equivalent to ${displayPrice(85)}/month.`
-                  : "Billed monthly. Choose yearly to save 15%."}
+                  ? `Billed yearly — equivalent to ${displayPrice(planPrice("YEARLY", plans.data || {}) / 1200)}/month.`
+                  : "Billed monthly. Yearly billing is also available."}
               </p>
               <p className="price-note">
                 Prices displayed in {displayCurrency}.
@@ -660,7 +686,7 @@ export function Landing() {
               ],
               [
                 "How does the yearly discount work?",
-                `Pro costs ${displayPrice(100)} per month. A full year normally costs ${displayPrice(1200)}; paying yearly applies a 15% discount, making it ${displayPrice(1020)} upfront.`,
+                `Pro costs ${displayPrice(planPrice("MONTHLY", plans.data || {}) / 100)} per month or ${displayPrice(planPrice("YEARLY", plans.data || {}) / 100)} upfront for a full year.`,
               ],
               [
                 "Can I pay by bank transfer?",
