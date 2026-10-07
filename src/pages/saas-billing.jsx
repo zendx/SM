@@ -312,10 +312,6 @@ export function Subscription({
                     </Button>
                   </div>
                 ))}
-                <p className="muted">
-                  Sandbox payments verify the flow and appear as test
-                  confirmations. They do not activate Pro or count as revenue.
-                </p>
               </Panel>
             )}
             {bankReady && (
