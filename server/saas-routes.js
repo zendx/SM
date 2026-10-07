@@ -264,7 +264,12 @@ export function saasRoutes(db) {
       .parse(req.body);
     await payable(db, req.user.school_id);
     const config = await settings(db);
-    if (!config.bank_name || !config.account_name || !config.account_number)
+    if (
+      !config.bank_enabled ||
+      !config.bank_name ||
+      !config.account_name ||
+      !config.account_number
+    )
       fail(503, "The SMPIS owner has not published bank-transfer details yet.");
     const payment = await db.transaction(async (tx) => {
       const p = await insert(tx, "subscription_payments", {
@@ -300,8 +305,8 @@ export function saasRoutes(db) {
     await payable(db, req.user.school_id);
     const c = await providerConfig(db, b.provider);
     const config = await settings(db);
-    if (!c.enabled || !c.secret_key)
-      fail(503, "This card provider is not configured.");
+    if (!c.enabled || c.mode !== "LIVE" || !c.secret_key || !c.webhook_secret)
+      fail(503, "This payment method is not available for subscriptions.");
     const school = await one(
       db,
       "SELECT portal_slug FROM schools WHERE id=$1",
@@ -559,6 +564,7 @@ export function saasRoutes(db) {
     const b = z
       .object({
         bank_name: z.string().trim().max(200),
+        bank_enabled: z.boolean().optional(),
         account_name: z.string().trim().max(200),
         account_number: z.string().trim().max(100),
         bank_currency: z.enum(["USD", "NGN"]).optional(),
@@ -600,6 +606,18 @@ export function saasRoutes(db) {
       await tx.query(
         "UPDATE saas_settings SET monthly_price_cents=COALESCE($1,monthly_price_cents),yearly_price_cents=round(COALESCE($1,monthly_price_cents)::numeric * 10.2)::int WHERE id=1",
         [b.monthly_price_cents ?? null],
+      );
+      if (
+        b.bank_enabled &&
+        (!b.bank_name || !b.account_name || !b.account_number)
+      )
+        fail(
+          422,
+          "Enter complete bank details before making manual payments available.",
+        );
+      await tx.query(
+        "UPDATE saas_settings SET bank_enabled=COALESCE($1,bank_enabled) WHERE id=1",
+        [b.bank_enabled ?? null],
       );
       await subscriptionEvent(
         tx,

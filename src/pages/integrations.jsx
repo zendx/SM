@@ -3,6 +3,39 @@ import { useData } from "../hooks";
 import { patch } from "../api";
 import { Panel, Form, Loading, Button } from "../components";
 const definitions = {
+  manual: {
+    title: "Manual fee payments",
+    description:
+      "Publish bank details for school fees. School finance confirms receipt before crediting an invoice.",
+    fields: [
+      { name: "bank_name", label: "Bank name" },
+      { name: "account_name", label: "Account name" },
+      { name: "account_number", label: "Account number" },
+      {
+        name: "instructions",
+        label: "Transfer instructions",
+        type: "textarea",
+      },
+    ],
+  },
+  stripe: {
+    title: "Stripe",
+    description: "Collect school fees through Stripe Checkout.",
+    fields: [
+      { name: "secret_key", label: "Secret key", type: "password" },
+      { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
+    ],
+  },
+  paypal: {
+    title: "PayPal",
+    description:
+      "Collect school fees using PayPal. Your school currency must be supported by PayPal.",
+    fields: [
+      { name: "client_id", label: "Client ID" },
+      { name: "client_secret", label: "Client secret", type: "password" },
+      { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
+    ],
+  },
   smtp: {
     title: "SMTP email",
     description: "Used for password reset emails and notification delivery.",
@@ -38,12 +71,12 @@ const definitions = {
   },
   flutterwave: {
     title: "Flutterwave",
-    description:
-      "Save your provider credentials. Flutterwave checkout is not yet available in this application.",
+    description: "Collect school fees through Flutterwave checkout.",
     fields: [
       { name: "public_key", label: "Public key" },
       { name: "secret_key", label: "Secret key", type: "password" },
       { name: "webhook_secret", label: "Webhook secret", type: "password" },
+      { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
     ],
   },
   twilio: {

@@ -1,3 +1,4 @@
+import { SchoolPayments } from "./school-payments";
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -130,17 +131,16 @@ export function Finance({ can, term, config, money, notify }) {
           {paymentStatus}
         </div>
       )}
-      {gateway.data?.configured && (
-        <div className="notice">
-          Paystack{" "}
-          {gateway.data.mode === "TEST"
-            ? "test checkout is enabled. Test transactions do not credit real invoices."
-            : "online payments are available."}{" "}
-          <Button small onClick={() => setModal({ type: "online" })}>
-            Pay online
-          </Button>
-        </div>
-      )}
+      <SchoolPayments
+        invoices={invoiceOptions}
+        money={money}
+        can={can}
+        notify={notify}
+        onPaid={() => {
+          q.reload();
+          transactions.reload();
+        }}
+      />
       {transactions.data.length > 0 && (
         <Panel title="Online payment tracking">
           <Table

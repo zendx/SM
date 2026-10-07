@@ -1,4 +1,5 @@
 import { platformNotificationRoutes } from "./platform-notifications.js";
+import { schoolPaymentRoutes } from "./school-payments.js";
 import { emailTemplateRoutes } from "./email-templates.js";
 import { siteSettingsRoutes, legalRoutes } from "./site-routes.js";
 import { integrationRoutes } from "./integrations.js";
@@ -125,6 +126,7 @@ export async function createApp(db, options = {}) {
     operationsRoutes(db),
     refinementRoutes(db, options),
     paymentRoutes(db, options),
+    schoolPaymentRoutes(db),
     intelligenceRoutes(db),
     modelRoutes(db),
     reportingRoutes(db),
