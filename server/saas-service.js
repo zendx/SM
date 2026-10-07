@@ -1,4 +1,5 @@
 import { sendVerification, verificationMailer } from "./email-verification.js";
+import { screenRegistrationEmail } from "./stopreg.js";
 import { one, rows, insert } from "./db.js";
 import { fail, hashPassword, token } from "./security.js";
 import { z, email, password, text, date, phoneNumber } from "./validation.js";
@@ -114,6 +115,7 @@ export async function registerSchool(db, values, owner = null) {
   } catch {
     fail(422, "Enter a valid timezone and school currency.");
   }
+  await screenRegistrationEmail(b.email);
   const mailer = await verificationMailer(db);
   return db.transaction(async (tx) => {
     // Public signup cannot win the owner bootstrap race.
