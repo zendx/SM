@@ -1,4 +1,5 @@
 import { checkAccountAccess } from "./account-lifecycle.js";
+import { screenRegistrationEmail } from "./stopreg.js";
 import { consoleAccess } from "./platform-access.js";
 import { sendVerification, verificationMailer } from "./email-verification.js";
 import { smtpConfig } from "./integrations.js";
@@ -125,6 +126,7 @@ export function authRoutes(
       .object({ name: text.max(200), email, password })
       .strict()
       .parse(req.body);
+    await screenRegistrationEmail(b.email);
     const mailer = await verificationMailer(db);
     await db.transaction(async (tx) => {
       await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
@@ -251,6 +253,7 @@ export function authRoutes(
     }
     if (b.end_date <= b.start_date)
       fail(422, "The academic year end must follow its start.");
+    await screenRegistrationEmail(b.email);
     const mailer = await verificationMailer(db);
     await db.transaction(async (tx) => {
       await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
