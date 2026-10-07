@@ -48,10 +48,10 @@ export const registrationSchema = z.object({
   start_date: date,
   end_date: date,
 });
-export const price = (cycle, config = {}) =>
-  cycle === "YEARLY"
-    ? Number(config.yearly_price_cents ?? 102000)
-    : Number(config.monthly_price_cents ?? 10000);
+export const price = (cycle, config = {}) => {
+  const monthly = Number(config.monthly_price_cents ?? 10000);
+  return cycle === "YEARLY" ? Math.round(monthly * 12 * 0.85) : monthly;
+};
 export const portalPath = (slug) => `/${slug}/`;
 export function nextPeriod(start, cycle) {
   const result = new Date(start);
@@ -179,7 +179,11 @@ export async function registerSchool(db, values, owner = null) {
   });
 }
 export async function settings(db) {
-  return one(db, "SELECT * FROM saas_settings WHERE id=1");
+  const config = await one(db, "SELECT * FROM saas_settings WHERE id=1");
+  return {
+    ...config,
+    yearly_price_cents: price("YEARLY", config),
+  };
 }
 export function accessAllowed(sub, graceDays = 0, now = new Date()) {
   if (!sub) return false;

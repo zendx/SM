@@ -21,10 +21,14 @@ import { useData } from "../hooks";
 import "../saas.css";
 import { WhatsAppHelp } from "./whatsapp-help";
 
-export const planPrice = (cycle, config = {}) =>
-  cycle === "YEARLY"
-    ? Number(config.yearly_price_cents ?? config.base_yearly_cents ?? 102000)
-    : Number(config.monthly_price_cents ?? config.base_monthly_cents ?? 10000);
+export const planPrice = (cycle, config = {}) => {
+  const monthly = Number(
+    config.monthly_price_cents ?? config.base_monthly_cents ?? 10000,
+  );
+  return cycle === "YEARLY"
+    ? Math.round(monthly * 12 * 0.85)
+    : monthly;
+};
 export const annualDiscount = (config = {}) =>
   Math.max(
     0,

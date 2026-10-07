@@ -571,12 +571,6 @@ export function saasRoutes(db) {
           .min(1)
           .max(100000000)
           .optional(),
-        yearly_price_cents: z.coerce
-          .number()
-          .int()
-          .min(1)
-          .max(100000000)
-          .optional(),
         landing_currency: z.enum(["USD", "NGN"]).optional(),
         landing_usd_rate: z.coerce.number().positive().max(1000000).optional(),
       })
@@ -604,8 +598,8 @@ export function saasRoutes(db) {
         ],
       );
       await tx.query(
-        "UPDATE saas_settings SET monthly_price_cents=COALESCE($1,monthly_price_cents),yearly_price_cents=COALESCE($2,yearly_price_cents) WHERE id=1",
-        [b.monthly_price_cents ?? null, b.yearly_price_cents ?? null],
+        "UPDATE saas_settings SET monthly_price_cents=COALESCE($1,monthly_price_cents),yearly_price_cents=round(COALESCE($1,monthly_price_cents)::numeric * 10.2)::int WHERE id=1",
+        [b.monthly_price_cents ?? null],
       );
       await subscriptionEvent(
         tx,

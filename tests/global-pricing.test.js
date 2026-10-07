@@ -110,6 +110,20 @@ test("owner pricing updates new quotes while preserving existing payment amounts
             ...baseSettings,
             monthly_price_cents: 5500,
             yearly_price_cents: 55000,
+          },
+          "PATCH",
+        )
+      ).status,
+      422,
+    );
+    assert.equal(
+      (
+        await call(
+          "/saas/owner/settings",
+          owner,
+          {
+            ...baseSettings,
+            monthly_price_cents: 5500,
             landing_currency: "NGN",
             landing_usd_rate: 1500,
           },
@@ -120,15 +134,15 @@ test("owner pricing updates new quotes while preserving existing payment amounts
     );
     const plans = (await call("/saas/plans")).data;
     assert.equal(plans.base_monthly_cents, 5500);
-    assert.equal(plans.base_yearly_cents, 55000);
+    assert.equal(plans.base_yearly_cents, 56100);
     assert.equal(plans.monthly_cents, 5500 * 1500);
     const fresh = await call("/subscription/bank", admin, {
       billing_cycle: "YEARLY",
       transfer_reference: "UPDATED",
     });
     assert.equal(fresh.status, 201, JSON.stringify(fresh));
-    assert.equal(fresh.data.amount_cents, 55000);
-    assert.equal(Number(fresh.data.charge_amount_cents), 55000 * 1500);
+    assert.equal(fresh.data.amount_cents, 56100);
+    assert.equal(Number(fresh.data.charge_amount_cents), 56100 * 1500);
     assert.equal(
       (
         await one(
@@ -149,6 +163,15 @@ test("owner pricing updates new quotes while preserving existing payment amounts
       ).monthly_price_cents,
       5500,
     );
+      assert.equal(
+        (
+          await one(
+            db,
+            "SELECT yearly_price_cents FROM saas_settings WHERE id=1",
+          )
+        ).yearly_price_cents,
+        56100,
+      );
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await db.close();

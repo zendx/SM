@@ -760,7 +760,6 @@ export function SaasOwner({ notify = () => {}, section }) {
               initial={{
                 ...d.settings,
                 monthly_price_usd: d.settings.monthly_price_cents / 100,
-                yearly_price_usd: d.settings.yearly_price_cents / 100,
               }}
               fields={[
                 {
@@ -770,14 +769,7 @@ export function SaasOwner({ notify = () => {}, section }) {
                   min: 0.01,
                   max: 1000000,
                   step: 0.01,
-                },
-                {
-                  name: "yearly_price_usd",
-                  label: "Yearly Pro price (USD)",
-                  type: "number",
-                  min: 0.01,
-                  max: 1000000,
-                  step: 0.01,
+                  hint: "Yearly pricing is calculated automatically at 15% off twelve monthly payments.",
                 },
                 {
                   name: "landing_currency",
@@ -820,14 +812,11 @@ export function SaasOwner({ notify = () => {}, section }) {
                 },
               ]}
               onSubmit={async (v) => {
-                const { monthly_price_usd, yearly_price_usd, ...fields } = v;
+                const { monthly_price_usd, ...fields } = v;
                 await patch("/saas/owner/settings", {
                   ...fields,
                   monthly_price_cents: Math.round(
                     Number(monthly_price_usd) * 100,
-                  ),
-                  yearly_price_cents: Math.round(
-                    Number(yearly_price_usd) * 100,
                   ),
                 });
                 q.reload();
