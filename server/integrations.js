@@ -7,6 +7,33 @@ import { fail } from "./security.js";
 const value = z.string().trim().max(2000).default("");
 const secret = z.string().max(4000).default("");
 export const integrationDefinitions = {
+  manual: {
+    secrets: [],
+    schema: z.object({
+      enabled: z.boolean(),
+      bank_name: value,
+      account_name: value,
+      account_number: value,
+      instructions: value,
+    }),
+  },
+  stripe: {
+    secrets: ["secret_key"],
+    schema: z.object({
+      enabled: z.boolean(),
+      secret_key: secret,
+      live_enabled: z.boolean().default(false),
+    }),
+  },
+  paypal: {
+    secrets: ["client_secret"],
+    schema: z.object({
+      enabled: z.boolean(),
+      client_id: value,
+      client_secret: secret,
+      live_enabled: z.boolean().default(false),
+    }),
+  },
   smtp: {
     secrets: ["password"],
     schema: z.object({
@@ -35,6 +62,7 @@ export const integrationDefinitions = {
       public_key: value,
       secret_key: secret,
       webhook_secret: secret,
+      live_enabled: z.boolean().default(false),
     }),
   },
   twilio: {
@@ -106,6 +134,9 @@ function redact(provider, config) {
 function validate(provider, c) {
   if (!c.enabled) return;
   const required = {
+    manual: ["bank_name", "account_name", "account_number"],
+    stripe: ["secret_key"],
+    paypal: ["client_id", "client_secret"],
     smtp: ["host", "from"],
     paystack: ["secret_key"],
     flutterwave: ["public_key", "secret_key"],
@@ -125,6 +156,22 @@ function validate(provider, c) {
     fail(422, "An SMTP password is required when a username is provided.");
   if (provider === "paystack" && !/^sk_(test|live)_\S+$/.test(c.secret_key))
     fail(422, "Enter a valid Paystack secret key.");
+  if (
+    provider === "stripe" &&
+    !new RegExp(`^sk_${c.live_enabled ? "live" : "test"}_\\S+$`).test(
+      c.secret_key,
+    )
+  )
+    fail(422, "Stripe secret key must match the selected live or test mode.");
+  if (
+    provider === "flutterwave" &&
+    (!/^FLWSECK-/.test(c.secret_key) ||
+      /_TEST/.test(c.secret_key) === c.live_enabled)
+  )
+    fail(
+      422,
+      "Flutterwave secret key must match the selected live or test mode.",
+    );
   if (
     provider === "twilio" &&
     (!/^AC[a-f0-9]{32}$/i.test(c.account_sid) ||
@@ -159,7 +206,15 @@ export function integrationRoutes(db) {
   });
   r.patch("/admin/integrations/:provider", async (req, res) => {
     const provider = z
-      .enum(["smtp", "paystack", "flutterwave", "twilio"])
+      .enum([
+        "smtp",
+        "paystack",
+        "flutterwave",
+        "twilio",
+        "manual",
+        "stripe",
+        "paypal",
+      ])
       .parse(req.params.provider);
     const definition = integrationDefinitions[provider];
     const body = definition.schema

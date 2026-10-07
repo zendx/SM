@@ -231,8 +231,24 @@ export async function subscriptionSnapshot(db, schoolId) {
     ...sub,
     owner_workspace: ownerWorkspace,
     access_allowed: ownerWorkspace || accessAllowed(sub, config.grace_days),
-    settings: config,
-    providers: await providerSummaries(db),
+    settings: config.bank_enabled
+      ? config
+      : {
+          ...config,
+          bank_name: "",
+          account_name: "",
+          account_number: "",
+          bank_instructions: "",
+        },
+    providers: Object.fromEntries(
+      Object.entries(await providerSummaries(db)).filter(
+        ([, p]) =>
+          p.enabled &&
+          p.mode === "LIVE" &&
+          p.secret_key_configured &&
+          p.webhook_secret_configured,
+      ),
+    ),
     payments: await rows(
       db,
       "SELECT * FROM subscription_payments WHERE school_id=$1 ORDER BY created_at DESC LIMIT 100",

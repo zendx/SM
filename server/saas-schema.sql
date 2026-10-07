@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS platform_notifications (
 CREATE INDEX IF NOT EXISTS platform_notifications_inbox ON platform_notifications(user_id,created_at DESC);
 
 ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS monthly_price_cents INT NOT NULL DEFAULT 10000 CHECK(monthly_price_cents BETWEEN 1 AND 100000000);
+ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS bank_enabled BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS yearly_price_cents INT NOT NULL DEFAULT 102000 CHECK(yearly_price_cents BETWEEN 1 AND 100000000);
 ALTER TABLE subscription_payments DROP CONSTRAINT IF EXISTS subscription_payments_amount_cents_check;
 ALTER TABLE subscription_payments ADD CONSTRAINT subscription_payments_amount_cents_check CHECK(amount_cents BETWEEN 1 AND 100000000);

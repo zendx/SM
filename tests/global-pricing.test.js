@@ -62,6 +62,7 @@ test("owner pricing updates new quotes while preserving existing payment amounts
     const admin = { cookie: adminLogin.cookie, csrf: adminLogin.data.csrf };
     const baseSettings = {
       bank_name: "Bank",
+      bank_enabled: true,
       account_name: "SMPIS",
       account_number: "1234567890",
       bank_instructions: "Use the reference",
@@ -163,15 +164,11 @@ test("owner pricing updates new quotes while preserving existing payment amounts
       ).monthly_price_cents,
       5500,
     );
-      assert.equal(
-        (
-          await one(
-            db,
-            "SELECT yearly_price_cents FROM saas_settings WHERE id=1",
-          )
-        ).yearly_price_cents,
-        56100,
-      );
+    assert.equal(
+      (await one(db, "SELECT yearly_price_cents FROM saas_settings WHERE id=1"))
+        .yearly_price_cents,
+      56100,
+    );
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await db.close();

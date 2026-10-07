@@ -106,7 +106,8 @@ process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 let db, server, base, owner, free, pro, schoolId, paymentId;
 const password = "SaaS-test-password-2026!";
 const registration = (slug, plan = "FREE") => ({
-  school_name: slug + " Academy", phone_number: "+2348012345678",
+  school_name: slug + " Academy",
+  phone_number: "+2348012345678",
   portal_slug: slug,
   name: "School admin",
   email: slug + "@saas.test",
@@ -167,7 +168,8 @@ test("public signup cannot bootstrap an owner; owner setup remains one-time", as
   const result = await request("/auth/setup", {
     method: "POST",
     body: {
-      school_name: "Owner", phone_number: "+2348012345678",
+      school_name: "Owner",
+      phone_number: "+2348012345678",
       short_code: "OWNER",
       currency_code: "NGN",
       timezone: "Africa/Lagos",
@@ -276,6 +278,7 @@ test("manual yearly approval is idempotent, restores expired access, and audits 
     method: "PATCH",
     body: {
       bank_name: "Test Bank",
+      bank_enabled: true,
       account_name: "SMPIS",
       account_number: "1234567890",
       bank_currency: "NGN",

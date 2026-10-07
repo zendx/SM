@@ -55,7 +55,8 @@ test("owner registration creates a business account without a school and restric
           name: "Owner",
           email: "owner@console.test",
           password,
-          school_name: "Unexpected", phone_number: "+2348012345678",
+          school_name: "Unexpected",
+          phone_number: "+2348012345678",
         },
       })
     ).status,
@@ -100,7 +101,8 @@ test("owner registration creates a business account without a school and restric
 });
 test("owner metrics and support tools cover customer accounts with audited recovery and scoped issues", async () => {
   const body = {
-    school_name: "Customer Academy", phone_number: "+2348012345678",
+    school_name: "Customer Academy",
+    phone_number: "+2348012345678",
     portal_slug: "customer-academy",
     name: "School Admin",
     email: "admin@customer.test",
@@ -477,6 +479,7 @@ test("global currency controls all new payment quotes and preserves earlier quot
   const bank = {
     ...Object.fromEntries(fields.map((k) => [k, settings[k]])),
     bank_name: "Test Bank",
+    bank_enabled: true,
     account_name: "SMPIS",
     account_number: "1234567890",
     landing_usd_rate: 1500,
@@ -487,9 +490,9 @@ test("global currency controls all new payment quotes and preserves earlier quot
       method: "PATCH",
       body: {
         enabled: true,
-        mode: "SANDBOX",
+        mode: "LIVE",
         secret_key:
-          provider === "flutterwave" ? "FLWSECK-global_TEST" : "sk_test_global",
+          provider === "flutterwave" ? "FLWSECK-global" : "sk_live_global",
         webhook_secret: "test-webhook",
       },
     });
@@ -586,9 +589,9 @@ test("global currency controls all new payment quotes and preserves earlier quot
       amount_total: Number(ngnStripe.charge_amount_cents),
       metadata: { school_id: String(ngnStripe.school_id) },
       payment_status: "paid",
-      livemode: false,
+      livemode: true,
     };
-    assert.equal((await verifyCheckout(db, session)).status, "TEST_CONFIRMED");
+    assert.equal((await verifyCheckout(db, session)).status, "PAID");
     const historical = await one(
       db,
       "SELECT charge_currency,charge_amount_cents FROM subscription_payments WHERE id=$1",

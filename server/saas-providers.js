@@ -15,7 +15,7 @@ export async function providerConfig(db, provider) {
   if (row) return decryptConfig(row.encrypted_config, 0, `saas:${provider}`);
   if (provider === "stripe" && process.env.SAAS_STRIPE_SECRET_KEY)
     return {
-      enabled: true,
+      enabled: false,
       secret_key: process.env.SAAS_STRIPE_SECRET_KEY,
       webhook_secret: process.env.SAAS_STRIPE_WEBHOOK_SECRET || "",
       mode: process.env.SAAS_STRIPE_SECRET_KEY.startsWith("sk_live_")

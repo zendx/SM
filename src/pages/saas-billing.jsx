@@ -162,6 +162,7 @@ export function Subscription({
   const usd = (value) => subscriptionMoney(value, sub.settings);
   const config = sub.settings,
     bankReady = !!(
+      config.bank_enabled &&
       config.bank_name &&
       config.account_name &&
       config.account_number
@@ -261,120 +262,133 @@ export function Subscription({
             </p>
           </Panel>
           <div className="billing-methods">
-            <Panel
-              title="Pay by card"
-              description="Choose a payment provider. Your subscription activates after server verification."
-            >
-              {Object.entries(sub.providers).map(([name, p]) => (
-                <div className="provider-choice" key={name}>
-                  <div>
-                    <strong>{providerLabels[name]}</strong>
-                    <small>
-                      {p.enabled
-                        ? p.mode === "SANDBOX"
-                          ? "Sandbox · no real charge"
-                          : `Live · ${p.currency}`
-                        : "Not configured"}
-                    </small>
-                    {p.enabled && p.currency === "NGN" && (
+            {Object.keys(sub.providers).length > 0 && (
+              <Panel
+                title="Pay by card"
+                description="Choose a payment provider. Your subscription activates after server verification."
+              >
+                {Object.entries(sub.providers).map(([name, p]) => (
+                  <div className="provider-choice" key={name}>
+                    <div>
+                      <strong>{providerLabels[name]}</strong>
                       <small>
-                        ₦
-                        {((amount / 100) * Number(p.usd_rate)).toLocaleString()}{" "}
-                        at ₦{Number(p.usd_rate).toLocaleString()} / $1
+                        {p.enabled
+                          ? p.mode === "SANDBOX"
+                            ? "Sandbox · no real charge"
+                            : `Live · ${p.currency}`
+                          : "Not configured"}
                       </small>
-                    )}
-                  </div>
-                  <Button
-                    small
-                    disabled={!p.enabled || busy}
-                    onClick={async () => {
-                      setBusy(true);
-                      setError("");
-                      try {
-                        const result = await post("/subscription/checkout", {
-                          billing_cycle: cycle,
-                          provider: name,
-                        });
-                        location.assign(result.url);
-                      } catch (e) {
-                        setError(e.message);
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {p.mode === "SANDBOX" ? "Test checkout" : "Pay by card"}{" "}
-                    <ArrowUpRight size={15} />
-                  </Button>
-                </div>
-              ))}
-              <p className="muted">
-                Sandbox payments verify the flow and appear as test
-                confirmations. They do not activate Pro or count as revenue.
-              </p>
-            </Panel>
-            <Panel
-              title="Pay by bank transfer"
-              description="Transfer to the owner’s account, then submit the bank reference for approval."
-            >
-              {bankReady ? (
-                <>
-                  <dl className="bank-details">
-                    <dt>Bank</dt>
-                    <dd>{config.bank_name}</dd>
-                    <dt>Account name</dt>
-                    <dd>{config.account_name}</dd>
-                    <dt>Account number</dt>
-                    <dd>{config.account_number}</dd>
-                    <dt>Transfer amount</dt>
-                    <dd>
-                      {new Intl.NumberFormat("en", {
-                        style: "currency",
-                        currency: config.landing_currency,
-                      }).format(
-                        (amount / 100) *
-                          (config.landing_currency === "USD"
-                            ? 1
-                            : Number(config.landing_usd_rate)),
+                      {p.enabled && p.currency === "NGN" && (
+                        <small>
+                          ₦
+                          {(
+                            (amount / 100) *
+                            Number(p.usd_rate)
+                          ).toLocaleString()}{" "}
+                          at ₦{Number(p.usd_rate).toLocaleString()} / $1
+                        </small>
                       )}
-                    </dd>
-                  </dl>
-                  <p>{config.bank_instructions}</p>
-                  <Form
-                    key={cycle}
-                    fields={[
-                      {
-                        name: "transfer_reference",
-                        label: "Bank transfer reference",
-                        wide: true,
-                      },
-                      {
-                        name: "note",
-                        label: "Payment note",
-                        type: "textarea",
-                        required: false,
-                        wide: true,
-                      },
-                    ]}
-                    submit="Submit transfer for approval"
-                    onSubmit={async (v) => {
-                      await post("/subscription/bank", {
-                        ...v,
-                        billing_cycle: cycle,
-                      });
-                      setMessage(
-                        "Transfer submitted. Pro starts after the SMPIS owner confirms receipt.",
-                      );
-                      q.reload();
-                    }}
-                  />
-                </>
-              ) : (
-                <p className="notice">
-                  Bank details have not been published yet. Contact the SMPIS
-                  owner.
+                    </div>
+                    <Button
+                      small
+                      disabled={!p.enabled || busy}
+                      onClick={async () => {
+                        setBusy(true);
+                        setError("");
+                        try {
+                          const result = await post("/subscription/checkout", {
+                            billing_cycle: cycle,
+                            provider: name,
+                          });
+                          location.assign(result.url);
+                        } catch (e) {
+                          setError(e.message);
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      {p.mode === "SANDBOX" ? "Test checkout" : "Pay by card"}{" "}
+                      <ArrowUpRight size={15} />
+                    </Button>
+                  </div>
+                ))}
+                <p className="muted">
+                  Sandbox payments verify the flow and appear as test
+                  confirmations. They do not activate Pro or count as revenue.
                 </p>
-              )}
-            </Panel>
+              </Panel>
+            )}
+            {bankReady && (
+              <Panel
+                title="Pay by bank transfer"
+                description="Transfer to the owner’s account, then submit the bank reference for approval."
+              >
+                {bankReady ? (
+                  <>
+                    <dl className="bank-details">
+                      <dt>Bank</dt>
+                      <dd>{config.bank_name}</dd>
+                      <dt>Account name</dt>
+                      <dd>{config.account_name}</dd>
+                      <dt>Account number</dt>
+                      <dd>{config.account_number}</dd>
+                      <dt>Transfer amount</dt>
+                      <dd>
+                        {new Intl.NumberFormat("en", {
+                          style: "currency",
+                          currency: config.landing_currency,
+                        }).format(
+                          (amount / 100) *
+                            (config.landing_currency === "USD"
+                              ? 1
+                              : Number(config.landing_usd_rate)),
+                        )}
+                      </dd>
+                    </dl>
+                    <p>{config.bank_instructions}</p>
+                    <Form
+                      key={cycle}
+                      fields={[
+                        {
+                          name: "transfer_reference",
+                          label: "Bank transfer reference",
+                          wide: true,
+                        },
+                        {
+                          name: "note",
+                          label: "Payment note",
+                          type: "textarea",
+                          required: false,
+                          wide: true,
+                        },
+                      ]}
+                      submit="Submit transfer for approval"
+                      onSubmit={async (v) => {
+                        await post("/subscription/bank", {
+                          ...v,
+                          billing_cycle: cycle,
+                        });
+                        setMessage(
+                          "Transfer submitted. Pro starts after the SMPIS owner confirms receipt.",
+                        );
+                        q.reload();
+                      }}
+                    />
+                  </>
+                ) : (
+                  <p className="notice">
+                    Bank details have not been published yet. Contact the SMPIS
+                    owner.
+                  </p>
+                )}
+              </Panel>
+            )}
+            {!bankReady && !Object.keys(sub.providers).length && (
+              <p className="notice">
+                Subscription payments are not available yet. Contact SMPIS
+                support.
+              </p>
+            )}
           </div>
         </>
       ) : !admin ? (
@@ -785,6 +799,11 @@ export function SaasOwner({ notify = () => {}, section }) {
                   step: "any",
                   hint: "NGN per USD. Your monthly and yearly base prices are converted using this rate.",
                 },
+                {
+                  name: "bank_enabled",
+                  label: "Manual subscription payments available (live)",
+                  type: "checkbox",
+                },
                 { name: "bank_name", label: "Bank name", required: false },
                 {
                   name: "account_name",
@@ -827,7 +846,9 @@ export function SaasOwner({ notify = () => {}, section }) {
             <p className="muted">
               The Free trial always expires at 30 days. Pro suspends
               automatically after its expiry plus the configured grace days.
-              Leaving bank details empty disables transfer submission.
+              Manual transfers require complete bank details and the
+              availability switch. Disabled and sandbox card providers stay
+              hidden from tenants.
             </p>
           </Panel>
           <Panel
