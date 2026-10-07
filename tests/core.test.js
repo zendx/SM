@@ -1,3 +1,5 @@
+import { testMailbox } from "./mailbox.js";
+const verifyFixtureEmail = testMailbox();
 import { openTestDatabase } from "./database.js";
 import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
@@ -32,6 +34,7 @@ async function client(
   email = "admin@test.school",
   password = "Test-password-2026!",
 ) {
+  await verifyFixtureEmail(email, base);
   const login = await fetch(base + "/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -610,12 +613,12 @@ test("MFA gate and logout invalidate access; audit records do not contain passwo
   assert.equal(JSON.stringify(logs).includes("Test-password-2026!"), false);
 });
 
-test("required administrator MFA blocks operations until authenticator enrollment", async () => {
+test("administrator MFA enrollment is optional and can be enabled", async () => {
   process.env.REQUIRE_MFA = "true";
   const other = await client("other@test.school");
-  assert.equal((await expect(other, "/me")).user.mfa_setup_required, true);
-  await expect(other, "/users", "GET", undefined, 403);
-  await expect(other, "/config", "PATCH", { name: "Blocked" }, 403);
+  assert.equal((await expect(other, "/me")).user.mfa_setup_required, false);
+  await expect(other, "/users", "GET");
+  await expect(other, "/config", "GET");
   const setup = await expect(other, "/auth/mfa/setup", "POST", {}),
     otp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(setup.secret) });
   await expect(other, "/auth/mfa/enable", "POST", { code: otp.generate() });
@@ -645,6 +648,8 @@ test("public applications expose only classes and create a submitted application
   assert.match((await response.json()).data.reference, /^APP-/);
 });
 test("scheduled notifications are deduplicated and remain queued without an email provider", async () => {
+  delete process.env.SMTP_URL;
+  delete process.env.MAIL_FROM;
   await runJobs(db);
   await runJobs(db);
   const count = await one(
@@ -662,6 +667,9 @@ test("process locks prevent concurrent backup commands", async () => {
   const dir = "test-results/backup-source";
   await mkdir(dir, { recursive: true });
   const release = await acquireDataLock(dir);
-  try { await assert.rejects(acquireDataLock(dir), /already in use/); }
-  finally { await release(); }
+  try {
+    await assert.rejects(acquireDataLock(dir), /already in use/);
+  } finally {
+    await release();
+  }
 });

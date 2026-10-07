@@ -1,3 +1,4 @@
+import { sendVerification, verificationMailer } from "./email-verification.js";
 import { one, rows, insert } from "./db.js";
 import { fail, hashPassword, token } from "./security.js";
 import { z, email, password, text, date } from "./validation.js";
@@ -109,6 +110,7 @@ export async function registerSchool(db, values, owner = null) {
   } catch {
     fail(422, "Enter a valid timezone and school currency.");
   }
+  const mailer = await verificationMailer(db);
   return db.transaction(async (tx) => {
     // Public signup cannot win the owner bootstrap race.
     await tx.query("LOCK TABLE schools IN EXCLUSIVE MODE");
@@ -133,6 +135,7 @@ export async function registerSchool(db, values, owner = null) {
       email: b.email,
       password_hash: hashPassword(b.password),
       role: "SUPER_ADMIN",
+      email_verified: false,
     });
     const year = await insert(tx, "academic_years", {
       school_id: school.id,
@@ -154,7 +157,10 @@ export async function registerSchool(db, values, owner = null) {
       b,
       owner?.id || admin.id,
     );
+    await sendVerification(tx, admin, mailer);
     return {
+      verification_required: true,
+      message: "Check your email to verify your account before signing in.",
       school: {
         id: school.id,
         name: school.name,

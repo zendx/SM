@@ -1,3 +1,4 @@
+import { sendVerification, verificationMailer } from "./email-verification.js";
 import { smtpConfig } from "./integrations.js";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
@@ -46,10 +47,8 @@ export function publicUser(u) {
     permissions: u.permissions,
     mfa_enabled: u.mfa_enabled,
     platform_operator: !!u.platform_operator,
-    mfa_setup_required:
-      process.env.REQUIRE_MFA !== "false" &&
-      (u.role === "SUPER_ADMIN" || u.platform_operator) &&
-      !u.mfa_enabled,
+    email_verified: u.email_verified,
+    mfa_setup_required: false,
   };
 }
 function totp(secret, label) {
@@ -77,7 +76,12 @@ export function authRoutes(
     }),
   );
   r.use(
-    ["/login", "/owner/login", "/password-reset/request"],
+    [
+      "/login",
+      "/owner/login",
+      "/password-reset/request",
+      "/email-verification/resend",
+    ],
     rateLimit({
       windowMs: 15 * 60 * 1000,
       limit: 30,
@@ -115,6 +119,7 @@ export function authRoutes(
       .object({ name: text.max(200), email, password })
       .strict()
       .parse(req.body);
+    const mailer = await verificationMailer(db);
     await db.transaction(async (tx) => {
       await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
       if (await one(tx, "SELECT user_id FROM platform_operators LIMIT 1"))
@@ -128,7 +133,9 @@ export function authRoutes(
         email: b.email,
         password_hash: hashPassword(b.password),
         role: "PLATFORM_OWNER",
+        email_verified: false,
       });
+      await sendVerification(tx, user, mailer);
       await insert(tx, "platform_operators", { user_id: user.id });
       await audit(tx, user, "users", user.id, "OWNER_REGISTERED", null, {
         name: user.name,
@@ -136,7 +143,10 @@ export function authRoutes(
       });
     });
     res.status(201).json({
-      data: { message: "Owner account created. Sign in to manage SMPIS." },
+      data: {
+        message:
+          "Owner account created. Check your email to verify your account, then sign in.",
+      },
     });
   });
   r.get("/public-admissions/:code", async (req, res) => {
@@ -234,6 +244,7 @@ export function authRoutes(
     }
     if (b.end_date <= b.start_date)
       fail(422, "The academic year end must follow its start.");
+    const mailer = await verificationMailer(db);
     await db.transaction(async (tx) => {
       await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
       await tx.query("LOCK TABLE schools IN EXCLUSIVE MODE");
@@ -257,6 +268,7 @@ export function authRoutes(
         email: b.email,
         password_hash: hashPassword(b.password),
         role: "SUPER_ADMIN",
+        email_verified: false,
       });
       const year = await insert(tx, "academic_years", {
         school_id: school.id,
@@ -264,6 +276,7 @@ export function authRoutes(
         start_date: b.start_date,
         end_date: b.end_date,
       });
+      await sendVerification(tx, user, mailer);
       await insert(tx, "platform_operators", { user_id: user.id });
       await provisionSubscription(tx, school, {}, user.id);
       const termEnd = new Date(b.start_date);
@@ -285,7 +298,12 @@ export function authRoutes(
     });
     res
       .status(201)
-      .json({ data: { message: "School created. You can now sign in." } });
+      .json({
+        data: {
+          message:
+            "School created. Check your email to verify your account, then sign in.",
+        },
+      });
   });
   r.post(["/login", "/owner/login"], async (req, res) => {
     const b = z
@@ -308,7 +326,13 @@ export function authRoutes(
         "This account is not an SMPIS owner account. Use your school portal.",
         "OWNER_REQUIRED",
       );
-    if (req.get("x-smpis-portal")) {
+    if (!u.email_verified)
+      fail(
+        403,
+        "Verify your email before signing in. Use the resend verification option if needed.",
+        "EMAIL_VERIFICATION_REQUIRED",
+      );
+    if (!u.platform_operator && req.get("x-smpis-portal")) {
       const school = await one(
         db,
         "SELECT portal_slug FROM schools WHERE id=$1",
@@ -340,6 +364,52 @@ export function authRoutes(
     await audit(db, u, "users", u.id, "LOGIN");
     res.json({
       data: { user: publicUser(u), csrf, mfa_required: u.mfa_enabled },
+    });
+  });
+  r.post("/email-verification/confirm", async (req, res) => {
+    const b = z
+      .object({ token: z.string().regex(/^[a-f0-9]{64}$/) })
+      .parse(req.body);
+    await db.transaction(async (tx) => {
+      const link = await one(
+        tx,
+        "DELETE FROM email_verification_tokens WHERE token_hash=$1 AND expires_at>now() RETURNING user_id",
+        [digest(b.token)],
+      );
+      if (!link)
+        fail(
+          422,
+          "This verification link is invalid or expired. Request a new link.",
+        );
+      await tx.query("UPDATE users SET email_verified=true WHERE id=$1", [
+        link.user_id,
+      ]);
+      await tx.query("DELETE FROM email_verification_tokens WHERE user_id=$1", [
+        link.user_id,
+      ]);
+    });
+    res.json({ data: { message: "Email verified. You can now sign in." } });
+  });
+  r.post("/email-verification/resend", async (req, res) => {
+    const b = z.object({ email }).parse(req.body);
+    const u = await one(
+      db,
+      "SELECT * FROM users WHERE email=$1 AND NOT email_verified AND status='ACTIVE'",
+      [b.email],
+    );
+    if (u) {
+      try {
+        await sendVerification(db, u);
+      } catch {
+        console.error(
+          "Email verification delivery failed; check platform SMTP configuration.",
+        );
+      }
+    }
+    res.json({
+      data: {
+        message: "If this account needs verification, a link has been sent.",
+      },
     });
   });
   r.post("/password-reset/request", async (req, res) => {
@@ -422,36 +492,24 @@ export function authenticate(db) {
       !["/auth/mfa/verify", "/auth/logout", "/me"].includes(req.path)
     )
       fail(403, "Complete two-step verification.", "MFA_REQUIRED");
+    const slug = req.get("x-smpis-portal");
     if (
-      process.env.REQUIRE_MFA !== "false" &&
-      (u.role === "SUPER_ADMIN" || u.platform_operator) &&
-      !u.mfa_enabled &&
-      ![
-        "/auth/mfa/setup",
-        "/auth/mfa/enable",
-        "/auth/logout",
-        "/me",
-        "/config",
-        "/subscription",
-      ].includes(req.path)
-    )
-      fail(
-        403,
-        "Enable two-step verification in Administration before continuing.",
-        "MFA_SETUP_REQUIRED",
+      u.platform_operator &&
+      slug &&
+      !req.path.startsWith("/auth/") &&
+      !req.path.startsWith("/saas/owner")
+    ) {
+      const school = await one(
+        db,
+        "SELECT id,portal_slug FROM schools WHERE portal_slug=$1",
+        [slug],
       );
-    if (
-      process.env.REQUIRE_MFA !== "false" &&
-      u.role === "SUPER_ADMIN" &&
-      !u.mfa_enabled &&
-      req.path === "/config" &&
-      req.method !== "GET"
-    )
-      fail(
-        403,
-        "Enable two-step verification before changing school settings.",
-        "MFA_SETUP_REQUIRED",
-      );
+      if (!school) fail(404, "School portal not found.");
+      u.school_id = school.id;
+      u.portal_slug = school.portal_slug;
+      u.role = "SUPER_ADMIN";
+      u.permissions = ROLE_PERMISSIONS.SUPER_ADMIN;
+    }
     req.user = u;
     req.sessionHash = digest(raw);
     next();

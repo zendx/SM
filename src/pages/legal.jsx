@@ -203,7 +203,7 @@ export function LegalPage({ type }) {
           </p>
           <h2>School subscriptions</h2>
           <p>
-            Schools may create a separate SMPIS portal with a 14-day Free trial.
+            Schools may create a separate SMPIS portal with a 30-day Free trial.
             Pro has a USD 100 monthly base price, or USD 1,020 yearly with a 15%
             discount. Payments cover one selected period; this checkout does not
             automatically charge a card for future periods. Operational access

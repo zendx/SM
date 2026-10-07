@@ -103,8 +103,13 @@ function PublicApplication({ code }) {
 
 function Auth({ onLogin, setup }) {
   const reset = new URLSearchParams(location.search).get("reset");
-  const [mode, setMode] = useState(setup ? "setup" : reset ? "reset" : "login"),
-    [message, setMessage] = useState("");
+  const verification = new URLSearchParams(location.search).get("verify");
+  const [mode, setMode] = useState(
+      setup ? "setup" : verification ? "verify" : reset ? "reset" : "login",
+    ),
+    [message, setMessage] = useState(
+      verification ? "Confirm your email to activate your account." : "",
+    );
   const year = new Date().getFullYear();
   const setupFields = [
     { name: "school_name", label: "School name", wide: true },
@@ -151,9 +156,24 @@ function Auth({ onLogin, setup }) {
     },
   ];
   async function submit(v) {
-    if (mode === "setup") {
-      await post("/auth/setup", v);
-      setMessage("Your school is ready. Sign in to begin.");
+    if (mode === "verify") {
+      setMessage(
+        (
+          await post("/auth/email-verification/confirm", {
+            token: verification,
+          })
+        ).message,
+      );
+      history.replaceState(null, "", location.pathname);
+      setMode("login");
+    } else if (mode === "resend") {
+      setMessage(
+        (await post("/auth/email-verification/resend", { email: v.email }))
+          .message,
+      );
+    } else if (mode === "setup") {
+      const result = await post("/auth/setup", v);
+      setMessage(result.message);
       setMode("login");
     } else if (mode === "forgot") {
       setMessage((await post("/auth/password-reset/request", v)).message);
@@ -165,7 +185,9 @@ function Auth({ onLogin, setup }) {
     } else {
       const result = await post("/auth/login", v);
       setCsrf(result.csrf);
-      onLogin(result);
+      onLogin(
+        tenantSlug && result.user.platform_operator ? await get("/me") : result,
+      );
     }
   }
   return (
@@ -219,70 +241,92 @@ function Auth({ onLogin, setup }) {
           <h1>
             {mode === "setup"
               ? "Set up your school"
-              : mode === "forgot"
-                ? "Reset your password"
-                : mode === "reset"
-                  ? "Choose a new password"
-                  : "Welcome back"}
+              : mode === "verify"
+                ? "Verify your email"
+                : mode === "resend"
+                  ? "Resend verification email"
+                  : mode === "forgot"
+                    ? "Reset your password"
+                    : mode === "reset"
+                      ? "Choose a new password"
+                      : "Welcome back"}
           </h1>
           <p>
             {mode === "setup"
               ? "Create your school workspace and its first administrator."
-              : "Your school, in focus. Sign in to your workspace."}
+              : mode === "verify"
+                ? "Confirm your email address to activate your account."
+                : mode === "resend"
+                  ? "Enter your registration email to receive a new link."
+                  : "Your school, in focus. Sign in to your workspace."}
           </p>
           {message && <div className="notice">{message}</div>}
           <Form
             key={mode}
             fields={
-              mode === "setup"
-                ? setupFields
-                : mode === "forgot"
-                  ? [
-                      {
-                        name: "email",
-                        label: "Email address",
-                        type: "email",
-                        wide: true,
-                      },
-                    ]
-                  : mode === "reset"
+              mode === "verify"
+                ? []
+                : mode === "setup"
+                  ? setupFields
+                  : ["forgot", "resend"].includes(mode)
                     ? [
-                        {
-                          name: "password",
-                          label: "New password",
-                          type: "password",
-                          wide: true,
-                          minLength: 12,
-                        },
-                      ]
-                    : [
                         {
                           name: "email",
                           label: "Email address",
                           type: "email",
                           wide: true,
-                          autoComplete: "username",
-                        },
-                        {
-                          name: "password",
-                          label: "Password",
-                          type: "password",
-                          wide: true,
-                          autoComplete: "current-password",
                         },
                       ]
+                    : mode === "reset"
+                      ? [
+                          {
+                            name: "password",
+                            label: "New password",
+                            type: "password",
+                            wide: true,
+                            minLength: 12,
+                          },
+                        ]
+                      : [
+                          {
+                            name: "email",
+                            label: "Email address",
+                            type: "email",
+                            wide: true,
+                            autoComplete: "username",
+                          },
+                          {
+                            name: "password",
+                            label: "Password",
+                            type: "password",
+                            wide: true,
+                            autoComplete: "current-password",
+                          },
+                        ]
             }
             onSubmit={submit}
             submit={
-              mode === "setup"
-                ? "Create school workspace"
-                : mode === "forgot"
-                  ? "Send reset link"
-                  : mode === "reset"
-                    ? "Update password"
-                    : "Sign in to your workspace"
+              mode === "verify"
+                ? "Verify email"
+                : mode === "resend"
+                  ? "Resend verification email"
+                  : mode === "setup"
+                    ? "Create school workspace"
+                    : mode === "forgot"
+                      ? "Send reset link"
+                      : mode === "reset"
+                        ? "Update password"
+                        : "Sign in to your workspace"
             }
           />
+          {mode === "login" && (
+            <button
+              className="text-button auth-link"
+              onClick={() => setMode("resend")}
+            >
+              Resend verification email
+            </button>
+          )}
           {mode === "login" && (
             <button
               className="text-button auth-link"
@@ -291,7 +335,7 @@ function Auth({ onLogin, setup }) {
               Forgot your password?
             </button>
           )}
-          {mode === "forgot" && (
+          {["forgot", "resend", "verify"].includes(mode) && (
             <button
               className="text-button auth-link"
               onClick={() => {
@@ -878,6 +922,17 @@ createRoot(document.getElementById("root")).render(
       location.pathname.replace(/\/$/, ""),
     ) ? (
       <LegalPage type={location.pathname.replace(/\/$/, "").slice(1)} />
+    ) : new URLSearchParams(location.search).has("verify") ? (
+      <Auth
+        setup={false}
+        onLogin={(session) =>
+          location.assign(
+            session.user.platform_operator
+              ? "/owner"
+              : `/${session.user.portal_slug}/`,
+          )
+        }
+      />
     ) : location.pathname.replace(/\/$/, "") === "/owner" ? (
       <OwnerPortal />
     ) : applyCode ? (

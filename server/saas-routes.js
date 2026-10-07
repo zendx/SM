@@ -188,7 +188,7 @@ export function saasPublicRoutes(db) {
     const config = await settings(db);
     res.json({
       data: {
-        trial_days: 14,
+        trial_days: 30,
         monthly_cents: chargeQuote(10000, {
           currency: config.landing_currency,
           usd_rate: config.landing_usd_rate,
@@ -630,7 +630,7 @@ export function saasRoutes(db) {
       )
         fail(
           422,
-          "Free trials cannot extend beyond their original 14 days. Activate Pro through a verified payment.",
+          "Free trials cannot extend beyond their original 30 days. Activate Pro through a verified payment.",
         );
       const expiredTrial =
         b.action === "RESTORE" && sub.plan === "FREE" && end <= new Date();

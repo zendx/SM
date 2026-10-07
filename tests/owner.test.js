@@ -1,3 +1,5 @@
+import { testMailbox } from "./mailbox.js";
+const verifyFixtureEmail = testMailbox();
 import { randomBytes } from "node:crypto";
 import { verifyCheckout } from "../server/saas-routes.js";
 import * as OTPAuth from "otpauth";
@@ -22,6 +24,7 @@ async function call(path, { client, method = "GET", body } = {}) {
   return { status: res.status, ...(await res.json()) };
 }
 async function login(email, path = "/auth/login") {
+  await verifyFixtureEmail(email, base);
   const res = await fetch(base + path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -263,12 +266,12 @@ test("owner metrics and support tools cover customer accounts with audited recov
   assert.equal((await call("/me", { client: school })).status, 401);
 });
 
-test("standalone owner completes mandatory MFA without school configuration", async () => {
+test("standalone owner optionally enables MFA without school configuration", async () => {
   process.env.REQUIRE_MFA = "true";
   try {
     owner = await login("owner@console.test", "/auth/owner/login");
-    assert.equal(owner.user.mfa_setup_required, true);
-    assert.equal((await call("/saas/owner", { client: owner })).status, 403);
+    assert.equal(owner.user.mfa_setup_required, false);
+    assert.equal((await call("/saas/owner", { client: owner })).status, 200);
     const setup = await call("/auth/mfa/setup", {
       client: owner,
       method: "POST",
