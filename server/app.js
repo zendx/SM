@@ -1,3 +1,4 @@
+import { platformNotificationRoutes } from "./platform-notifications.js";
 import { siteSettingsRoutes, legalRoutes } from "./site-routes.js";
 import { integrationRoutes } from "./integrations.js";
 import express from "express";
@@ -112,6 +113,7 @@ export async function createApp(db, options = {}) {
     "/api/v1",
     authenticate(db),
     subscriptionGate(db),
+    platformNotificationRoutes(db),
     saasRoutes(db),
     accountRoutes(db),
     coreRoutes(db, options),

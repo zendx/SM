@@ -91,7 +91,7 @@ test("initial setup is one-time and authentication requires a valid session", as
   const status = await fetch(base + "/auth/setup");
   assert.equal((await status.json()).data.required, true);
   const data = {
-    school_name: "Test Academy",
+    school_name: "Test Academy", phone_number: "+2348012345678",
     short_code: "TEST",
     currency_code: "NGN",
     timezone: "Africa/Lagos",

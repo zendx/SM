@@ -1,3 +1,4 @@
+import { PlatformInbox } from "./platform-notifications";
 import React, { useEffect } from "react";
 import {
   Users,
@@ -406,6 +407,7 @@ export function Notifications() {
   const q = useData("/notifications");
   return (
     <>
+      <PlatformInbox />
       <PageHead
         title="Notifications"
         description="School updates and delivery status."

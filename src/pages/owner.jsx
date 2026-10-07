@@ -1,3 +1,8 @@
+import {
+  OwnerCommunications,
+  PlatformInbox,
+  NotificationBell,
+} from "./platform-notifications";
 import { PlatformTeam, ManagedSchools } from "./platform-team";
 import { OwnerIssues } from "./owner-support";
 import React, { useEffect, useState } from "react";
@@ -207,12 +212,15 @@ export function OwnerPortal() {
     ["settings", "Payment settings", Settings],
     ["audit", "Audit history", ShieldCheck],
     ["team", "Console team", Users],
+    ["communications", "Tenant communications", Users],
+    ["inbox", "Notifications", LifeBuoy],
     ["security", "Account security", ShieldCheck],
   ].filter(
     ([key]) =>
       !session ||
       session.user.platform_operator ||
       key === "security" ||
+      key === "inbox" ||
       (key === "issues" &&
         ["SALES", "TECHNICAL"].includes(session.user.platform_scope)) ||
       (key === "tenants" && session.user.platform_scope === "SUBSCRIPTIONS"),
@@ -453,6 +461,12 @@ export function OwnerPortal() {
             <small>BUSINESS CONSOLE</small>
             <strong>{sections.find(([key]) => key === active)?.[1]}</strong>
           </div>
+          <NotificationBell
+            onClick={() => {
+              location.hash = "inbox";
+              setSection("inbox");
+            }}
+          />
           <span className="owner-access-pill">
             <ShieldCheck size={14} />{" "}
             {session.user.platform_operator
@@ -463,6 +477,10 @@ export function OwnerPortal() {
         <main className="owner-content">
           {active === "security" ? (
             <OwnerSecurity session={session} reload={reload} />
+          ) : active === "communications" ? (
+            <OwnerCommunications />
+          ) : active === "inbox" ? (
+            <PlatformInbox />
           ) : active === "team" ? (
             <PlatformTeam notify={setMessage} />
           ) : active === "issues" ? (

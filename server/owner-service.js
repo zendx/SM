@@ -1,3 +1,4 @@
+import { supportNotice } from "./platform-notifications.js";
 import { consoleAccess, supportDepartment } from "./platform-access.js";
 import express from "express";
 import { one, rows, insert } from "./db.js";
@@ -77,6 +78,7 @@ export function ownerSupportRoutes(db) {
         "SUPPORT_REQUESTED",
         { ticket_id: t.id, subject: t.subject, department: t.department },
       );
+      await supportNotice(tx, t, req.user);
       return t;
     });
     res.status(201).json({ data: ticket });
@@ -343,6 +345,7 @@ export function ownerSupportRoutes(db) {
         previous_status: before.status,
         status: t.status,
       });
+      await supportNotice(tx, t, req.user, true);
       return t;
     });
     res.json({ data: ticket });
