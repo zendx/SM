@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Form, Button } from "../components";
-import { post, setCsrf } from "../api";
+import { post } from "../api";
 import { useData } from "../hooks";
 import "../saas.css";
 import { WhatsAppHelp } from "./whatsapp-help";
@@ -74,7 +74,7 @@ export function registrationFields(
       name: "plan",
       label: "Plan",
       options: [
-        { value: "FREE", label: "Free — 14-day trial" },
+        { value: "FREE", label: "Free — 30-day trial" },
         { value: "PRO", label: "Pro" },
       ],
       default: plan,
@@ -127,6 +127,7 @@ export function PublicBrand() {
 export function Signup() {
   const params = new URLSearchParams(location.search),
     q = useData("/saas/plans", null);
+  const [registered, setRegistered] = useState(null);
   return (
     <div className="signup-shell">
       <header>
@@ -151,7 +152,7 @@ export function Signup() {
               <Check /> Access based on each person’s role
             </li>
             <li>
-              <Check /> All modules in your 14-day trial
+              <Check /> All modules in your 30-day trial
             </li>
             <li>
               <Check /> {subscriptionMoney(10000, q.data || {})}/month or{" "}
@@ -161,7 +162,7 @@ export function Signup() {
           <div className="signup-note">
             <ShieldCheck />
             <p>
-              Your trial ends after 14 days. No card is required and no
+              Your trial ends after 30 days. No card is required and no
               automatic charge follows the trial. Pro access starts after
               payment is verified.
             </p>
@@ -170,7 +171,12 @@ export function Signup() {
         <section className="signup-form">
           <h2>Create your school account</h2>
           <p>You will be your school’s administrator.</p>
-          {q.error ? (
+          {registered ? (
+            <div className="notice">
+              {registered.message}{" "}
+              <a href="/login">Sign in or resend verification</a>
+            </div>
+          ) : q.error ? (
             <p className="form-error">{q.error}</p>
           ) : q.data && !q.data.registration_open ? (
             <div className="notice">
@@ -187,12 +193,7 @@ export function Signup() {
               submit="Create school portal"
               onSubmit={async (v) => {
                 const result = await post("/saas/register", v);
-                const login = await post("/auth/login", {
-                  email: v.email,
-                  password: v.password,
-                });
-                setCsrf(login.csrf);
-                location.assign(result.portal_url + "#subscription");
+                setRegistered(result);
               }}
             >
               <p className="muted">
@@ -359,7 +360,7 @@ export function Landing() {
             </p>
             <div className="hero-actions">
               <a className="btn" href="/signup">
-                Start your 14-day free trial <ArrowUpRight size={18} />
+                Start your 30-day free trial <ArrowUpRight size={18} />
               </a>
               <a className="sales-text-link" href="#features">
                 Explore SMPIS <ArrowRight size={17} />
@@ -520,7 +521,7 @@ export function Landing() {
               [
                 "03",
                 "Start free. Grow with Pro.",
-                "Explore every module for 14 days. Upgrade by bank transfer or card when you are ready.",
+                "Explore every module for 30 days. Upgrade by bank transfer or card when you are ready.",
               ],
             ].map(([n, title, copy]) => (
               <article key={n}>
@@ -566,9 +567,9 @@ export function Landing() {
                 className={`plan-price ${displayCurrency === "NGN" ? "ngn-price" : ""}`}
               >
                 {displayPrice(0)}
-                <span>/ 14 days</span>
+                <span>/ 30 days</span>
               </div>
-              <p className="price-note">A 14-day trial. No card required.</p>
+              <p className="price-note">A 30-day trial. No card required.</p>
               <a className="btn secondary" href="/signup">
                 Start free trial <ArrowUpRight size={17} />
               </a>
@@ -643,7 +644,7 @@ export function Landing() {
           <div className="faq-list">
             {[
               [
-                "What happens after the 14-day Free plan?",
+                "What happens after the 30-day Free plan?",
                 "Your school’s operational access pauses. Your administrator can still sign in to the billing screen and upgrade to Pro. The trial does not charge your card automatically.",
               ],
               [

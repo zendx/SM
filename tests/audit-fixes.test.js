@@ -47,6 +47,7 @@ test("production login sets Secure even without NODE_ENV=production", async (t) 
       school_id: 1,
       email: "admin@example.com",
       status: "ACTIVE",
+      email_verified: true,
       role: "SUPER_ADMIN",
       permissions: ["*"],
       password_hash: hashPassword("correct-password"),

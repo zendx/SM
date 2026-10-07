@@ -18,10 +18,21 @@ CREATE TABLE IF NOT EXISTS school_subscriptions (
  plan TEXT NOT NULL CHECK(plan IN ('FREE','PRO')),
  billing_cycle TEXT NOT NULL DEFAULT 'MONTHLY' CHECK(billing_cycle IN ('MONTHLY','YEARLY')),
  status TEXT NOT NULL CHECK(status IN ('TRIAL','ACTIVE','PENDING_PAYMENT','SUSPENDED','TERMINATED')),
- trial_ends_at TIMESTAMPTZ NOT NULL DEFAULT now()+interval '14 days',
- period_end TIMESTAMPTZ NOT NULL DEFAULT now()+interval '14 days',
+ trial_ends_at TIMESTAMPTZ NOT NULL DEFAULT now()+interval '30 days',
+ period_end TIMESTAMPTZ NOT NULL DEFAULT now()+interval '30 days',
  suspension_reason TEXT NOT NULL DEFAULT '', updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Upgrade existing 14-day trials once, preserving their original start date.
+ALTER TABLE saas_settings ADD COLUMN IF NOT EXISTS trial_days INT NOT NULL DEFAULT 14;
+UPDATE school_subscriptions SET trial_ends_at=trial_ends_at+interval '16 days',
+ period_end=CASE WHEN plan='FREE' THEN period_end+interval '16 days' ELSE period_end END,
+ status=CASE WHEN plan='FREE' AND suspension_reason='TRIAL_EXPIRED' AND period_end+interval '16 days'>now() THEN 'TRIAL' ELSE status END,
+ suspension_reason=CASE WHEN plan='FREE' AND suspension_reason='TRIAL_EXPIRED' AND period_end+interval '16 days'>now() THEN '' ELSE suspension_reason END
+ WHERE (SELECT trial_days FROM saas_settings WHERE id=1)=14;
+UPDATE saas_settings SET trial_days=30 WHERE id=1;
+ALTER TABLE saas_settings ALTER COLUMN trial_days SET DEFAULT 30;
+ALTER TABLE school_subscriptions ALTER COLUMN trial_ends_at SET DEFAULT now()+interval '30 days';
+ALTER TABLE school_subscriptions ALTER COLUMN period_end SET DEFAULT now()+interval '30 days';
 INSERT INTO school_subscriptions(school_id,plan,status)
  SELECT id,'FREE','TRIAL' FROM schools ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS subscription_payments (
@@ -86,3 +97,43 @@ END $$;
 DROP TRIGGER IF EXISTS smpis_school_trial_default ON schools;
 CREATE TRIGGER smpis_school_trial_default AFTER INSERT ON schools
  FOR EACH ROW EXECUTE FUNCTION smpis_school_trial_default();
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT true;
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+ token_hash TEXT PRIMARY KEY, user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- School users stay scoped to their school. Designated owners may be recorded
+-- as the actor in any school without inventing another user identity.
+CREATE OR REPLACE FUNCTION smpis_check_school_user() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE actor INT;
+BEGIN
+ actor := (to_jsonb(NEW)->>TG_ARGV[0])::int;
+ IF actor IS NOT NULL AND NEW.school_id IS NOT NULL AND NOT EXISTS (
+   SELECT 1 FROM users u WHERE u.id=actor AND
+   (u.school_id=NEW.school_id OR EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id))
+ ) THEN
+   RAISE EXCEPTION 'User does not belong to this school' USING ERRCODE='23503';
+ END IF;
+ RETURN NEW;
+END $$;
+DO $$
+DECLARE relation RECORD; column_name TEXT; trigger_name TEXT;
+BEGIN
+ FOR relation IN
+   SELECT c.conname,c.conrelid,t.relname,c.conkey
+   FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid
+   WHERE c.contype='f' AND c.confrelid='users'::regclass AND array_length(c.conkey,1)=2
+ LOOP
+   SELECT a.attname INTO column_name FROM pg_attribute a
+    WHERE a.attrelid=relation.conrelid AND a.attnum=relation.conkey[2];
+   EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I',relation.conrelid::regclass,relation.conname);
+   EXECUTE format('ALTER TABLE %s ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES users(id)',
+     relation.conrelid::regclass,relation.conname,column_name);
+   trigger_name := 'smpis_school_user_' || column_name;
+   EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s',trigger_name,relation.conrelid::regclass);
+   EXECUTE format('CREATE CONSTRAINT TRIGGER %I AFTER INSERT OR UPDATE ON %s DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION smpis_check_school_user(%L)',
+     trigger_name,relation.conrelid::regclass,column_name);
+ END LOOP;
+END $$;

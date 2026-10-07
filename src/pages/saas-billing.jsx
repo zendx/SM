@@ -172,7 +172,7 @@ export function Subscription({
       <PageHead
         eyebrow="YOUR SCHOOL SUBSCRIPTION"
         title="Keep your school connected"
-        description={`Free for 14 days. Pro is ${usd(10000)}/month or ${usd(102000)}/year with a 15% yearly discount.`}
+        description={`Free for 30 days. Pro is ${usd(10000)}/month or ${usd(102000)}/year with a 15% yearly discount.`}
       />
       {blocked && (
         <div className="notice">
@@ -214,7 +214,7 @@ export function Subscription({
           value={new Date(sub.period_end).toLocaleDateString()}
           detail={
             sub.plan === "FREE"
-              ? "14-day trial"
+              ? "30-day trial"
               : `${config.grace_days} grace days after expiry`
           }
           icon={Clock}
@@ -649,7 +649,7 @@ export function SaasOwner({ notify = () => {}, section }) {
                 label: "Plan",
                 render: (t) =>
                   t.plan === "FREE"
-                    ? "Free · 14-day trial"
+                    ? "Free · 30-day trial"
                     : `Pro · ${t.billing_cycle.toLowerCase()}`,
               },
               {
@@ -788,7 +788,7 @@ export function SaasOwner({ notify = () => {}, section }) {
               submit="Save bank & subscription settings"
             />
             <p className="muted">
-              The Free trial always expires at 14 days. Pro suspends
+              The Free trial always expires at 30 days. Pro suspends
               automatically after its expiry plus the configured grace days.
               Leaving bank details empty disables transfer submission.
             </p>
@@ -877,7 +877,7 @@ export function SaasOwner({ notify = () => {}, section }) {
               : action.action === "SUSPEND"
                 ? "This immediately blocks operational access. Payments cannot override a manual suspension."
                 : action.tenant.plan === "FREE"
-                  ? "Restoration keeps the original 14-day trial expiry. If the trial has ended, access stays paused and Pro payment becomes available."
+                  ? "Restoration keeps the original 30-day trial expiry. If the trial has ended, access stays paused and Pro payment becomes available."
                   : "Choose how long access should remain available. Extending access here does not record revenue."}
           </p>
           <Form

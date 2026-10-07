@@ -284,6 +284,9 @@ export function OwnerPortal() {
             </p>
             {error && <p className="form-error">{error}</p>}
             {message && <p className="notice">{message}</p>}
+            {!setupRequired && (
+              <a href="/login">Verify your email or resend verification</a>
+            )}
             {session && !session.user.platform_operator ? (
               <div className="notice">
                 <p>
@@ -326,8 +329,10 @@ export function OwnerPortal() {
                 }
                 onSubmit={async (v) => {
                   if (setupRequired) {
-                    await post("/auth/owner/setup", v);
+                    const created = await post("/auth/owner/setup", v);
+                    setMessage(created.message);
                     setSetupRequired(false);
+                    return;
                   }
                   const result = await post("/auth/owner/login", {
                     email: v.email,

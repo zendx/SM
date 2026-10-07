@@ -1,3 +1,5 @@
+import { testMailbox } from "./mailbox.js";
+const verifyFixtureEmail = testMailbox();
 import { test as unitTest } from "node:test";
 import { test, before, after, openTestDatabase } from "./database.js";
 import assert from "node:assert/strict";
@@ -128,6 +130,7 @@ async function request(path, { client, method = "GET", body, portal } = {}) {
   return { status: res.status, ...(await res.json()) };
 }
 async function login(email, portal) {
+  await verifyFixtureEmail(email, base);
   const res = await fetch(base + "/auth/login", {
     method: "POST",
     headers: {
@@ -180,7 +183,7 @@ test("public signup cannot bootstrap an owner; owner setup remains one-time", as
   owner = await login("owner@saas.test");
   assert.equal(owner.user.platform_operator, true);
 });
-test("self signup gives 14-day school portal without owner privileges; Pro waits for payment", async () => {
+test("self signup gives 30-day school portal without owner privileges; Pro waits for payment", async () => {
   const result = await request("/saas/register", {
     method: "POST",
     body: registration("greenfield"),
@@ -198,7 +201,7 @@ test("self signup gives 14-day school portal without owner privileges; Pro waits
   assert.ok(
     Math.abs(
       (new Date(s.data.period_end) - new Date(created.created_at)) / 86400000 -
-        14,
+        30,
     ) < 0.0001,
   );
   assert.equal((await request("/saas/owner", { client: free })).status, 403);
@@ -563,7 +566,7 @@ test("renewal reminders are deduplicated and owner CSV exports include the ledge
   });
   assert.equal(tenantDenied.status, 402);
 });
-test("owner restoration cannot extend a Free trial beyond 14 days", async () => {
+test("owner restoration cannot extend a Free trial beyond 30 days", async () => {
   const school = await one(
     db,
     "SELECT id FROM schools WHERE portal_slug='reminder-school'",
@@ -574,7 +577,7 @@ test("owner restoration cannot extend a Free trial beyond 14 days", async () => 
     body: {
       action: "RESTORE",
       reason: "Invalid extension",
-      access_until: new Date(Date.now() + 30 * 86400000).toISOString(),
+      access_until: new Date(Date.now() + 31 * 86400000).toISOString(),
     },
   });
   assert.equal(r.status, 422);
