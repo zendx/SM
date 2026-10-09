@@ -22,6 +22,31 @@ const result = (overrides = {}) => ({
 const requestFor = (body) => async () =>
   new Response(JSON.stringify(body), { status: 200 });
 
+// Observed live API envelope: HTTP 200, no body status or list_match.
+const liveResult = (action = "allow") => ({
+  message: "Success",
+  description: "Email verification completed.",
+  data: {
+    classification: { is_disposable: false, is_public: true },
+    policy: { action, reason_code: "UNKNOWN", risk: "low" },
+  },
+});
+
+unitTest("StopReg accepts the live response envelope and enforces its policy", async () => {
+  await screenRegistrationEmail("admin@school.test", {
+    apiToken: "fake-test-token",
+    request: requestFor(liveResult()),
+  });
+  for (const action of ["warn", "block"])
+    await assert.rejects(
+      screenRegistrationEmail("admin@school.test", {
+        apiToken: "fake-test-token",
+        request: requestFor(liveResult(action)),
+      }),
+      (error) => error.status === 422 && error.code === "EMAIL_FLAGGED",
+    );
+});
+
 unitTest(
   "StopReg keeps credentials server-side and accepts legitimate public/role-based emails",
   async () => {
@@ -86,6 +111,9 @@ unitTest(
       async () => new Response("secret", { status: 401 }),
       async () => new Response("not-json"),
       requestFor({ status: 200, data: {} }),
+      requestFor({ ...liveResult(), status: 500 }),
+      requestFor({ data: { classification: { is_disposable: false } } }),
+      requestFor(result({ list_match: { blocklisted: "false" } })),
       requestFor(result({ classification: { is_disposable: "false" } })),
     ])
       await assert.rejects(
@@ -149,7 +177,7 @@ test("registration rejects screened email before any database records or verific
     assert.equal((await post("/auth/owner/setup", owner)).status, 422);
     assert.equal((await one(db, "SELECT count(*)::int AS n FROM users")).n, 0);
     assert.equal(mailCount, 0);
-    check = result();
+    check = liveResult();
     assert.equal((await post("/auth/owner/setup", owner)).status, 201);
     assert.equal(mailCount, 1);
     const signup = {

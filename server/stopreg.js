@@ -2,10 +2,11 @@ import { z } from "./validation.js";
 import { fail } from "./security.js";
 
 const resultSchema = z.object({
-  status: z.literal(200),
+  // Live responses can omit the body status; HTTP success is checked below.
+  status: z.literal(200).optional(),
   data: z.object({
     classification: z.object({ is_disposable: z.boolean() }),
-    list_match: z.object({ blocklisted: z.boolean() }),
+    list_match: z.object({ blocklisted: z.boolean() }).optional(),
     policy: z.object({
       action: z.enum(["allow", "warn", "block"]),
       reason_code: z.string().optional(),
@@ -46,7 +47,7 @@ export async function screenRegistrationEmail(
       "You can't register with a disposable or temporary email address. Please use a permanent personal or school email address.",
       "DISPOSABLE_EMAIL",
     );
-  if (result.list_match.blocklisted)
+  if (result.list_match?.blocklisted)
     fail(
       422,
       "This email address or its domain is blocked by our email screening service. Please use another permanent email address or contact SMPIS support if you believe this is a mistake.",
