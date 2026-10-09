@@ -4,6 +4,7 @@ import { z } from "./validation.js";
 import { fail } from "./security.js";
 import { requireOwner } from "./platform-access.js";
 import { subscriptionEvent } from "./saas-service.js";
+import { brandedEmail, emailLogo } from "./email-design.js";
 
 export const emailTemplates = {
   subscription_reminder: {
@@ -17,14 +18,14 @@ export const emailTemplates = {
     name: "Email verification",
     direction: "Outbound",
     subject: "Verify your SMPIS email",
-    body: "Hello {{name}},\n\nVerify your email by opening {{link}}. This link expires in 24 hours.",
+    body: "Hello {{name}},\n\nWelcome to SMPIS! Please verify your email address to finish setting up your account and start connecting your school.\n\n{{link}}\n\nThis verification link expires in 24 hours. If you didn’t create an account, you can ignore this email.",
     variables: ["name", "link"],
   },
   password_reset: {
     name: "Password reset",
     direction: "Outbound",
     subject: "Reset your SMPIS password",
-    body: "Hello {{name}},\n\nOpen {{link}} to reset your password. This link expires in 30 minutes.",
+    body: "Hello {{name}},\n\nWe received a request to reset your SMPIS password. Use the secure link below to choose a new password.\n\n{{link}}\n\nThis password reset link expires in 30 minutes. If you didn’t request it, you can ignore this email.",
     variables: ["name", "link"],
   },
   notification: {
@@ -48,6 +49,20 @@ export const emailTemplates = {
     body: "{{body}}\n\nOpen {{link}}",
     variables: ["title", "body", "link"],
   },
+  school_notification: {
+    name: "School alerts and fee reminders",
+    direction: "Outbound",
+    subject: "{{title}}",
+    body: "{{body}}\n\nOpen your school portal: {{link}}",
+    variables: ["title", "body", "link"],
+  },
+  mfa_reminder: {
+    name: "Account security reminder",
+    direction: "Outbound",
+    subject: "Secure your SMPIS account with two-factor authentication",
+    body: "{{body}}\n\nOpen your account security settings: {{link}}",
+    variables: ["body", "link"],
+  },
 };
 export function renderTemplate(template, values) {
   const replace = (value) =>
@@ -63,7 +78,12 @@ export async function renderEmail(db, key, values) {
     "SELECT subject,body FROM platform_email_templates WHERE key=$1",
     [key],
   );
-  return renderTemplate(template || emailTemplates[key], values);
+  const message = renderTemplate(template || emailTemplates[key], values);
+  return {
+    ...message,
+    html: brandedEmail({ ...message, link: values.link, key }),
+    attachments: [await emailLogo()],
+  };
 }
 export function emailTemplateRoutes(db) {
   const r = express.Router();

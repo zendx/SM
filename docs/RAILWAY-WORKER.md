@@ -31,7 +31,9 @@ Add the same values used by the Vercel app for the following variables:
 | `INTEGRATION_ENCRYPTION_KEY` | Must be exactly the same key as Vercel uses, so the worker can decrypt saved school integration settings. |
 | `DB_POOL_MAX` | Set to `1` to limit the worker's database connections. |
 | `DB_SSL_CA` | Set only if your database connection requires a custom trusted certificate. |
-| `APP_URL` | Optional shared public origin: `https://smpis.digital`. Set this on Vercel for canonical links, recovery links and payment callbacks. |
+| `APP_URL` | Shared public origin: `https://smpis.digital`. Required for clickable email action buttons in worker messages. |
+| `SMTP_URL` | Platform SMTP connection string for tenant announcements, support alerts and MFA reminders. School SMTP settings do not replace platform SMTP. |
+| `MAIL_FROM` | Verified platform sender address. |
 | `FEE_REMINDER_DAYS` | Optional. Defaults to `7,14,30`. |
 
 Set `NODE_ENV=production` if desired; no HTTP port, `HOST`, `CRON_SECRET`, or Vercel-specific variables are required by the worker. Configure SMTP in Administration > Integrations (or supply the optional server email defaults described in the main README) for actual notification delivery.
@@ -50,3 +52,5 @@ npm run supabase:check
 The worker intentionally connects with schema initialization disabled. Check the Railway deploy logs for `SMPIS background worker started.` and `Background job run completed.`. On shutdown it handles Railway's `SIGTERM`, finishes the active run, and closes its database pool.
 
 The existing notification delivery retries transient failures up to five attempts. SMTP still cannot guarantee exactly-once delivery if a process stops after a provider accepts a message but before the database records it as sent.
+
+Verified active accounts without MFA receive an inbox reminder seven days after account creation, then once per seven-day period until MFA is enabled. Tenant reminders require a current active or trial subscription. The existing offline delivery rules email unread reminders; users active in the portal see them in their inbox. Pending MFA reminders stop being emailed as soon as MFA is enabled, and the next worker run clears them from the unread inbox. Messages use the editable Account security reminder template and the SMPIS HTML design with an embedded logo and plain-text fallback. No additional schema migration is needed for this feature when the current notification tables are installed.

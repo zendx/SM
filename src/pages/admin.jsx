@@ -223,7 +223,11 @@ export function Administration({
     users = useData(isAdmin ? "/users" : null),
     classes = useData(isAdmin ? "/classes" : null),
     audit = useData(isAdmin ? "/audit" : null);
-  const [tab, setTab] = useState(isAdmin ? "school" : "security"),
+  const [tab, setTab] = useState(
+    !isAdmin || new URLSearchParams(location.search).get("security") === "mfa"
+      ? "security"
+      : "school",
+  ),
     [modal, setModal] = useState(null),
     [mfa, setMfa] = useState(null),
     [enabled, setEnabled] = useState(user.mfa_enabled),

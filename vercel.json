@@ -5,7 +5,7 @@
   "framework": "express",
   "functions": {
     "**": {
-      "includeFiles": "{public/**,server/*.sql}"
+      "includeFiles": "{public/**,server/*.sql,server/email-assets/**}"
     }
   }
 }

@@ -102,6 +102,11 @@ export async function deliverPlatformNotifications(
     db,
     `SELECT n.id FROM platform_notifications n JOIN users u ON u.id=n.user_id
     WHERE n.email_status='PENDING' AND n.attempts<5 AND n.read_at IS NULL AND u.status='ACTIVE' AND u.email_verified
+    AND (n.template_key<>'mfa_reminder' OR NOT u.mfa_enabled)
+    AND (n.template_key<>'mfa_reminder' OR n.school_id IS NULL OR EXISTS(
+      SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id
+      AND sc.status IN ('TRIAL','ACTIVE') AND sc.closed_at IS NULL
+      AND sc.deletion_requested_at IS NULL AND sc.period_end>now()))
     AND (n.claimed_until IS NULL OR n.claimed_until<=now())
     AND NOT EXISTS(SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id AND (sc.closed_at IS NOT NULL OR sc.deletion_effective_at<=now()))
     AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.user_id=n.user_id AND s.expires_at>now() AND s.mfa_verified AND s.last_seen_at>now()-interval '2 minutes')
@@ -114,6 +119,11 @@ export async function deliverPlatformNotifications(
       `UPDATE platform_notifications n SET claim_token=$2,claimed_until=now()+interval '5 minutes'
       WHERE n.id=$1 AND n.email_status='PENDING' AND n.read_at IS NULL AND n.attempts<5
       AND (n.claimed_until IS NULL OR n.claimed_until<=now())
+      AND EXISTS(SELECT 1 FROM users u WHERE u.id=n.user_id AND u.status='ACTIVE' AND u.email_verified AND (n.template_key<>'mfa_reminder' OR NOT u.mfa_enabled))
+      AND (n.template_key<>'mfa_reminder' OR n.school_id IS NULL OR EXISTS(
+        SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id
+        AND sc.status IN ('TRIAL','ACTIVE') AND sc.closed_at IS NULL
+        AND sc.deletion_requested_at IS NULL AND sc.period_end>now()))
       AND NOT EXISTS(SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id AND (sc.closed_at IS NOT NULL OR sc.deletion_effective_at<=now()))
       AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.user_id=n.user_id AND s.expires_at>now() AND s.mfa_verified AND s.last_seen_at>now()-interval '2 minutes') RETURNING n.*`,
       [candidate.id, claim],

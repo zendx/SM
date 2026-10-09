@@ -358,6 +358,7 @@ try {
   await field("Administrator name").fill("Oakridge Administrator");
   await field("Administrator email").fill("oak@example.test");
   await field("Administrator password").fill("Oakridge-initial-pass!");
+  await field("Confirm password").fill("Oakridge-initial-pass!");
   await field("Academic year").fill("Next school year");
   await field("Year starts").fill(today);
   await field("Year ends").fill(day(365));
