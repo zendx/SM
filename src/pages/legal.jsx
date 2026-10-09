@@ -280,12 +280,12 @@ export function LegalPage({ type }) {
           <h2>Email, phone numbers and promotional communications</h2>
           <p>
             SMPIS uses your account email address for verification, password
-            recovery, security and MFA reminders, subscription updates, support
-            replies and other account or service notifications. We collect the
-            administrator phone number at school registration for contact and
-            support. These service purposes are separate from promotional use;
-            declining marketing does not prevent signup or essential account
-            communications.
+            recovery, welcome emails and a scheduled portal tour, security and
+            MFA reminders, subscription updates, support replies and other
+            account or service notifications. We collect the administrator phone
+            number at school registration for contact and support. These service
+            purposes are separate from promotional use; declining marketing does
+            not prevent signup or essential account communications.
           </p>
           <p>
             If you separately opt in, we use your email address to send SMPIS

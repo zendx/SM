@@ -193,3 +193,22 @@ ALTER TABLE platform_notifications ADD COLUMN IF NOT EXISTS template_key TEXT NO
 UPDATE platform_notifications SET template_key=CASE WHEN title LIKE 'SMPIS replied to support ticket #%'
  THEN 'support_reply' ELSE 'support_received' END
  WHERE template_key='notification' AND dedupe_key LIKE 'support:%';
+
+CREATE TABLE IF NOT EXISTS onboarding_email_steps (
+ id SERIAL PRIMARY KEY,name TEXT NOT NULL,template_key TEXT NOT NULL UNIQUE,
+ delay_minutes INT NOT NULL CHECK(delay_minutes BETWEEN 0 AND 43200),
+ enabled BOOLEAN NOT NULL DEFAULT true,updated_by INT REFERENCES users(id),
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO onboarding_email_steps(name,template_key,delay_minutes) VALUES
+ ('Welcome to your school portal','onboarding_welcome',0),
+ ('Your SMPIS menu tour','onboarding_tour',30)
+ ON CONFLICT(template_key) DO NOTHING;
+CREATE TABLE IF NOT EXISTS onboarding_email_queue (
+ id SERIAL PRIMARY KEY,user_id INT NOT NULL REFERENCES users(id),step_id INT NOT NULL REFERENCES onboarding_email_steps(id),
+ scheduled_at TIMESTAMPTZ NOT NULL,next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+ delivery_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(delivery_status IN ('PENDING','SENT','FAILED','CANCELLED')),
+ attempts INT NOT NULL DEFAULT 0,claim_token TEXT,claimed_until TIMESTAMPTZ,sent_at TIMESTAMPTZ,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(user_id,step_id)
+);
+CREATE INDEX IF NOT EXISTS onboarding_email_due ON onboarding_email_queue(delivery_status,scheduled_at,next_attempt_at);

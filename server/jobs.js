@@ -9,9 +9,11 @@ import { localClock, token } from "./security.js";
 import { refreshOperationAlerts } from "./operations-service.js";
 import { expireSubscriptions } from "./saas-service.js";
 import { queueMfaReminders } from "./mfa-reminders.js";
+import { deliverOnboardingEmails } from "./onboarding-emails.js";
 export async function runJobs(db) {
   await finalizeClosures(db);
   await expireSubscriptions(db);
+  await deliverOnboardingEmails(db);
   await queueMfaReminders(db);
   // Database dedupe keys make reminders safe across overlapping job runners.
   await db.query(`INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key)

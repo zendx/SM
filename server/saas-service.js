@@ -2,6 +2,7 @@ import { sendVerification, verificationMailer } from "./email-verification.js";
 import { screenRegistrationEmail } from "./stopreg.js";
 import { one, rows, insert, audit } from "./db.js";
 import { PRIVACY_POLICY_VERSION } from "./contact-consent.js";
+import { queueOnboardingEmails } from "./onboarding-emails.js";
 import { fail, hashPassword, token } from "./security.js";
 import { z, email, password, text, date, phoneNumber } from "./validation.js";
 import { providerSummaries } from "./saas-providers.js";
@@ -195,6 +196,7 @@ export async function registerSchool(db, values, owner = null) {
       owner?.id || admin.id,
     );
     await sendVerification(tx, admin, mailer);
+    await queueOnboardingEmails(tx, admin);
     return {
       verification_required: true,
       message: "Check your email to verify your account before signing in.",

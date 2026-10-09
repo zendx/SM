@@ -23,6 +23,11 @@ export function emailLink(value) {
 }
 
 const actions = {
+  onboarding_welcome: [
+    "Welcome to your school portal",
+    "Open your school portal",
+  ],
+  onboarding_tour: ["Find your way around SMPIS", "Explore your school portal"],
   verification: [
     "Welcome to your school’s next chapter",
     "Verify email address",
