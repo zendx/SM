@@ -30,7 +30,9 @@ Add these under Vercel Project Settings > Environment Variables for each environ
 | `REQUIRE_MFA` | `true`. |
 | `DB_SSL_CA` | Optional trusted database certificate PEM, if required by your connection. |
 
-Do not upload `.env` or put credentials in `VITE_` variables. SMTP and payment credentials can be entered later through Administration > Integrations. Environment `SMTP_URL`, `MAIL_FROM`, `PAYSTACK_SCHOOL_KEYS_JSON`, and `PAYSTACK_LIVE_ENABLED` remain optional compatibility defaults.
+Do not upload `.env` or put credentials in `VITE_` variables. Set platform `SMTP_URL` and `MAIL_FROM` before accepting registrations: owner and school signup require verification email delivery. School SMTP configured through Administration > Integrations does not configure platform registration emails. `PAYSTACK_SCHOOL_KEYS_JSON` and `PAYSTACK_LIVE_ENABLED` remain optional compatibility defaults.
+
+For Brevo SMTP, a `525 Unauthorized IP address` response means the sending server's IP is not authorized by the account's SMTP IP restrictions. Authorize the actual deployment's outgoing IP addresses in Brevo. Deployments with changing outgoing IPs require a compatible Brevo IP policy or a stable outgoing IP. Fix the provider settings before retrying registration; failed verification delivery rolls back new school records. See [Brevo SMTP troubleshooting](https://help.brevo.com/hc/en-us/articles/115000188150-Troubleshooting-Issues-with-Brevo-SMTP). Server logs show a sanitized delivery error; the browser receives `EMAIL_VERIFICATION_UNAVAILABLE` without provider details.
 
 If the project already has encrypted integration settings, reuse its existing encryption key rather than generating a replacement.
 

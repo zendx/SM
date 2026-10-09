@@ -8,9 +8,11 @@ import { refreshAlerts } from "./services.js";
 import { localClock, token } from "./security.js";
 import { refreshOperationAlerts } from "./operations-service.js";
 import { expireSubscriptions } from "./saas-service.js";
+import { queueMfaReminders } from "./mfa-reminders.js";
 export async function runJobs(db) {
   await finalizeClosures(db);
   await expireSubscriptions(db);
+  await queueMfaReminders(db);
   // Database dedupe keys make reminders safe across overlapping job runners.
   await db.query(`INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key)
     SELECT s.school_id,u.id,u.email,
@@ -98,12 +100,22 @@ export async function deliverNotifications(
         .sendMail({
           from: smtp.from,
           to: n.email,
-          ...(n.dedupe_key?.startsWith("saas-reminder:")
-            ? await renderEmail(db, "subscription_reminder", {
-                title: n.title,
-                body: n.body,
-              })
-            : { subject: n.title, text: n.body }),
+          ...(await renderEmail(
+            db,
+            n.dedupe_key?.startsWith("saas-reminder:")
+              ? "subscription_reminder"
+              : "school_notification",
+            {
+              title: n.title,
+              body: n.body,
+              link: process.env.APP_URL
+                ? new URL(
+                    `/${(await one(db, "SELECT portal_slug FROM schools WHERE id=$1", [n.school_id])).portal_slug}/#${n.dedupe_key?.startsWith("saas-reminder:") ? "subscription" : "notifications"}`,
+                    process.env.APP_URL,
+                  ).href
+                : "",
+            },
+          )),
         }),
   } = {},
 ) {

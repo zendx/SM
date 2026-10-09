@@ -25,9 +25,7 @@ export const planPrice = (cycle, config = {}) => {
   const monthly = Number(
     config.monthly_price_cents ?? config.base_monthly_cents ?? 10000,
   );
-  return cycle === "YEARLY"
-    ? Math.round(monthly * 12 * 0.85)
-    : monthly;
+  return cycle === "YEARLY" ? Math.round(monthly * 12 * 0.85) : monthly;
 };
 export const annualDiscount = (config = {}) =>
   Math.max(
@@ -90,6 +88,15 @@ export function registrationFields(
       type: "password",
       minLength: 12,
       autoComplete: "new-password",
+      wide: true,
+    },
+    {
+      name: "confirm_password",
+      label: "Confirm password",
+      type: "password",
+      autoComplete: "new-password",
+      matches: "password",
+      clientOnly: true,
       wide: true,
     },
     {

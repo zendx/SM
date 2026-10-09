@@ -9,7 +9,7 @@ export function EmailTemplates({ notify = () => {} }) {
   return (
     <Panel
       title="Email templates"
-      description="Edit platform emails to tenants and support-ticket alerts to the owner and assigned department. Templates are plain text."
+      description="Edit messages for tenants and support alerts. Every email uses the SMPIS logo, brand colours and clickable action buttons, with a plain-text version included."
     >
       {q.error && <p className="form-error">{q.error}</p>}
       {(q.data || []).map((template) => (

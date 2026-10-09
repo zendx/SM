@@ -57,6 +57,14 @@ try {
     .getByLabel("Administrator phone number", { exact: false })
     .fill("+2348012345678");
   await page.getByLabel("Administrator password").fill("StopReg-browser-2026!");
+  await page.getByLabel("Confirm password").fill("Different-password-2026!");
+  await page.getByRole("button", { name: "Create school portal" }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "Passwords do not match" })
+    .waitFor();
+  assert.equal((await one(db, "SELECT count(*)::int AS n FROM schools")).n, 0);
+  await page.getByLabel("Confirm password").fill("StopReg-browser-2026!");
   await page.getByRole("button", { name: "Create school portal" }).click();
   await page
     .getByText(

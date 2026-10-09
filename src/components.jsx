@@ -219,7 +219,19 @@ export function Form({
     setBusy(true);
     setError("");
     try {
-      await onSubmit(values);
+      for (const field of fields)
+        if (field.matches && values[field.name] !== values[field.matches])
+          throw new Error(
+            "Passwords do not match. Please enter the same password in both fields.",
+          );
+      await onSubmit(
+        Object.fromEntries(
+          Object.entries(values).filter(
+            ([name]) =>
+              !fields.find((field) => field.name === name)?.clientOnly,
+          ),
+        ),
+      );
     } catch (e) {
       setError(e.message);
     } finally {
