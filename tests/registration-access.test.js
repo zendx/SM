@@ -82,7 +82,9 @@ test("verified registration, optional MFA, 30-day trials and owner portal scope"
     assert.equal(login.data.user.mfa_setup_required, false);
     assert.equal((await call("/saas/owner", null, owner)).status, 200);
     const values = {
-      school_name: "School A", phone_number: "+2348012345678",
+      school_name: "School A",
+      phone_number: "+2348012345678",
+      privacy_accepted: true,
       portal_slug: "school-a",
       name: "Admin",
       email: "admin@test.com",
@@ -98,7 +100,9 @@ test("verified registration, optional MFA, 30-day trials and owner portal scope"
       (
         await call("/saas/register", {
           ...values,
-          school_name: "School B", phone_number: "+2348012345678",
+          school_name: "School B",
+          phone_number: "+2348012345678",
+          privacy_accepted: true,
           portal_slug: "school-b",
           email: "second@test.com",
         })

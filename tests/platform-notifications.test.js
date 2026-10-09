@@ -55,6 +55,7 @@ test("tenant phones, contact export, scoped notices and offline support email de
       const registration = {
         school_name: slug,
         phone_number: "+2348012345678",
+        privacy_accepted: true,
         portal_slug: slug,
         name: "Admin",
         email: `${slug}@notices.test`,

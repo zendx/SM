@@ -55,7 +55,9 @@ test("department delegation and tenant account lifecycle enforce access boundari
       const registered = await call("/saas/register", {
         method: "POST",
         body: {
-          school_name: slug, phone_number: "+2348012345678",
+          school_name: slug,
+          phone_number: "+2348012345678",
+          privacy_accepted: true,
           portal_slug: slug,
           name: "School Admin",
           email: `${slug}@team.test`,
@@ -341,7 +343,9 @@ test("department delegation and tenant account lifecycle enforce access boundari
         await call("/saas/register", {
           method: "POST",
           body: {
-            school_name: "Replacement", phone_number: "+2348012345678",
+            school_name: "Replacement",
+            phone_number: "+2348012345678",
+            privacy_accepted: true,
             portal_slug: "replacement-school",
             name: "Admin",
             email: "first-school@team.test",

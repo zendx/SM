@@ -76,6 +76,7 @@ test("SMTP failure returns a safe signup error, rolls back records and permits r
       name: "Admin",
       email: "admin@test.com",
       phone_number: "+2348012345678",
+      privacy_accepted: true,
       password,
       plan: "FREE",
       year_name: "2026/2027",

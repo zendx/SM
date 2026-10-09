@@ -2,6 +2,7 @@ import express from "express";
 import { z } from "zod";
 import { fail } from "./security.js";
 import { one, audit } from "./db.js";
+import { PRIVACY_POLICY_VERSION } from "./contact-consent.js";
 export function legalRoutes(db) {
   const router = express.Router();
   router.get("/legal/config", async (req, res) => {
@@ -15,9 +16,13 @@ export function legalRoutes(db) {
           settings?.organization || process.env.LEGAL_ORGANIZATION_NAME || "",
         contact:
           settings?.privacy_email || process.env.PRIVACY_CONTACT_EMAIL || "",
-        updated: settings?.updated_at
-          ? new Date(settings.updated_at).toISOString().slice(0, 10)
-          : "2026-10-05",
+        updated:
+          settings?.updated_at &&
+          new Date(settings.updated_at).toISOString().slice(0, 10) >
+            PRIVACY_POLICY_VERSION
+            ? new Date(settings.updated_at).toISOString().slice(0, 10)
+            : PRIVACY_POLICY_VERSION,
+        privacy_policy_version: PRIVACY_POLICY_VERSION,
       },
     });
   });

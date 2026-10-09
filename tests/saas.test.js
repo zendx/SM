@@ -108,6 +108,7 @@ const password = "SaaS-test-password-2026!";
 const registration = (slug, plan = "FREE") => ({
   school_name: slug + " Academy",
   phone_number: "+2348012345678",
+  privacy_accepted: true,
   portal_slug: slug,
   name: "School admin",
   email: slug + "@saas.test",
@@ -170,6 +171,7 @@ test("public signup cannot bootstrap an owner; owner setup remains one-time", as
     body: {
       school_name: "Owner",
       phone_number: "+2348012345678",
+      privacy_accepted: true,
       short_code: "OWNER",
       currency_code: "NGN",
       timezone: "Africa/Lagos",

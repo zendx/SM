@@ -13,6 +13,7 @@ unitTest(
         title: "Your school update",
         body: "A useful update.",
         link: "https://smpis.test/login?verify=example&next=school",
+      unsubscribe_link: "https://smpis.test/login?unsubscribe=example",
       });
       assert.ok(message.subject);
       assert.ok(message.text);

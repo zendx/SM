@@ -57,6 +57,24 @@ try {
     .getByLabel("Administrator phone number", { exact: false })
     .fill("+2348012345678");
   await page.getByLabel("Administrator password").fill("StopReg-browser-2026!");
+  const privacy = page.getByRole("checkbox", {
+    name: /I confirm that I have read the privacy policy/,
+  });
+  assert.equal(await privacy.isChecked(), false);
+  assert.equal(
+    await page
+      .getByRole("checkbox", { name: /Email me promotional/ })
+      .isChecked(),
+    false,
+  );
+  assert.equal(
+    await page
+      .getByRole("checkbox", { name: /Use my phone number/ })
+      .isChecked(),
+    false,
+  );
+  assert.equal(await privacy.getAttribute("required"), "");
+  await privacy.check();
   await page.getByLabel("Confirm password").fill("Different-password-2026!");
   await page.getByRole("button", { name: "Create school portal" }).click();
   await page

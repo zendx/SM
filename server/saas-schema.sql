@@ -154,6 +154,11 @@ ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 ALTER TABLE school_subscriptions ADD COLUMN IF NOT EXISTS tenant_previous_status TEXT;
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_email_consent BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_phone_consent BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_preferences_updated_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_accepted_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_policy_version TEXT NOT NULL DEFAULT '';
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 CREATE TABLE IF NOT EXISTS platform_notifications (
  id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES users(id), school_id INT REFERENCES schools(id),

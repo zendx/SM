@@ -7,6 +7,7 @@ import { requireOwner } from "./platform-access.js";
 import { smtpConfig } from "./integrations.js";
 import { subscriptionEvent } from "./saas-service.js";
 import { renderEmail } from "./email-templates.js";
+import { newsletterUnsubscribeLink } from "./contact-consent.js";
 
 export async function queueNotice(
   db,
@@ -92,6 +93,13 @@ export async function deliverPlatformNotifications(
             link: process.env.APP_URL
               ? new URL(notice.link, process.env.APP_URL).href
               : notice.link,
+            unsubscribe_link:
+              notice.template_key === "promotional_newsletter"
+                ? newsletterUnsubscribeLink({
+                    id: notice.user_id,
+                    email: notice.email,
+                  })
+                : "",
           })),
         }),
   } = {},
@@ -103,6 +111,7 @@ export async function deliverPlatformNotifications(
     `SELECT n.id FROM platform_notifications n JOIN users u ON u.id=n.user_id
     WHERE n.email_status='PENDING' AND n.attempts<5 AND n.read_at IS NULL AND u.status='ACTIVE' AND u.email_verified
     AND (n.template_key<>'mfa_reminder' OR NOT u.mfa_enabled)
+    AND (n.template_key<>'promotional_newsletter' OR u.marketing_email_consent)
     AND (n.template_key<>'mfa_reminder' OR n.school_id IS NULL OR EXISTS(
       SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id
       AND sc.status IN ('TRIAL','ACTIVE') AND sc.closed_at IS NULL
@@ -119,7 +128,7 @@ export async function deliverPlatformNotifications(
       `UPDATE platform_notifications n SET claim_token=$2,claimed_until=now()+interval '5 minutes'
       WHERE n.id=$1 AND n.email_status='PENDING' AND n.read_at IS NULL AND n.attempts<5
       AND (n.claimed_until IS NULL OR n.claimed_until<=now())
-      AND EXISTS(SELECT 1 FROM users u WHERE u.id=n.user_id AND u.status='ACTIVE' AND u.email_verified AND (n.template_key<>'mfa_reminder' OR NOT u.mfa_enabled))
+      AND EXISTS(SELECT 1 FROM users u WHERE u.id=n.user_id AND u.status='ACTIVE' AND u.email_verified AND (n.template_key<>'mfa_reminder' OR NOT u.mfa_enabled) AND (n.template_key<>'promotional_newsletter' OR u.marketing_email_consent))
       AND (n.template_key<>'mfa_reminder' OR n.school_id IS NULL OR EXISTS(
         SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id
         AND sc.status IN ('TRIAL','ACTIVE') AND sc.closed_at IS NULL
@@ -182,9 +191,11 @@ export function platformNotificationRoutes(db) {
   r.get("/saas/owner/contacts", requireOwner, async (req, res) => {
     const contacts = await rows(
       db,
-      `SELECT u.id,u.name,u.email,u.phone_number,u.school_id,c.name AS school_name,c.portal_slug,s.status,s.suspension_reason
+      `SELECT u.id,u.name,u.email,u.phone_number,u.marketing_email_consent,u.marketing_phone_consent,u.contact_preferences_updated_at,u.school_id,c.name AS school_name,c.portal_slug,s.status,s.suspension_reason
       FROM users u JOIN schools c ON c.id=u.school_id JOIN school_subscriptions s ON s.school_id=c.id
-      WHERE u.role='SUPER_ADMIN' AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) ORDER BY c.name,u.name`,
+      WHERE u.role='SUPER_ADMIN' AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id)
+      AND ($1='' OR ($1='email' AND u.marketing_email_consent) OR ($1='phone' AND u.marketing_phone_consent)) ORDER BY c.name,u.name`,
+      [z.enum(["", "email", "phone"]).parse(req.query.marketing || "")],
     );
     if (req.query.format === "csv") {
       const keys = [
@@ -192,6 +203,8 @@ export function platformNotificationRoutes(db) {
         "name",
         "email",
         "phone_number",
+        "marketing_email_consent",
+        "marketing_phone_consent",
         "portal_slug",
         "status",
       ];
@@ -223,6 +236,7 @@ export function platformNotificationRoutes(db) {
         title: text.max(200),
         body: z.string().trim().min(1).max(5000),
         audience: z.enum(["SELECTED", "ALL"]),
+        message_kind: z.enum(["SERVICE", "PROMOTIONAL"]).default("SERVICE"),
         school_ids: z.array(z.number().int().positive()).max(1000).default([]),
       })
       .strict()
@@ -236,8 +250,9 @@ export function platformNotificationRoutes(db) {
         WHERE u.role='SUPER_ADMIN' AND u.status='ACTIVE' AND u.email_verified AND s.closed_at IS NULL
         AND (s.deletion_effective_at IS NULL OR s.deletion_effective_at>now())
         AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id)
+        AND ($3='SERVICE' OR u.marketing_email_consent)
         AND ($1::boolean OR u.school_id=ANY($2::int[]))`,
-        [b.audience === "ALL", b.school_ids],
+        [b.audience === "ALL", b.school_ids, b.message_kind],
       );
       if (!recipients.length)
         fail(422, "No eligible school administrators match this audience.");
@@ -255,6 +270,10 @@ export function platformNotificationRoutes(db) {
             "/#notifications",
           key: "broadcast:" + batch,
           sender: req.user.id,
+          template_key:
+            b.message_kind === "PROMOTIONAL"
+              ? "promotional_newsletter"
+              : "notification",
         });
       await subscriptionEvent(
         tx,
@@ -266,6 +285,7 @@ export function platformNotificationRoutes(db) {
           title: b.title,
           recipients: recipients.length,
           audience: b.audience,
+          message_kind: b.message_kind,
         },
       );
       return {

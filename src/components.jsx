@@ -296,7 +296,7 @@ export function Form({
             >
               <span>
                 {f.label}
-                {f.required !== false && f.type !== "checkbox" && <b> *</b>}
+                {(f.type === "checkbox" ? f.required === true : f.required !== false) && <b> *</b>}
               </span>
               {f.options ? (
                 <select
@@ -339,7 +339,11 @@ export function Form({
                           : e.target.value,
                     })
                   }
-                  required={f.type !== "checkbox" && f.required !== false}
+                  required={
+                    f.type === "checkbox"
+                      ? f.required === true
+                      : f.required !== false
+                  }
                   min={f.min}
                   max={f.max}
                   step={f.step}

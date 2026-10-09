@@ -1,4 +1,5 @@
 import { platformNotificationRoutes } from "./platform-notifications.js";
+import { publicConsentRoutes, contactPreferenceRoutes } from "./contact-consent.js";
 import { schoolPaymentRoutes } from "./school-payments.js";
 import { emailTemplateRoutes } from "./email-templates.js";
 import { siteSettingsRoutes, legalRoutes } from "./site-routes.js";
@@ -109,11 +110,13 @@ export async function createApp(db, options = {}) {
     next();
   });
   app.use("/api/v1", legalRoutes(db));
+  app.use("/api/v1", publicConsentRoutes(db));
   app.use("/api/v1", saasPublicRoutes(db));
   app.use("/api/v1/auth", authRoutes(db, options));
   app.use(
     "/api/v1",
     authenticate(db),
+    contactPreferenceRoutes(db),
     subscriptionGate(db),
     platformNotificationRoutes(db),
     emailTemplateRoutes(db),

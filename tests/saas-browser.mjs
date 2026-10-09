@@ -297,6 +297,11 @@ try {
     .getByLabel("Administrator password", { exact: false })
     .fill(password);
   await page.getByLabel("Confirm password", { exact: false }).fill(password);
+  await page
+    .getByRole("checkbox", {
+      name: /I confirm that I have read the privacy policy/,
+    })
+    .check();
   await page.getByRole("button", { name: "Create school portal" }).click();
   await page.waitForURL(/greenfield-academy\/#subscription/);
   await page

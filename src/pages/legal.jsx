@@ -258,13 +258,15 @@ export function LegalPage({ type }) {
           <h2>Information processed</h2>
           <p>
             Depending on your role and the records your school enters,
-            information includes account names and email addresses; student and
-            guardian contact details; admissions and enrollment; attendance;
-            assessment results and reports; school fee invoices and payment
-            references; staff employment and HR documents; complaints,
-            discipline and survey responses; and security, session and audit
-            records. Schools may enter medical or other sensitive information.
-            The current system does not collect fingerprint or facial templates.
+            information includes account names, email addresses, registration
+            phone numbers, privacy-policy acknowledgments and promotional
+            communication preferences; student and guardian contact details;
+            admissions and enrollment; attendance; assessment results and
+            reports; school fee invoices and payment references; staff
+            employment and HR documents; complaints, discipline and survey
+            responses; and security, session and audit records. Schools may
+            enter medical or other sensitive information. The current system
+            does not collect fingerprint or facial templates.
           </p>
           <h2>Why information is used</h2>
           <p>
@@ -275,13 +277,57 @@ export function LegalPage({ type }) {
             conditions for sensitive information and children's data. Cookie
             notice acceptance is not blanket permission for these activities.
           </p>
+          <h2>Email, phone numbers and promotional communications</h2>
+          <p>
+            SMPIS uses your account email address for verification, password
+            recovery, security and MFA reminders, subscription updates, support
+            replies and other account or service notifications. We collect the
+            administrator phone number at school registration for contact and
+            support. These service purposes are separate from promotional use;
+            declining marketing does not prevent signup or essential account
+            communications.
+          </p>
+          <p>
+            If you separately opt in, we use your email address to send SMPIS
+            promotional newsletters, offers and product news. Promotional use of
+            your phone number requires its own optional choice, separate from
+            email consent. Where that channel is available, it may be used for
+            promotional text or phone messages. Automated SMS delivery is not
+            currently implemented. Providing a phone number, reading this policy
+            or creating an account does not by itself subscribe you to
+            promotions. Your choices apply to your own contact details, not to
+            student, guardian or staff records held by your school.
+          </p>
+          <p>
+            Both promotional choices are unchecked by default. You can change
+            them or withdraw consent in Communication preferences in your SMPIS
+            inbox. Promotional emails include an unsubscribe link that works
+            without signing in; it stops promotional email while leaving your
+            separate phone choice unchanged. You can also contact the published
+            privacy contact about your choices. Declining or withdrawing consent
+            does not affect your account access. Queued promotional emails are
+            checked against your current email preference before delivery.
+          </p>
+          <p>
+            We record the privacy-policy version and acknowledgment time at
+            signup, along with your separate promotional choices and subsequent
+            preference changes. Authorized platform staff can view these choices
+            and export opted-in contact lists for the selected channel. Email
+            delivery providers process recipient addresses and message content
+            to deliver our emails; any phone-message provider used must also be
+            assessed for the relevant processing. Consent records may be
+            retained to document your choices and honour withdrawals, subject to
+            applicable recordkeeping requirements. A required privacy
+            acknowledgment records that you have read this policy; it does not
+            grant promotional consent.
+          </p>
           <h2>Storage and service providers</h2>
           <p>
             The application uses hosted Supabase PostgreSQL and private Supabase
             document storage. Hosting, database and storage providers process
             information needed to provide those services. If configured, the
-            school's SMTP provider processes recipient addresses and email
-            content, and configured payment providers process payment
+            platform or school's SMTP provider processes recipient addresses and
+            email content, and configured payment providers process payment
             information under their own notices. Paystack handles school fee
             checkout; Stripe, Paystack and Flutterwave support SMPIS
             subscription checkout. Subscription records include the school,

@@ -1,6 +1,7 @@
 import { sendVerification, verificationMailer } from "./email-verification.js";
 import { screenRegistrationEmail } from "./stopreg.js";
-import { one, rows, insert } from "./db.js";
+import { one, rows, insert, audit } from "./db.js";
+import { PRIVACY_POLICY_VERSION } from "./contact-consent.js";
 import { fail, hashPassword, token } from "./security.js";
 import { z, email, password, text, date, phoneNumber } from "./validation.js";
 import { providerSummaries } from "./saas-providers.js";
@@ -36,6 +37,9 @@ export const registrationSchema = z.object({
   name: text.max(200),
   email,
   phone_number: phoneNumber,
+  privacy_accepted: z.boolean().default(false),
+  marketing_email_consent: z.boolean().default(false),
+  marketing_phone_consent: z.boolean().default(false),
   password,
   plan: z.enum(["FREE", "PRO"]),
   billing_cycle: z.enum(["MONTHLY", "YEARLY"]).default("MONTHLY"),
@@ -104,6 +108,12 @@ export async function provisionSubscription(
 }
 export async function registerSchool(db, values, owner = null) {
   const b = registrationSchema.parse(values);
+  if (!owner && !b.privacy_accepted)
+    fail(
+      422,
+      "Confirm that you have read the privacy policy before creating your school account.",
+      "PRIVACY_ACCEPTANCE_REQUIRED",
+    );
   if (b.end_date <= b.start_date)
     fail(422, "Academic year end must follow its start.");
   try {
@@ -143,7 +153,27 @@ export async function registerSchool(db, values, owner = null) {
       password_hash: hashPassword(b.password),
       role: "SUPER_ADMIN",
       email_verified: false,
+      marketing_email_consent: !owner && b.marketing_email_consent,
+      marketing_phone_consent: !owner && b.marketing_phone_consent,
+      contact_preferences_updated_at: owner ? null : new Date(),
+      privacy_accepted_at: owner ? null : new Date(),
+      privacy_policy_version: owner ? "" : PRIVACY_POLICY_VERSION,
     });
+    if (!owner)
+      await audit(
+        tx,
+        admin,
+        "users",
+        admin.id,
+        "SIGNUP_CONTACT_CONSENT",
+        null,
+        {
+          marketing_email_consent: admin.marketing_email_consent,
+          marketing_phone_consent: admin.marketing_phone_consent,
+          privacy_accepted_at: admin.privacy_accepted_at,
+          privacy_policy_version: PRIVACY_POLICY_VERSION,
+        },
+      );
     const year = await insert(tx, "academic_years", {
       school_id: school.id,
       name: b.year_name,
