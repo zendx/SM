@@ -666,6 +666,28 @@
   color: #7a887a;
   margin-bottom: 25px;
 }
+.signup-form .check-field {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 8px 12px;
+  align-items: start;
+  padding: 16px 0 0;
+  border-top: 1px solid #e6ece8;
+}
+.signup-form .check-field > span {
+  grid-column: 2;
+  grid-row: 1;
+  line-height: 1.6;
+}
+.signup-form .check-field > input {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 3px;
+}
+.signup-form .check-field > small {
+  grid-column: 2;
+  line-height: 1.6;
+}
 .billing-period {
   display: flex;
   align-items: center;

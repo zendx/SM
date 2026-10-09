@@ -4,6 +4,7 @@ import {
 } from "./pages/platform-notifications";
 import { SchoolSupport } from "./pages/owner-support";
 import { CookieNotice, LegalPage, LegalFooter } from "./pages/legal";
+import { UnsubscribePage } from "./pages/communication-preferences";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -947,6 +948,8 @@ createRoot(document.getElementById("root")).render(
       location.pathname.replace(/\/$/, ""),
     ) ? (
       <LegalPage type={location.pathname.replace(/\/$/, "").slice(1)} />
+    ) : new URLSearchParams(location.search).has("unsubscribe") ? (
+      <UnsubscribePage />
     ) : new URLSearchParams(location.search).has("verify") ? (
       <Auth
         setup={false}

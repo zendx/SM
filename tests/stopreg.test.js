@@ -32,20 +32,23 @@ const liveResult = (action = "allow") => ({
   },
 });
 
-unitTest("StopReg accepts the live response envelope and enforces its policy", async () => {
-  await screenRegistrationEmail("admin@school.test", {
-    apiToken: "fake-test-token",
-    request: requestFor(liveResult()),
-  });
-  for (const action of ["warn", "block"])
-    await assert.rejects(
-      screenRegistrationEmail("admin@school.test", {
-        apiToken: "fake-test-token",
-        request: requestFor(liveResult(action)),
-      }),
-      (error) => error.status === 422 && error.code === "EMAIL_FLAGGED",
-    );
-});
+unitTest(
+  "StopReg accepts the live response envelope and enforces its policy",
+  async () => {
+    await screenRegistrationEmail("admin@school.test", {
+      apiToken: "fake-test-token",
+      request: requestFor(liveResult()),
+    });
+    for (const action of ["warn", "block"])
+      await assert.rejects(
+        screenRegistrationEmail("admin@school.test", {
+          apiToken: "fake-test-token",
+          request: requestFor(liveResult(action)),
+        }),
+        (error) => error.status === 422 && error.code === "EMAIL_FLAGGED",
+      );
+  },
+);
 
 unitTest(
   "StopReg keeps credentials server-side and accepts legitimate public/role-based emails",
@@ -184,6 +187,7 @@ test("registration rejects screened email before any database records or verific
       school_name: "Test School",
       portal_slug: "stopreg-school",
       phone_number: "+2348012345678",
+      privacy_accepted: true,
       name: "Admin",
       email: "school@test.com",
       password: owner.password,

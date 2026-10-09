@@ -3,6 +3,7 @@ import { Bell } from "lucide-react";
 import { useData } from "../hooks";
 import { post } from "../api";
 import { Panel, Form, Button, Table } from "../components";
+import { ContactPreferences } from "./communication-preferences";
 
 export function NotificationBell({ onClick }) {
   const q = useData("/subscription/notices");
@@ -43,81 +44,84 @@ export function PlatformInbox() {
     return () => clearInterval(timer);
   }, []);
   return (
-    <Panel
-      title="SMPIS inbox"
-      description="Announcements and support updates. Unread messages are emailed when you are inactive."
-      action={
-        <Button
-          small
-          secondary
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setError("");
-            try {
-              await post("/subscription/notices/read-all", {});
-              q.reload();
-              window.dispatchEvent(new Event("notices-read"));
-            } catch (e) {
-              setError(e.message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Mark all as read
-        </Button>
-      }
-    >
-      {error && <p className="form-error">{error}</p>}
-      {q.error && <p className="form-error">{q.error}</p>}
-      <Table
-        rows={q.data}
-        columns={[
-          {
-            label: "Notification",
-            render: (n) => (
-              <div>
-                <strong>{n.title}</strong>
-                <p className="support-description">{n.body}</p>
-                <small>{new Date(n.created_at).toLocaleString()}</small>
-              </div>
-            ),
-          },
-          { label: "Status", render: (n) => (n.read_at ? "Read" : "Unread") },
-          {
-            label: "Actions",
-            render: (n) => (
-              <div className="toolbar">
-                <a
-                  href={n.link}
-                  onClick={async (event) => {
-                    event.preventDefault();
-                    await post(`/subscription/notices/${n.id}/read`, {});
-                    location.assign(n.link);
-                  }}
-                >
-                  Open
-                </a>
-                {!n.read_at && (
-                  <Button
-                    small
-                    secondary
-                    onClick={async () => {
+    <>
+      <ContactPreferences />
+      <Panel
+        title="SMPIS inbox"
+        description="Announcements and support updates. Unread messages are emailed when you are inactive."
+        action={
+          <Button
+            small
+            secondary
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                await post("/subscription/notices/read-all", {});
+                q.reload();
+                window.dispatchEvent(new Event("notices-read"));
+              } catch (e) {
+                setError(e.message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Mark all as read
+          </Button>
+        }
+      >
+        {error && <p className="form-error">{error}</p>}
+        {q.error && <p className="form-error">{q.error}</p>}
+        <Table
+          rows={q.data}
+          columns={[
+            {
+              label: "Notification",
+              render: (n) => (
+                <div>
+                  <strong>{n.title}</strong>
+                  <p className="support-description">{n.body}</p>
+                  <small>{new Date(n.created_at).toLocaleString()}</small>
+                </div>
+              ),
+            },
+            { label: "Status", render: (n) => (n.read_at ? "Read" : "Unread") },
+            {
+              label: "Actions",
+              render: (n) => (
+                <div className="toolbar">
+                  <a
+                    href={n.link}
+                    onClick={async (event) => {
+                      event.preventDefault();
                       await post(`/subscription/notices/${n.id}/read`, {});
-                      q.reload();
-                      window.dispatchEvent(new Event("notices-read"));
+                      location.assign(n.link);
                     }}
                   >
-                    Mark as read
-                  </Button>
-                )}
-              </div>
-            ),
-          },
-        ]}
-      />
-    </Panel>
+                    Open
+                  </a>
+                  {!n.read_at && (
+                    <Button
+                      small
+                      secondary
+                      onClick={async () => {
+                        await post(`/subscription/notices/${n.id}/read`, {});
+                        q.reload();
+                        window.dispatchEvent(new Event("notices-read"));
+                      }}
+                    >
+                      Mark as read
+                    </Button>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
+      </Panel>
+    </>
   );
 }
 export function OwnerCommunications() {
@@ -130,12 +134,26 @@ export function OwnerCommunications() {
         title="Tenant contacts"
         description="School administrator email addresses and registration phone numbers."
         action={
-          <a
-            className="btn secondary"
-            href="/api/v1/saas/owner/contacts?format=csv"
-          >
-            Export tenant contacts
-          </a>
+          <div className="toolbar">
+            <a
+              className="btn secondary"
+              href="/api/v1/saas/owner/contacts?format=csv"
+            >
+              Export tenant contacts
+            </a>
+            <a
+              className="btn secondary"
+              href="/api/v1/saas/owner/contacts?format=csv&marketing=email"
+            >
+              Export newsletter opt-ins
+            </a>
+            <a
+              className="btn secondary"
+              href="/api/v1/saas/owner/contacts?format=csv&marketing=phone"
+            >
+              Export phone opt-ins
+            </a>
+          </div>
         }
       >
         {q.error && <p className="form-error">{q.error}</p>}
@@ -163,18 +181,41 @@ export function OwnerCommunications() {
             { label: "Administrator", key: "name" },
             { label: "Email", key: "email" },
             { label: "Phone", key: "phone_number" },
+            {
+              label: "Email promotions",
+              render: (c) =>
+                c.marketing_email_consent ? "Opted in" : "Not opted in",
+            },
+            {
+              label: "Phone promotions",
+              render: (c) =>
+                c.marketing_phone_consent ? "Opted in" : "Not opted in",
+            },
             { label: "Status", key: "status" },
           ]}
         />
       </Panel>
       <Panel
         title="Send tenant notification"
-        description="Messages appear in the school administrator's inbox. Unread messages are emailed after the recipient becomes inactive. Closed accounts and unverified administrators are excluded."
+        description="Service messages reach eligible administrators. Promotional newsletters reach only email opt-ins and include an unsubscribe link. Unread messages are emailed when the recipient is inactive."
       >
         <p>{selected.length} school(s) selected.</p>
         {message && <p className="notice">{message}</p>}
         <Form
           fields={[
+            {
+              name: "message_kind",
+              label: "Message type",
+              wide: true,
+              default: "SERVICE",
+              options: [
+                { value: "SERVICE", label: "Account or service notification" },
+                {
+                  value: "PROMOTIONAL",
+                  label: "Promotional email newsletter (opt-ins only)",
+                },
+              ],
+            },
             {
               name: "audience",
               label: "Recipients",

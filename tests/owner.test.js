@@ -57,6 +57,7 @@ test("owner registration creates a business account without a school and restric
           password,
           school_name: "Unexpected",
           phone_number: "+2348012345678",
+          privacy_accepted: true,
         },
       })
     ).status,
@@ -103,6 +104,7 @@ test("owner metrics and support tools cover customer accounts with audited recov
   const body = {
     school_name: "Customer Academy",
     phone_number: "+2348012345678",
+    privacy_accepted: true,
     portal_slug: "customer-academy",
     name: "School Admin",
     email: "admin@customer.test",

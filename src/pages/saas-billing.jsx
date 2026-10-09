@@ -907,7 +907,7 @@ export function SaasOwner({ notify = () => {}, section }) {
       {create && (
         <Modal title="Create school portal" onClose={() => setCreate(false)}>
           <Form
-            fields={registrationFields("FREE", "MONTHLY", d.settings)}
+            fields={registrationFields("FREE", "MONTHLY", d.settings, false)}
             submit="Create school"
             onSubmit={async (v) => {
               const result = await post("/saas/owner/tenants", v);

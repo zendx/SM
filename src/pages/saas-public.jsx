@@ -62,6 +62,7 @@ export function registrationFields(
   plan = "FREE",
   cycle = "MONTHLY",
   config = {},
+  publicSignup = true,
 ) {
   const year = new Date().getUTCFullYear();
   return [
@@ -139,6 +140,45 @@ export function registrationFields(
       type: "date",
       default: `${year}-12-31`,
     },
+    ...(publicSignup
+      ? [
+          {
+            name: "marketing_email_consent",
+            label:
+              "Email me promotional SMPIS newsletters, offers and product news (optional).",
+            type: "checkbox",
+            required: false,
+            default: false,
+            wide: true,
+          },
+          {
+            name: "marketing_phone_consent",
+            label:
+              "Use my phone number for promotional SMPIS messages (optional).",
+            type: "checkbox",
+            required: false,
+            default: false,
+            wide: true,
+            hint: "Email and phone choices are separate. You can change either choice in your SMPIS inbox. Account and security notifications still apply.",
+          },
+          {
+            name: "privacy_accepted",
+            label: (
+              <>
+                I confirm that I have read the{" "}
+                <a href="/privacy" target="_blank" rel="noreferrer">
+                  privacy policy
+                </a>
+                .
+              </>
+            ),
+            type: "checkbox",
+            required: true,
+            default: false,
+            wide: true,
+          },
+        ]
+      : []),
   ];
 }
 export function PublicBrand() {

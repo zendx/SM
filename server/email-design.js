@@ -42,9 +42,10 @@ const actions = {
   ],
   notification: ["Your school, thoughtfully connected", "Open SMPIS"],
   school_notification: ["An update from your school", "Open school portal"],
+  promotional_newsletter: ["What’s new at SMPIS", "Explore SMPIS"],
 };
 
-export function brandedEmail({ subject, text, link, key }) {
+export function brandedEmail({ subject, text, link, key, unsubscribeLink }) {
   const [heading, action, note] = actions[key] || actions.notification;
   const href = emailLink(link);
   // Keep template content as text; never execute owner or tenant supplied HTML.
@@ -86,7 +87,7 @@ ${
     : ""
 }
 ${note ? `<p style="background:#edf3e9;padding:16px;border-radius:8px;font-size:13px;line-height:1.6;color:#53685e">${escape(note)}</p>` : ""}
-</td></tr><tr><td style="padding:22px 32px;border-top:1px solid #e6ece8;background:#fafbf8"><p style="margin:0;color:#6b7f69;font-size:12px;line-height:1.6">SMPIS · School Management, Performance &amp; Intelligence System<br>A connected school starts here.</p></td></tr>
+</td></tr><tr><td style="padding:22px 32px;border-top:1px solid #e6ece8;background:#fafbf8"><p style="margin:0;color:#6b7f69;font-size:12px;line-height:1.6">SMPIS · School Management, Performance &amp; Intelligence System<br>A connected school starts here.</p>${emailLink(unsubscribeLink) ? `<p style="margin:14px 0 0;color:#6b7f69;font-size:12px;line-height:1.6">You chose to receive SMPIS promotional emails. <a href="${escape(emailLink(unsubscribeLink))}" style="color:#226653">Unsubscribe from promotional emails</a>.</p>` : ""}</td></tr>
 </table></td></tr></table></body></html>`;
 }
 

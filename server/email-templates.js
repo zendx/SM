@@ -4,7 +4,7 @@ import { z } from "./validation.js";
 import { fail } from "./security.js";
 import { requireOwner } from "./platform-access.js";
 import { subscriptionEvent } from "./saas-service.js";
-import { brandedEmail, emailLogo } from "./email-design.js";
+import { brandedEmail, emailLogo, emailLink } from "./email-design.js";
 
 export const emailTemplates = {
   subscription_reminder: {
@@ -63,6 +63,13 @@ export const emailTemplates = {
     body: "{{body}}\n\nOpen your account security settings: {{link}}",
     variables: ["body", "link"],
   },
+  promotional_newsletter: {
+    name: "Promotional email newsletter",
+    direction: "Outbound",
+    subject: "{{title}}",
+    body: "{{body}}\n\nOpen SMPIS: {{link}}",
+    variables: ["title", "body", "link"],
+  },
 };
 export function renderTemplate(template, values) {
   const replace = (value) =>
@@ -73,6 +80,8 @@ export function renderTemplate(template, values) {
   };
 }
 export async function renderEmail(db, key, values) {
+  if (key === "promotional_newsletter" && !emailLink(values.unsubscribe_link))
+    fail(503, "Promotional email requires a working unsubscribe link.");
   const template = await one(
     db,
     "SELECT subject,body FROM platform_email_templates WHERE key=$1",
@@ -81,8 +90,19 @@ export async function renderEmail(db, key, values) {
   const message = renderTemplate(template || emailTemplates[key], values);
   return {
     ...message,
-    html: brandedEmail({ ...message, link: values.link, key }),
+    html: brandedEmail({
+      ...message,
+      link: values.link,
+      key,
+      unsubscribeLink: values.unsubscribe_link,
+    }),
     attachments: [await emailLogo()],
+    ...(key === "promotional_newsletter" && values.unsubscribe_link
+      ? {
+          text: `${message.text}\n\nYou chose to receive SMPIS promotional emails. Unsubscribe: ${values.unsubscribe_link}`,
+          headers: { "List-Unsubscribe": `<${values.unsubscribe_link}>` },
+        }
+      : {}),
   };
 }
 export function emailTemplateRoutes(db) {
