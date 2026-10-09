@@ -1,5 +1,9 @@
 import { platformNotificationRoutes } from "./platform-notifications.js";
-import { publicConsentRoutes, contactPreferenceRoutes } from "./contact-consent.js";
+import { onboardingEmailRoutes } from "./onboarding-emails.js";
+import {
+  publicConsentRoutes,
+  contactPreferenceRoutes,
+} from "./contact-consent.js";
 import { schoolPaymentRoutes } from "./school-payments.js";
 import { emailTemplateRoutes } from "./email-templates.js";
 import { siteSettingsRoutes, legalRoutes } from "./site-routes.js";
@@ -119,6 +123,7 @@ export async function createApp(db, options = {}) {
     contactPreferenceRoutes(db),
     subscriptionGate(db),
     platformNotificationRoutes(db),
+    onboardingEmailRoutes(db),
     emailTemplateRoutes(db),
     saasRoutes(db),
     accountRoutes(db),

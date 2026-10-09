@@ -51,6 +51,7 @@ test("SMTP failure returns a safe signup error, rolls back records and permits r
       "school_subscriptions",
       "subscription_events",
       "email_verification_tokens",
+      "onboarding_email_queue",
     ])
       result[table] = (
         await one(db, `SELECT count(*)::int AS n FROM ${table}`)
