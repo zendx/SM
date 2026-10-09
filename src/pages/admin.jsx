@@ -224,22 +224,22 @@ export function Administration({
     classes = useData(isAdmin ? "/classes" : null),
     audit = useData(isAdmin ? "/audit" : null);
   const [tab, setTab] = useState(
-    !isAdmin || new URLSearchParams(location.search).get("security") === "mfa"
-      ? "security"
-      : "school",
-  ),
+      !isAdmin || new URLSearchParams(location.search).get("security") === "mfa"
+        ? "security"
+        : "school",
+    ),
     [modal, setModal] = useState(null),
     [mfa, setMfa] = useState(null),
     [enabled, setEnabled] = useState(user.mfa_enabled),
     [recovery, setRecovery] = useState(null);
   async function save(path, v, method = post) {
-    await method(path, v);
+    const result = await method(path, v);
     setModal(null);
     users.reload();
     classes.reload();
     audit.reload();
     await reloadConfig();
-    notify("Settings saved.");
+    notify(result?.message || "Settings saved.");
   }
   const yearOptions = config.years.map((y) => ({ value: y.id, label: y.name }));
   return (
@@ -287,8 +287,12 @@ export function Administration({
           </button>
         ))}
       </div>
-      {tab === "site settings" && user.role === "SUPER_ADMIN" && <SiteSettings notify={notify} />}
-      {tab === "integrations" && user.role === "SUPER_ADMIN" && <IntegrationSettings notify={notify} />}
+      {tab === "site settings" && user.role === "SUPER_ADMIN" && (
+        <SiteSettings notify={notify} />
+      )}
+      {tab === "integrations" && user.role === "SUPER_ADMIN" && (
+        <IntegrationSettings notify={notify} />
+      )}
       {tab === "school" && (
         <Panel
           title="School settings"
