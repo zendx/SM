@@ -7,6 +7,21 @@ import { subscriptionEvent } from "./saas-service.js";
 import { brandedEmail, emailLogo, emailLink } from "./email-design.js";
 
 export const emailTemplates = {
+  account_created: {
+    name: "Tenant account created",
+    direction: "Outbound",
+    subject: "Your {{school_name}} portal account is ready",
+    body: "Hello {{name}},\n\nYour administrator has created an account for you on the {{school_name}} SMPIS portal. Your role is {{role}}.\n\nUsername (email): {{email}}\nInitial password: {{password}}\n\nOpen your portal: {{link}}\n\nChoose your own password: on the sign-in page, select Forgot your password?, enter your email address, and use the reset email to set a new password. You can do this before your first sign-in or after signing out.\n\nSecure your account: sign in, open Administration > Security, and select Set up authenticator. Scan the QR code with your authenticator app, enter its code to enable MFA, and save your recovery codes somewhere safe.\n\nOpen Security settings: {{security_link}}\n\nKeep these sign-in details private. The menus available to you depend on your assigned role. Contact your school administrator if you need help.",
+    variables: [
+      "name",
+      "school_name",
+      "role",
+      "email",
+      "password",
+      "link",
+      "security_link",
+    ],
+  },
   onboarding_welcome: {
     name: "Welcome to your school portal",
     direction: "Onboarding",
@@ -108,6 +123,7 @@ export async function renderEmail(db, key, values) {
       ...message,
       link: values.link,
       key,
+      credentialsText: key === "account_created" ? values.password : undefined,
       unsubscribeLink: values.unsubscribe_link,
     }),
     attachments: [await emailLogo()],
@@ -165,6 +181,9 @@ export function emailTemplateRoutes(db) {
           fail(422, "Malformed template placeholder.");
       }
       for (const required of [
+        ...(key === "account_created"
+          ? ["email", "password", "security_link"]
+          : []),
         ...(defaults.variables.includes("link") ? ["link"] : []),
         ...(defaults.variables.includes("body") ? ["body"] : []),
       ])

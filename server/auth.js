@@ -4,6 +4,7 @@ import { consoleAccess } from "./platform-access.js";
 import { sendVerification, verificationMailer } from "./email-verification.js";
 import { smtpConfig } from "./integrations.js";
 import express from "express";
+import { sendAccountCreatedEmail } from "./account-created-email.js";
 import { rateLimit } from "express-rate-limit";
 import { PostgresRateLimitStore } from "./rate-limit-store.js";
 import * as OTPAuth from "otpauth";
@@ -682,7 +683,16 @@ export function accountRoutes(db) {
       });
       return user;
     });
-    res.status(201).json({ data: publicUser(u) });
+    const accountEmailSent = await sendAccountCreatedEmail(db, u, b.password);
+    res.status(201).json({
+      data: {
+        ...publicUser(u),
+        account_email_sent: accountEmailSent,
+        message: accountEmailSent
+          ? "Account created. Sign-in details and security guidance were emailed to the user."
+          : "Account created, but the account email could not be sent. Check the SMTP settings; the user has not received their sign-in details.",
+      },
+    });
   });
   r.patch("/users/:id", requirePermission("admin.write"), async (req, res) => {
     const uid = id.parse(req.params.id),

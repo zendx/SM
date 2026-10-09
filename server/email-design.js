@@ -23,6 +23,7 @@ export function emailLink(value) {
 }
 
 const actions = {
+  account_created: ["Your portal account is ready", "Sign in to your portal"],
   onboarding_welcome: [
     "Welcome to your school portal",
     "Open your school portal",
@@ -50,13 +51,22 @@ const actions = {
   promotional_newsletter: ["What’s new at SMPIS", "Explore SMPIS"],
 };
 
-export function brandedEmail({ subject, text, link, key, unsubscribeLink }) {
+export function brandedEmail({
+  subject,
+  text,
+  link,
+  key,
+  unsubscribeLink,
+  credentialsText,
+}) {
   const [heading, action, note] = actions[key] || actions.notification;
   const href = emailLink(link);
   // Keep template content as text; never execute owner or tenant supplied HTML.
   const content = text
     .split(/\n\s*\n/)
     .map((paragraph) => {
+      if (credentialsText && paragraph.includes(credentialsText))
+        return `<p style="margin:0 0 24px;padding:18px;background:#edf3e9;border:1px solid #d6e6d9;border-radius:8px;font-family:monospace;font-size:15px;line-height:1.8;color:#143e35;white-space:pre-wrap;overflow-wrap:anywhere">${escape(paragraph)}</p>`;
       // The main action and security note have their own dedicated layout below.
       if (
         (href && paragraph.trim() === link) ||
