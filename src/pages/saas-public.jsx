@@ -1,3 +1,4 @@
+import { BrandLogo } from "../brand-logo";
 import React, { useState, useEffect, useRef } from "react";
 import {
   GraduationCap,
@@ -184,12 +185,7 @@ export function registrationFields(
 export function PublicBrand() {
   return (
     <a className="brand" href="/">
-      <span className="brand-mark">
-        <GraduationCap />
-      </span>
-      <span>
-        SMPIS<small>SCHOOL INTELLIGENCE</small>
-      </span>
+      <BrandLogo />
     </a>
   );
 }
@@ -467,7 +463,7 @@ export function Landing() {
           >
             <div className="preview-top">
               <span>
-                <GraduationCap size={18} /> SMPIS
+                <BrandLogo />
               </span>
               <span>
                 School overview <span className="preview-dot" />

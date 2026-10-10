@@ -90,8 +90,8 @@ export function brandedEmail({
 <div style="display:none;max-height:0;overflow:hidden">${escape(subject)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f0e7"><tr><td align="center" style="padding:32px 12px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">
-<tr><td style="background:#143e35;padding:28px 32px;border-bottom:4px solid #d9b46e">
-<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding-right:14px"><img src="cid:smpis-brand" width="52" height="52" alt="SMPIS graduation cap logo" style="display:block;border:0"></td><td><span style="font-size:25px;letter-spacing:2px;font-weight:bold;color:#ffffff">SMPIS</span><br><span style="font-size:10px;letter-spacing:1.5px;color:#d6e6d9">SCHOOL INTELLIGENCE</span></td></tr></table>
+<tr><td style="background:#ffffff;padding:24px 32px;border-bottom:4px solid #d9b46e">
+<img src="cid:smpis-brand" width="340" height="104" alt="SMPIS School Management System" style="display:block;width:100%;max-width:340px;height:auto;border:0">
 </td></tr><tr><td style="padding:34px 32px 12px">
 <p style="margin:0 0 12px;color:#57866c;font-size:11px;letter-spacing:1.8px;font-weight:bold">CLARITY FOR EVERY SCHOOL DAY</p>
 <h1 style="margin:0 0 26px;color:#143e35;font-size:27px;line-height:1.25">${escape(heading)}</h1>${content}

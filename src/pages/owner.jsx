@@ -1,3 +1,4 @@
+import { BrandLogo } from "../brand-logo";
 import {
   OwnerCommunications,
   PlatformInbox,
@@ -35,12 +36,7 @@ const scopesLabel = (scope) =>
 function OwnerBrand() {
   return (
     <a href="/owner" className="brand">
-      <span className="brand-mark">
-        <ChartNoAxesCombined />
-      </span>
-      <span>
-        SMPIS<small>BUSINESS CONSOLE</small>
-      </span>
+      <BrandLogo />
     </a>
   );
 }
