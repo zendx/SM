@@ -1,3 +1,4 @@
+import { BrandLogo } from "./brand-logo";
 import {
   NotificationBell,
   PlatformInbox,
@@ -62,10 +63,7 @@ function PublicApplication({ code }) {
   return (
     <div className="public-application">
       <div className="brand">
-        <span className="brand-mark">
-          <GraduationCap />
-        </span>
-        SMPIS
+        <BrandLogo />
       </div>
       <h1>{q.data?.school.name || "School admissions"}</h1>
       <p>Start your child’s next chapter. Complete the application below.</p>
@@ -207,12 +205,7 @@ function Auth({ onLogin, setup }) {
     <div className="auth-layout">
       <aside className="auth-story">
         <div className="brand">
-          <div className="brand-mark">
-            <GraduationCap />
-          </div>
-          <div>
-            SMPIS<small>SCHOOL INTELLIGENCE</small>
-          </div>
+          <BrandLogo />
         </div>
         <div>
           <div className="eyebrow">A CLEARER VIEW OF YOUR SCHOOL</div>
@@ -822,12 +815,7 @@ function App() {
       )}
       <aside className={`sidebar ${mobile ? "open" : ""}`}>
         <a className="brand" href="#dashboard">
-          <span className="brand-mark">
-            <GraduationCap size={26} />
-          </span>
-          <span>
-            SMPIS<small>SCHOOL INTELLIGENCE</small>
-          </span>
+          <BrandLogo />
         </a>
         <div className="school-chip">
           <div className="school-icon">
