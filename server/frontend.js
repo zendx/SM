@@ -15,6 +15,10 @@ export function serveFrontend(app, directory, { origin = siteOrigin() } = {}) {
         dotfiles: "deny",
         immutable: true,
         maxAge: "1y",
+        // The public logo is also embedded in externally hosted HTML emails.
+        ...(/^smpis-logo-[\w-]+\.png$/.test(asset)
+          ? { headers: { "Cross-Origin-Resource-Policy": "cross-origin" } }
+          : {}),
       },
       (error) => {
         if (!error || res.headersSent) return;
