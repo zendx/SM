@@ -47,6 +47,7 @@ export function CookieNotice() {
 export function LegalFooter() {
   return (
     <footer className="legal-footer">
+      <a href="mailto:info@smpis.digital">info@smpis.digital</a>
       <a href="/terms">Terms and conditions</a>
       <a href="/privacy">Privacy policy</a>
       <a href="/cookies">Cookies</a>
