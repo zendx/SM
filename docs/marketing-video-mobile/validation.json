@@ -1,0 +1,14 @@
+{
+  "duration_seconds": 60,
+  "resolution": "1080x1920",
+  "frame_rate": 30,
+  "orientation": "portrait",
+  "signup_submission": false,
+  "demo_records": "fictional; isolated embedded test database",
+  "narration": "Microsoft Zira Desktop; generated locally",
+  "master": "SMPIS-Quick-Start-60s-1080x1920.mp4",
+  "sharing_copy": "SMPIS-Quick-Start-60s-720x1280.mp4",
+  "audio": "local English narration over original music and click effects",
+  "full_decode": "both MP4 exports passed",
+  "recording_trimmed_seconds": 1.88
+}
