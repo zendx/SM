@@ -12,6 +12,14 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
     const html = renderSeoHtml(template, route, "https://school.example.com");
     const canonical = `https://school.example.com${route.replace(/\/$/, "") || "/"}`;
     assert.match(html, /<meta name="description" content="[^"]+"/);
+    if (route === "/") {
+      assert.match(
+        html,
+        /<title>School Management Software for Growing Schools \| SMPIS<\/title>/,
+      );
+      assert.match(html, /<h1>A calmer, smarter way to run your school\.<\/h1>/);
+      assert.match(html, /href="\/signup">Start your 30-day free trial<\/a>/);
+    }
     assert.ok(html.includes(`<link rel="canonical" href="${canonical}"`));
     for (const property of ["title", "description", "url"])
       assert.match(
@@ -27,11 +35,27 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
     assert.equal(schema.url, canonical);
     assert.equal(schema["@context"], "https://schema.org");
     assert.equal(schema["@type"], route === "/" ? "WebApplication" : "WebPage");
+    assert.doesNotMatch(html, /name="robots" content="noindex/);
     assert.equal(
       renderSeoHtml(html, route, "https://school.example.com"),
       html,
     );
   }
+  const signup = renderSeoHtml(
+    template,
+    "/signup",
+    "https://school.example.com",
+  );
+  assert.match(signup, /<meta name="robots" content="noindex, follow"/);
+  assert.match(
+    signup,
+    /rel="canonical" href="https:\/\/school\.example\.com\/signup"/,
+  );
+  assert.doesNotMatch(signup, /application\/ld\+json/);
+  assert.doesNotMatch(
+    renderSeoHtml(template, "/index.html", "https://school.example.com"),
+    /name="robots" content="noindex/,
+  );
 });
 
 test("canonical origin comes from configuration and rejects unsafe deployment URLs", () => {
@@ -85,4 +109,20 @@ test("server returns page-specific SEO without JavaScript or trusting Host heade
   );
   assert.ok(!html.includes("untrusted.example.com"));
   assert.ok(!html.includes("reset=private"));
+  const robots = await fetch(
+    `http://127.0.0.1:${server.address().port}/robots.txt`,
+  );
+  assert.equal(robots.status, 200);
+  assert.match(
+    await robots.text(),
+    /Sitemap: https:\/\/school\.example\.com\/sitemap\.xml/,
+  );
+  const sitemap = await fetch(
+    `http://127.0.0.1:${server.address().port}/sitemap.xml`,
+  );
+  assert.equal(sitemap.status, 200);
+  const xml = await sitemap.text();
+  assert.match(xml, /https:\/\/school\.example\.com\//);
+  assert.match(xml, /https:\/\/school\.example\.com\/privacy/);
+  assert.doesNotMatch(xml, /\/signup/);
 });

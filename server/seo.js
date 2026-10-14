@@ -1,10 +1,10 @@
 const homeDescription =
-  "Manage student records, attendance, admissions, school fees, academic performance and staff operations with SMPIS, the school management and intelligence system.";
+  "Manage admissions, attendance, school fees, academics and staff in one school management platform. Start a 30-day trial with no card required.";
 
 const pages = {
   "/": {
-    title: "SMPIS | School Management and Intelligence System",
-    heading: "School Management, Performance and Intelligence System",
+    title: "School Management Software for Growing Schools | SMPIS",
+    heading: "A calmer, smarter way to run your school.",
     description: homeDescription,
   },
   "/terms": {
@@ -26,6 +26,8 @@ const pages = {
       "See which essential cookies SMPIS uses for secure sign-in and cookie preferences, what they store and how long they last.",
   },
 };
+
+export const publicSeoPaths = Object.freeze(Object.keys(pages));
 
 function escapeHtml(value) {
   return value.replace(
@@ -62,16 +64,18 @@ export function siteOrigin(env = process.env) {
 // Render at build time too: crawlers and the static hosting layer see these tags
 // without waiting for React or authenticated API requests.
 export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
-  const route = pathname.replace(/\/$/, "") || "/";
+  const requestedPath = pathname.replace(/\/$/, "") || "/";
+  const route = requestedPath === "/index.html" ? "/" : requestedPath;
   const page = pages[route] || pages["/"];
-  const canonical = new URL(pages[route] ? route : "/", origin).href;
+  const isPublicPage = Boolean(pages[route]);
+  const canonical = new URL(isPublicPage ? route : requestedPath, origin).href;
   const structuredData =
     route === "/" || !pages[route]
       ? {
           "@context": "https://schema.org",
           "@type": "WebApplication",
           name: "SMPIS",
-          alternateName: pages["/"].heading,
+          alternateName: "School Management, Performance and Intelligence System",
           url: canonical,
           description: homeDescription,
           applicationCategory: "EducationalApplication",
@@ -93,15 +97,26 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
     `<meta property="og:title" content="${escapeHtml(page.title)}" />`,
     `<meta property="og:description" content="${escapeHtml(page.description)}" />`,
     `<meta property="og:url" content="${escapeHtml(canonical)}" />`,
-    `<script type="application/ld+json">${JSON.stringify(structuredData).replace(/</g, "\\u003c")}</script>`,
+    ...(!isPublicPage
+      ? ['<meta name="robots" content="noindex, follow" />']
+      : []),
+    ...(isPublicPage
+      ? [
+          `<script type="application/ld+json">${JSON.stringify(structuredData).replace(/</g, "\\u003c")}</script>`,
+        ]
+      : []),
   ].join("\n");
+  const intro =
+    route === "/"
+      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
+      : `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><noscript>Enable JavaScript to view this page.</noscript></main>`;
   return html
     .replace(
       /<!-- seo:start -->[\s\S]*?<!-- seo:end -->/,
       `<!-- seo:start -->\n${metadata}\n<!-- seo:end -->`,
     )
     .replace(
-      /<!-- public-intro:start -->[\s\S]*?<!-- public-intro:end -->/,
-      `<!-- public-intro:start --><main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p>Sign in to access your school workspace.</p><noscript>Enable JavaScript to sign in and use SMPIS.</noscript></main><!-- public-intro:end -->`,
+      /<!-- public-intro:start -->[\s\S]*?<!-- public-intro:end -->\r?\n/,
+      `<!-- public-intro:start -->${intro}<!-- public-intro:end -->\n`,
     );
 }

@@ -432,10 +432,10 @@ export function Landing() {
             </p>
             <div className="hero-actions">
               <a className="btn" href="/signup">
-                Book a Free Demo <ArrowUpRight size={18} />
+                Start your 30-day free trial <ArrowUpRight size={18} />
               </a>
-              <a className="btn secondary" href="/signup">
-                Start Your 30-Day Trial
+              <a className="sales-text-link" href="#features">
+                Explore features <ArrowRight size={17} />
               </a>
             </div>
             <div className="hero-promises">
