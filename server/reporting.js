@@ -1,6 +1,7 @@
 import express from "express";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
+import { drawPaymentReceipt } from "./payment-receipt.js";
 import { rows, one, audit } from "./db.js";
 import {
   permitted,
@@ -372,27 +373,7 @@ export function reportingRoutes(db) {
     const doc = new PDFDocument({ size: "A4", margin: 60 });
     res.attachment(`${p.receipt_number}.pdf`).type("application/pdf");
     doc.pipe(res);
-    doc
-      .fontSize(24)
-      .text(school.name)
-      .moveDown()
-      .fontSize(18)
-      .text("PAYMENT RECEIPT")
-      .moveDown()
-      .fontSize(12);
-    for (const [k, v] of Object.entries({
-      Receipt: p.receipt_number,
-      Invoice: i.invoice_number,
-      Student: `${s.first_name} ${s.last_name}`,
-      Amount: `${school.currency_code} ${(Number(p.amount_cents) / 100).toFixed(2)}`,
-      Method: p.payment_method,
-      Reference: p.reference_number || "—",
-      Date: new Date(p.paid_at).toLocaleString("en-GB", {
-        timeZone: school.timezone,
-      }),
-    }))
-      doc.text(`${k}: ${v}`).moveDown(0.5);
-    doc.moveDown().text("Thank you. Keep this receipt for your records.");
+    drawPaymentReceipt(doc, { school, payment: p, invoice: i, student: s });
     doc.end();
   });
   return r;
