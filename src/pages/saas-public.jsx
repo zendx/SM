@@ -423,21 +423,19 @@ export function Landing() {
               <span /> ONE SCHOOL. ONE CONNECTED WORKSPACE.
             </div>
             <h1>
-              Less paperwork.
-              <br />
-              More <em>possibility.</em>
+              A calmer, smarter way to run your school.
             </h1>
             <p>
-              Meet SMPIS — the School Management, Performance and Intelligence
-              System. Bring your students, people, finances and academic
-              performance together, so your school can move forward.
+              Bring admissions, attendance, fees, academics and staff operations
+              into one connected school workspace—so your team can focus on
+              teaching, not admin.
             </p>
             <div className="hero-actions">
               <a className="btn" href="/signup">
-                Start your 30-day free trial <ArrowUpRight size={18} />
+                Book a Free Demo <ArrowUpRight size={18} />
               </a>
-              <a className="sales-text-link" href="#features">
-                Explore SMPIS <ArrowRight size={17} />
+              <a className="btn secondary" href="/signup">
+                Start Your 30-Day Trial
               </a>
             </div>
             <div className="hero-promises">
@@ -450,6 +448,13 @@ export function Landing() {
               <span>
                 <Check /> All modules included
               </span>
+            </div>
+            <div className="hero-banner" aria-label="SMPIS highlight features">
+              <span>Admissions</span>
+              <span>Attendance</span>
+              <span>Fee tracking</span>
+              <span>Academics</span>
+              <span>Staff records</span>
             </div>
           </div>
           <div
