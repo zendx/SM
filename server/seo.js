@@ -108,7 +108,7 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
   ].join("\n");
   const intro =
     route === "/"
-      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
+      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p><footer><a href="https://maidensail.com/startup/smpis" rel="dofollow"><img src="https://maidensail.com/badge/smpis.svg" alt="Featured on Maidensail" width="190" height="44" /></a></footer><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
       : `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><noscript>Enable JavaScript to view this page.</noscript></main>`;
   return html
     .replace(

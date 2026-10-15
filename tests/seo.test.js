@@ -19,6 +19,10 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
       );
       assert.match(html, /<h1>A calmer, smarter way to run your school\.<\/h1>/);
       assert.match(html, /href="\/signup">Start your 30-day free trial<\/a>/);
+      assert.match(
+        html,
+        /<footer><a href="https:\/\/maidensail\.com\/startup\/smpis" rel="dofollow"><img src="https:\/\/maidensail\.com\/badge\/smpis\.svg"/,
+      );
     }
     assert.ok(html.includes(`<link rel="canonical" href="${canonical}"`));
     for (const property of ["title", "description", "url"])
