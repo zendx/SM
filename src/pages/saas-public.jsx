@@ -781,7 +781,18 @@ export function Landing() {
           School Management, Performance
           <br />& Intelligence System
         </p>
-        <a href="https://maidensail.com/startup/smpis" rel="dofollow"><img src="https://maidensail.com/badge/smpis.svg" alt="Featured on Maidensail" height="44" /></a>
+        <a
+          className="sales-footer-badge"
+          href="https://maidensail.com/startup/smpis"
+          rel="dofollow"
+        >
+          <img
+            src="https://maidensail.com/badge/smpis.svg"
+            alt="Featured on Maidensail"
+            width="190"
+            height="44"
+          />
+        </a>
         <span>Clarity for every school day.</span>
       </footer>
       <WhatsAppHelp />

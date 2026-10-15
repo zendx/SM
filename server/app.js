@@ -71,7 +71,7 @@ export async function createApp(db, options = {}) {
                 "https://recaptcha.google.com/recaptcha/",
               ],
               styleSrc: ["'self'", "'unsafe-inline'"],
-              imgSrc: ["'self'", "data:"],
+              imgSrc: ["'self'", "data:", "https://maidensail.com/badge/"],
               connectSrc: ["'self'", "https://www.google.com/recaptcha/"],
               upgradeInsecureRequests: null,
             },
