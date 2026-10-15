@@ -640,16 +640,6 @@
   font-size: 11px;
   line-height: 1.8;
 }
-.sales-footer a[href*="maidensail.com"] {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.sales-footer a[href*="maidensail.com"] img {
-  display: block;
-  height: 44px;
-  width: auto;
-}
 .sales-footer > span {
   margin-left: auto;
   color: #8c9785;
