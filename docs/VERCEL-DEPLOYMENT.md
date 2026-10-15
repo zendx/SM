@@ -28,6 +28,9 @@ Add these under Vercel Project Settings > Environment Variables for each environ
 | `NODE_ENV` | `production`, to enable secure session cookies. |
 | `TRUST_PROXY_HOPS` | `1`. |
 | `REQUIRE_MFA` | `true`. |
+| `RECAPTCHA_SITE_KEY` | Google reCAPTCHA v3 site key. Configure together with the secret to protect school signup and school/owner sign-in. V2 keys are incompatible. |
+| `RECAPTCHA_SECRET_KEY` | Matching server-only reCAPTCHA secret key. |
+| `RECAPTCHA_MIN_SCORE` | Optional minimum accepted v3 score from `0` to `1`, default `0.5`. Tune using real traffic in Google's console. |
 | `DB_SSL_CA` | Optional trusted database certificate PEM, if required by your connection. |
 
 Do not upload `.env` or put credentials in `VITE_` variables. Set platform `SMTP_URL` and `MAIL_FROM` before accepting registrations: owner and school signup require verification email delivery. School SMTP configured through Administration > Integrations does not configure platform registration emails. `PAYSTACK_SCHOOL_KEYS_JSON` and `PAYSTACK_LIVE_ENABLED` remain optional compatibility defaults.

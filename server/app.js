@@ -11,6 +11,7 @@ import { integrationRoutes } from "./integrations.js";
 import express from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { recaptchaConfig } from "./recaptcha.js";
 import { ZodError } from "zod";
 import { authRoutes, authenticate, accountRoutes, seedRoles } from "./auth.js";
 import { coreRoutes } from "./routes.js";
@@ -60,10 +61,18 @@ export async function createApp(db, options = {}) {
         ? {
             directives: {
               defaultSrc: ["'self'"],
-              scriptSrc: ["'self'"],
+              scriptSrc: [
+                "'self'",
+                "https://www.google.com/recaptcha/",
+                "https://www.gstatic.com/recaptcha/",
+              ],
+              frameSrc: [
+                "https://www.google.com/recaptcha/",
+                "https://recaptcha.google.com/recaptcha/",
+              ],
               styleSrc: ["'self'", "'unsafe-inline'"],
               imgSrc: ["'self'", "data:"],
-              connectSrc: ["'self'"],
+              connectSrc: ["'self'", "https://www.google.com/recaptcha/"],
               upgradeInsecureRequests: null,
             },
           }
@@ -112,6 +121,10 @@ export async function createApp(db, options = {}) {
         });
     }
     next();
+  });
+  app.get("/api/v1/auth/recaptcha", (req, res) => {
+    const { siteKey } = recaptchaConfig();
+    res.json({ data: { siteKey } });
   });
   app.use("/api/v1", legalRoutes(db));
   app.use("/api/v1", publicConsentRoutes(db));

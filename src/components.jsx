@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import { recaptchaResponse } from "./recaptcha";
 import {
   X,
   Eye,
@@ -201,6 +202,7 @@ export function Form({
   onSubmit,
   submit = "Save",
   children,
+  recaptcha = false,
 }) {
   const idPrefix = useId();
   const [values, setValues] = useState(() =>
@@ -224,14 +226,15 @@ export function Form({
           throw new Error(
             "Passwords do not match. Please enter the same password in both fields.",
           );
-      await onSubmit(
-        Object.fromEntries(
+      await onSubmit({
+        ...Object.fromEntries(
           Object.entries(values).filter(
             ([name]) =>
               !fields.find((field) => field.name === name)?.clientOnly,
           ),
         ),
-      );
+        ...(await recaptchaResponse(recaptcha)),
+      });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -296,7 +299,9 @@ export function Form({
             >
               <span>
                 {f.label}
-                {(f.type === "checkbox" ? f.required === true : f.required !== false) && <b> *</b>}
+                {(f.type === "checkbox"
+                  ? f.required === true
+                  : f.required !== false) && <b> *</b>}
               </span>
               {f.options ? (
                 <select
