@@ -30,6 +30,10 @@ test("signup and both login routes enforce CAPTCHA without exposing the secret",
     assert.equal(config.headers.get("cache-control"), "no-store");
     assert.match(
       config.headers.get("content-security-policy"),
+      /img-src 'self' data: https:\/\/maidensail\.com\/badge\//,
+    );
+    assert.match(
+      config.headers.get("content-security-policy"),
       /https:\/\/www.gstatic.com\/recaptcha\//,
     );
     for (const path of ["/auth/login", "/auth/owner/login", "/saas/register"]) {
