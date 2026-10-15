@@ -1,4 +1,5 @@
 import { platformTeamRoutes } from "./platform-team-routes.js";
+import { requireRecaptcha } from "./recaptcha.js";
 import { accountLifecycleRoutes } from "./account-lifecycle-routes.js";
 import { requireSubscriptions } from "./platform-access.js";
 import express from "express";
@@ -237,6 +238,7 @@ export function saasPublicRoutes(db) {
       standardHeaders: "draft-8",
       legacyHeaders: false,
     }),
+    requireRecaptcha("signup"),
     async (req, res) =>
       res.status(201).json({ data: await registerSchool(db, req.body) }),
   );

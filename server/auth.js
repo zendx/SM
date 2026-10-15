@@ -1,5 +1,6 @@
 import { checkAccountAccess } from "./account-lifecycle.js";
 import { screenRegistrationEmail } from "./stopreg.js";
+import { requireRecaptcha } from "./recaptcha.js";
 import { consoleAccess } from "./platform-access.js";
 import { sendVerification, verificationMailer } from "./email-verification.js";
 import { smtpConfig } from "./integrations.js";
@@ -103,6 +104,8 @@ export function authRoutes(
       legacyHeaders: false,
     }),
   );
+  r.post("/login", requireRecaptcha("login"));
+  r.post("/owner/login", requireRecaptcha("owner_login"));
   r.get("/setup", async (req, res) =>
     res.json({
       data: {

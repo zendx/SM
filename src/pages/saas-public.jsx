@@ -265,6 +265,7 @@ export function Signup() {
                 q.data || {},
               )}
               submit="Create school portal"
+              recaptcha="signup"
               onSubmit={async (v) => {
                 const result = await post("/saas/register", v);
                 setRegistered(result);
@@ -422,9 +423,7 @@ export function Landing() {
             <div className="hero-tag">
               <span /> ONE SCHOOL. ONE CONNECTED WORKSPACE.
             </div>
-            <h1>
-              A calmer, smarter way to run your school.
-            </h1>
+            <h1>A calmer, smarter way to run your school.</h1>
             <p>
               Bring admissions, attendance, fees, academics and staff operations
               into one connected school workspace—so your team can focus on

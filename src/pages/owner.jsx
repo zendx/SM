@@ -325,6 +325,7 @@ export function OwnerPortal() {
             ) : (
               <Form
                 key={setupRequired ? "setup" : "login"}
+                recaptcha={setupRequired ? false : "owner_login"}
                 fields={[
                   ...(setupRequired
                     ? [{ name: "name", label: "Your full name", wide: true }]
@@ -361,6 +362,7 @@ export function OwnerPortal() {
                   const result = await post("/auth/owner/login", {
                     email: v.email,
                     password: v.password,
+                    recaptcha_token: v.recaptcha_token,
                   });
                   setCsrf(result.csrf);
                   setSession(result);

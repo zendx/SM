@@ -269,6 +269,7 @@ function Auth({ onLogin, setup }) {
           {message && <div className="notice">{message}</div>}
           <Form
             key={mode}
+            recaptcha={mode === "login" ? "login" : false}
             fields={
               mode === "verify"
                 ? []
