@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, openTestDatabase } from "./database.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { insert, one } from "../server/db.js";
 import { hashPassword } from "../server/security.js";
 import { initializeSchema } from "../server/schema.js";

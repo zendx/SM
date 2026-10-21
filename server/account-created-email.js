@@ -1,10 +1,11 @@
 import nodemailer from "nodemailer";
-import { one } from "./db.js";
+import { one, insert } from "./db.js";
+import { token, digest } from "./security.js";
 import { smtpConfig } from "./integrations.js";
 import { renderEmail } from "./email-templates.js";
 
-// Initial credentials stay in request memory; never put them in a durable queue.
-export async function sendAccountCreatedEmail(db, user, initialPassword) {
+// A recipient chooses their password with a short-lived, single-use link.
+export async function sendAccountCreatedEmail(db, user) {
   let transport;
   try {
     const smtp = await smtpConfig(db, user.school_id);
@@ -14,13 +15,23 @@ export async function sendAccountCreatedEmail(db, user, initialPassword) {
       "SELECT name,portal_slug FROM schools WHERE id=$1",
       [user.school_id],
     );
+    const raw = token();
+    await db.transaction(async (tx) => {
+      await tx.query("DELETE FROM reset_tokens WHERE user_id=$1", [user.id]);
+      await insert(tx, "reset_tokens", {
+        token_hash: digest(raw),
+        user_id: user.id,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000),
+      });
+    });
+    const activation = new URL("/login", process.env.APP_URL);
+    activation.searchParams.set("reset", raw);
     const message = await renderEmail(db, "account_created", {
       name: user.name,
       school_name: school.name,
       email: user.email,
-      password: initialPassword,
       role: user.role.replaceAll("_", " "),
-      link: new URL(`/${school.portal_slug}/`, process.env.APP_URL).href,
+      link: activation.href,
       security_link: new URL(
         `/${school.portal_slug}/?security=mfa#administration`,
         process.env.APP_URL,

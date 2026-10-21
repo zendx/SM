@@ -4,7 +4,7 @@ import { openTestDatabase } from "./database.js";
 import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
 import { one, insert } from "../server/db.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { hashPassword, cents, localClock } from "../server/security.js";
 import ExcelJS from "exceljs";
 import * as OTPAuth from "otpauth";
@@ -35,6 +35,8 @@ async function client(
   password = "Test-password-2026!",
 ) {
   await verifyFixtureEmail(email, base);
+  // Business fixtures use known passwords; activation security is tested separately.
+  await db.query("UPDATE users SET activation_pending=false,email_verified=true,password_hash=$1 WHERE email=$2 AND activation_pending", [hashPassword(password), email]);
   const login = await fetch(base + "/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -603,7 +605,7 @@ test("MFA gate and logout invalidate access; audit records do not contain passwo
   await expect(admin, "/auth/mfa/enable", "POST", { code: otp.generate() });
   const next = await client();
   await expect(next, "/students", "GET", undefined, 403);
-  await expect(next, "/auth/mfa/verify", "POST", { code: otp.generate() });
+  await expect(next, "/auth/mfa/verify", "POST", { code: otp.generate({ timestamp: Date.now() + 30000 }) });
   await expect(next, "/students");
   await expect(next, "/auth/logout", "POST", {});
   await expect(next, "/students", "GET", undefined, 401);
@@ -613,7 +615,7 @@ test("MFA gate and logout invalidate access; audit records do not contain passwo
   assert.equal(JSON.stringify(logs).includes("Test-password-2026!"), false);
 });
 
-test("administrator MFA enrollment is optional and can be enabled", async () => {
+test("business fixture MFA enrollment can be enabled (production requires privileged MFA)", async () => {
   process.env.REQUIRE_MFA = "true";
   const other = await client("other@test.school");
   assert.equal((await expect(other, "/me")).user.mfa_setup_required, false);

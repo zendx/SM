@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { test, openTestDatabase } from "./database.js";
 import { testMailbox } from "./mailbox.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one, rows } from "../server/db.js";
 import { deliverPlatformNotifications } from "../server/platform-notifications.js";
 import {

@@ -535,23 +535,65 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
                 : null;
       if (!mime) fail(422, "Only PDF, PNG and JPEG documents are supported.");
       const key = token();
-      await documentStorage.put(key, f.buffer, mime);
-      const doc = await insert(db, "student_documents", {
-        school_id: req.user.school_id,
-        student_id: s.id,
-        name: path
-          .basename(f.originalname)
-          .replace(/[\r\n]/g, "")
-          .slice(0, 200),
+      await insert(db, "document_upload_intents", {
         storage_key: key,
-        mime,
-        size: f.size,
-        uploaded_by: req.user.id,
+        school_id: req.user.school_id,
       });
-      await audit(db, req.user, "student_documents", doc.id, "CREATE", null, {
-        name: doc.name,
-        student_id: s.id,
-      });
+      await documentStorage.put(key, f.buffer, mime);
+      let doc;
+      try {
+        doc = await db.transaction(async (tx) => {
+          const intent = await one(
+            tx,
+            "SELECT storage_key FROM document_upload_intents WHERE storage_key=$1 FOR UPDATE",
+            [key],
+          );
+          if (!intent)
+            fail(409, "This upload expired. Upload the document again.");
+          const record = await insert(tx, "student_documents", {
+            school_id: req.user.school_id,
+            student_id: s.id,
+            name: path
+              .basename(f.originalname)
+              .replace(/[\r\n]/g, "")
+              .slice(0, 200),
+            storage_key: key,
+            mime,
+            size: f.size,
+            uploaded_by: req.user.id,
+          });
+          await audit(
+            tx,
+            req.user,
+            "student_documents",
+            record.id,
+            "CREATE",
+            null,
+            {
+              name: record.name,
+              student_id: s.id,
+            },
+          );
+          await tx.query(
+            "DELETE FROM document_upload_intents WHERE storage_key=$1",
+            [key],
+          );
+          return record;
+        });
+      } catch (error) {
+        try {
+          await documentStorage.delete(key);
+          await db.query(
+            "DELETE FROM document_upload_intents WHERE storage_key=$1",
+            [key],
+          );
+        } catch {
+          console.error(
+            "Document cleanup failed; storage reconciliation is required.",
+          );
+        }
+        throw error;
+      }
       ok(res, { id: doc.id });
     },
   );

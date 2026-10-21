@@ -34,8 +34,14 @@ import {
   alternativeWebhook,
 } from "./saas-routes.js";
 import { subscriptionGate } from "./saas-service.js";
+import { migrateMfaSecrets } from "./security-vault.js";
 
 export async function createApp(db, options = {}) {
+  if (options.enforcePrivilegedMfa === false && !db.isTestDatabase)
+    throw new Error(
+      "MFA enforcement cannot be disabled outside isolated test fixtures.",
+    );
+  await migrateMfaSecrets(db);
   await seedRoles(db);
   options = {
     ...options,
@@ -132,7 +138,7 @@ export async function createApp(db, options = {}) {
   app.use("/api/v1/auth", authRoutes(db, options));
   app.use(
     "/api/v1",
-    authenticate(db),
+    authenticate(db, options),
     contactPreferenceRoutes(db),
     subscriptionGate(db),
     platformNotificationRoutes(db),

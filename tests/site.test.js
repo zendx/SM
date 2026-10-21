@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { insert } from "../server/db.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { digest } from "../server/security.js";
 
 test("public legal settings and administrator-only configuration respects tenant boundaries", async () => {

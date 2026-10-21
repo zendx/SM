@@ -10,7 +10,16 @@ import { refreshOperationAlerts } from "./operations-service.js";
 import { expireSubscriptions } from "./saas-service.js";
 import { queueMfaReminders } from "./mfa-reminders.js";
 import { deliverOnboardingEmails } from "./onboarding-emails.js";
+import { deliverVerifications } from "./verification-delivery.js";
+import { reconcileDocumentUploads } from "./document-cleanup.js";
 export async function runJobs(db) {
+  await db.query(
+    "DELETE FROM email_verification_tokens WHERE expires_at<=now()",
+  );
+  await db.query("DELETE FROM reset_tokens WHERE expires_at<=now()");
+  await db.query("DELETE FROM sessions WHERE expires_at<=now()");
+  await reconcileDocumentUploads(db);
+  await deliverVerifications(db);
   await finalizeClosures(db);
   await expireSubscriptions(db);
   await deliverOnboardingEmails(db);

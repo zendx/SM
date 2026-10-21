@@ -2,7 +2,14 @@ import { checkAccountAccess } from "./account-lifecycle.js";
 import { screenRegistrationEmail } from "./stopreg.js";
 import { requireRecaptcha } from "./recaptcha.js";
 import { consoleAccess } from "./platform-access.js";
-import { sendVerification, verificationMailer } from "./email-verification.js";
+import { requiresMfa } from "./mfa-policy.js";
+import { seal, unseal } from "./security-vault.js";
+import {
+  sendVerification,
+  verificationMailer,
+  queueVerification,
+  deliverVerifications,
+} from "./verification-delivery.js";
 import { smtpConfig } from "./integrations.js";
 import express from "express";
 import { sendAccountCreatedEmail } from "./account-created-email.js";
@@ -57,7 +64,8 @@ export function publicUser(u) {
     platform_scope: u.platform_scope || null,
     console_access: consoleAccess(u),
     email_verified: u.email_verified,
-    mfa_setup_required: false,
+    mfa_setup_required:
+      !u.mfa_enabled && requiresMfa(u) && !u.fixture_mfa_optional,
   };
 }
 function totp(secret, label) {
@@ -70,11 +78,56 @@ function totp(secret, label) {
     secret: OTPAuth.Secret.fromBase32(secret),
   });
 }
+async function consumeTotp(tx, userId, code, { enable = false } = {}) {
+  const user = await one(
+    tx,
+    "SELECT id,email,mfa_secret,mfa_enabled,mfa_last_counter FROM users WHERE id=$1 FOR UPDATE",
+    [userId],
+  );
+  if (!user?.mfa_secret || (enable ? user.mfa_enabled : !user.mfa_enabled))
+    fail(422, "Invalid verification state.");
+  const otp = totp(unseal(user.mfa_secret, `mfa:${user.id}`), user.email);
+  const timestamp = Date.now();
+  const delta = otp.validate({ token: code, window: 1, timestamp });
+  const counter = Math.floor(timestamp / 30000) + delta;
+  if (
+    delta === null ||
+    (user.mfa_last_counter !== null && counter <= Number(user.mfa_last_counter))
+  )
+    fail(
+      422,
+      "Invalid or already used verification code. Wait for a new code.",
+    );
+  await tx.query(
+    "UPDATE users SET mfa_last_counter=$1,mfa_enabled=true WHERE id=$2",
+    [counter, user.id],
+  );
+}
 export function authRoutes(
   db,
-  { production = process.env.NODE_ENV === "production" } = {},
+  {
+    production = process.env.NODE_ENV === "production",
+    enforcePrivilegedMfa = true,
+  } = {},
 ) {
   const r = express.Router();
+  function bootstrap(req, res, next) {
+    const configured = process.env.BOOTSTRAP_TOKEN || "";
+    const supplied =
+      req.get("x-bootstrap-token") || req.body?.bootstrap_token || "";
+    if (
+      configured.length < 32 ||
+      typeof supplied !== "string" ||
+      digest(supplied) !== digest(configured)
+    )
+      fail(
+        403,
+        "Setup requires the deployment bootstrap token.",
+        "BOOTSTRAP_REQUIRED",
+      );
+    next();
+  }
+  r.post(["/setup", "/owner/setup"], bootstrap);
   r.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -127,12 +180,17 @@ export function authRoutes(
   );
   r.post("/owner/setup", async (req, res) => {
     const b = z
-      .object({ name: text.max(200), email, password })
+      .object({
+        name: text.max(200),
+        email,
+        password,
+        bootstrap_token: z.string().optional(),
+      })
       .strict()
       .parse(req.body);
     await screenRegistrationEmail(b.email);
-    const mailer = await verificationMailer(db);
-    await db.transaction(async (tx) => {
+    await verificationMailer(db);
+    const deliveryUserId = await db.transaction(async (tx) => {
       await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
       if (await one(tx, "SELECT user_id FROM platform_operators LIMIT 1"))
         fail(
@@ -147,13 +205,15 @@ export function authRoutes(
         role: "PLATFORM_OWNER",
         email_verified: false,
       });
-      await sendVerification(tx, user, mailer);
+      await queueVerification(tx, user);
       await insert(tx, "platform_operators", { user_id: user.id });
       await audit(tx, user, "users", user.id, "OWNER_REGISTERED", null, {
         name: user.name,
         email: user.email,
       });
+      return user.id;
     });
+    await deliverVerifications(db, deliveryUserId);
     res.status(201).json({
       data: {
         message:
@@ -258,8 +318,8 @@ export function authRoutes(
     if (b.end_date <= b.start_date)
       fail(422, "The academic year end must follow its start.");
     await screenRegistrationEmail(b.email);
-    const mailer = await verificationMailer(db);
-    await db.transaction(async (tx) => {
+    await verificationMailer(db);
+    const deliveryUserId = await db.transaction(async (tx) => {
       await tx.query("LOCK TABLE platform_operators IN EXCLUSIVE MODE");
       await tx.query("LOCK TABLE schools IN EXCLUSIVE MODE");
       if (await one(tx, "SELECT id FROM schools LIMIT 1"))
@@ -291,7 +351,7 @@ export function authRoutes(
         start_date: b.start_date,
         end_date: b.end_date,
       });
-      await sendVerification(tx, user, mailer);
+      await queueVerification(tx, user);
       await insert(tx, "platform_operators", { user_id: user.id });
       await provisionSubscription(tx, school, {}, user.id);
       const termEnd = new Date(b.start_date);
@@ -310,7 +370,9 @@ export function authRoutes(
       await audit(tx, user, "schools", school.id, "CREATE", null, {
         name: school.name,
       });
+      return user.id;
     });
+    await deliverVerifications(db, deliveryUserId);
     res.status(201).json({
       data: {
         message:
@@ -340,6 +402,13 @@ export function authRoutes(
         "OWNER_REQUIRED",
       );
     await checkAccountAccess(db, u);
+    if (u.activation_pending)
+      fail(
+        403,
+        "Activate your account using the email link or request a password reset.",
+        "ACTIVATION_REQUIRED",
+      );
+    u.fixture_mfa_optional = !enforcePrivilegedMfa;
     if (!u.email_verified)
       fail(
         403,
@@ -365,7 +434,8 @@ export function authRoutes(
       token_hash: digest(raw),
       user_id: u.id,
       csrf,
-      mfa_verified: !u.mfa_enabled,
+      mfa_verified:
+        !u.mfa_enabled && (!requiresMfa(u) || !enforcePrivilegedMfa),
       expires_at: new Date(Date.now() + 8 * 60 * 60 * 1000),
     });
     res.cookie("smpis_session", raw, {
@@ -477,17 +547,17 @@ export function authRoutes(
         [digest(b.token)],
       );
       if (!reset) fail(422, "This reset link is invalid or expired.");
-      await tx.query("UPDATE users SET password_hash=$1 WHERE id=$2", [
-        hashPassword(b.password),
-        reset.user_id,
-      ]);
+      await tx.query(
+        "UPDATE users SET password_hash=$1,activation_pending=false,email_verified=true WHERE id=$2",
+        [hashPassword(b.password), reset.user_id],
+      );
       await tx.query("DELETE FROM sessions WHERE user_id=$1", [reset.user_id]);
     });
     res.json({ data: { message: "Password updated. Sign in again." } });
   });
   return r;
 }
-export function authenticate(db) {
+export function authenticate(db, { enforcePrivilegedMfa = true } = {}) {
   return async (req, res, next) => {
     const raw = req.cookies.smpis_session;
     if (!raw) fail(401, "Sign in to continue.", "UNAUTHENTICATED");
@@ -499,13 +569,29 @@ export function authenticate(db) {
     if (!u)
       fail(401, "Your session expired. Sign in again.", "UNAUTHENTICATED");
     await checkAccountAccess(db, u);
+    u.fixture_mfa_optional = !enforcePrivilegedMfa;
+    if (u.activation_pending)
+      fail(403, "Activate your account first.", "ACTIVATION_REQUIRED");
     if (
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
       req.get("x-csrf-token") !== u.csrf
     )
       fail(403, "Invalid request token. Reload the page.", "FORBIDDEN");
+    const enrollment = !u.mfa_enabled && requiresMfa(u) && enforcePrivilegedMfa;
+    if (
+      enrollment &&
+      !["/auth/mfa/setup", "/auth/mfa/enable", "/auth/logout", "/me"].includes(
+        req.path,
+      )
+    )
+      fail(
+        403,
+        "Set up two-step verification to continue.",
+        "MFA_SETUP_REQUIRED",
+      );
     if (
       !u.mfa_verified &&
+      !enrollment &&
       !["/auth/mfa/verify", "/auth/logout", "/me"].includes(req.path)
     )
       fail(403, "Complete two-step verification.", "MFA_REQUIRED");
@@ -560,7 +646,7 @@ export function accountRoutes(db) {
       data: {
         user: publicUser(req.user),
         csrf: req.user.csrf,
-        mfa_required: !req.user.mfa_verified,
+        mfa_required: req.user.mfa_enabled && !req.user.mfa_verified,
       },
     }),
   );
@@ -589,28 +675,25 @@ export function accountRoutes(db) {
       });
       return res.json({ data: { ok: true } });
     }
-    if (
-      !req.user.mfa_secret ||
-      totp(req.user.mfa_secret, req.user.email).validate({
-        token: code,
-        window: 1,
-      }) === null
-    )
-      fail(422, "Invalid verification code.");
-    await db.query(
-      "UPDATE sessions SET mfa_verified=true WHERE token_hash=$1",
-      [req.sessionHash],
-    );
+    await db.transaction(async (tx) => {
+      await consumeTotp(tx, req.user.id, code);
+      await tx.query(
+        "UPDATE sessions SET mfa_verified=true WHERE token_hash=$1",
+        [req.sessionHash],
+      );
+    });
     res.json({ data: { ok: true } });
   });
   r.post("/auth/mfa/setup", async (req, res) => {
     if (req.user.mfa_enabled)
       fail(409, "Two-step verification is already enabled.");
     const secret = new OTPAuth.Secret({ size: 20 }).base32;
-    await db.query("UPDATE users SET mfa_secret=$1 WHERE id=$2", [
-      secret,
-      req.user.id,
-    ]);
+    const updated = await db.query(
+      "UPDATE users SET mfa_secret=$1,mfa_last_counter=NULL WHERE id=$2 AND NOT mfa_enabled RETURNING id",
+      [seal(secret, `mfa:${req.user.id}`), req.user.id],
+    );
+    if (!updated.rows.length)
+      fail(409, "Two-step verification is already enabled.");
     res.json({
       data: { secret, uri: totp(secret, req.user.email).toString() },
     });
@@ -636,21 +719,20 @@ export function accountRoutes(db) {
     res.json({ data: { codes } });
   });
   r.post("/auth/mfa/enable", async (req, res) => {
-    if (
-      !req.user.mfa_secret ||
-      totp(req.user.mfa_secret, req.user.email).validate({
-        token: String(req.body.code),
-        window: 1,
-      }) === null
-    )
-      fail(422, "Invalid verification code.");
-    await db.query("UPDATE users SET mfa_enabled=true WHERE id=$1", [
-      req.user.id,
-    ]);
-    await db.query("DELETE FROM sessions WHERE user_id=$1 AND token_hash<>$2", [
-      req.user.id,
-      req.sessionHash,
-    ]);
+    await db.transaction(async (tx) => {
+      await consumeTotp(tx, req.user.id, String(req.body.code), {
+        enable: true,
+      });
+      await tx.query(
+        "DELETE FROM sessions WHERE user_id=$1 AND token_hash<>$2",
+        [req.user.id, req.sessionHash],
+      );
+      await tx.query(
+        "UPDATE sessions SET mfa_verified=true WHERE token_hash=$1",
+        [req.sessionHash],
+      );
+      await audit(tx, req.user, "users", req.user.id, "MFA_ENABLED");
+    });
     res.json({ data: { ok: true } });
   });
   r.get("/users", requirePermission("admin.write"), async (req, res) =>
@@ -667,7 +749,7 @@ export function accountRoutes(db) {
       .object({
         name: text,
         email,
-        password,
+        password: password.optional(),
         role: z.enum(Object.keys(ROLE_PERMISSIONS)),
       })
       .parse(req.body);
@@ -676,7 +758,9 @@ export function accountRoutes(db) {
         school_id: req.user.school_id,
         name: b.name,
         email: b.email,
-        password_hash: hashPassword(b.password),
+        password_hash: hashPassword(token()),
+        activation_pending: true,
+        email_verified: false,
         role: b.role,
       });
       await audit(tx, req.user, "users", user.id, "CREATE", null, {
@@ -686,14 +770,14 @@ export function accountRoutes(db) {
       });
       return user;
     });
-    const accountEmailSent = await sendAccountCreatedEmail(db, u, b.password);
+    const accountEmailSent = await sendAccountCreatedEmail(db, u);
     res.status(201).json({
       data: {
         ...publicUser(u),
         account_email_sent: accountEmailSent,
         message: accountEmailSent
-          ? "Account created. Sign-in details and security guidance were emailed to the user."
-          : "Account created, but the account email could not be sent. Check the SMTP settings; the user has not received their sign-in details.",
+          ? "Account created. An activation link was emailed to the user."
+          : "Account created, but the activation email could not be sent. Check SMTP settings; the user can request a password reset to activate.",
       },
     });
   });

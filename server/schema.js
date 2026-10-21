@@ -9,6 +9,7 @@ export async function applicationSchema() {
     "integration-schema.sql",
     "site-schema.sql",
     "saas-schema.sql",
+    "hardening-schema.sql",
   ];
   const sql = (
     await Promise.all(

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, openTestDatabase } from "./database.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 
 test("signup and both login routes enforce CAPTCHA without exposing the secret", async () => {
   const previous = {

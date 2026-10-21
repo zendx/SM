@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import nodemailer from "nodemailer";
 import { test, openTestDatabase } from "./database.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one } from "../server/db.js";
 import { initializeSchema } from "../server/schema.js";
 
-test("verified registration, optional MFA, 30-day trials and owner portal scope", async () => {
+test("verified registration, workflow-fixture MFA, 30-day trials and owner portal scope", async () => {
   const db = await openTestDatabase();
   const originalTransport = nodemailer.createTransport;
   const env = { ...process.env };

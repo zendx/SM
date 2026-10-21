@@ -1,4 +1,5 @@
 import { BrandLogo } from "../brand-logo";
+import { MfaEnrollment } from "../mfa-enrollment";
 import {
   OwnerCommunications,
   PlatformInbox,
@@ -328,7 +329,15 @@ export function OwnerPortal() {
                 recaptcha={setupRequired ? false : "owner_login"}
                 fields={[
                   ...(setupRequired
-                    ? [{ name: "name", label: "Your full name", wide: true }]
+                    ? [
+                        { name: "name", label: "Your full name", wide: true },
+                        {
+                          name: "bootstrap_token",
+                          label: "Deployment setup token",
+                          type: "password",
+                          wide: true,
+                        },
+                      ]
                     : []),
                   {
                     name: "email",
@@ -377,6 +386,8 @@ export function OwnerPortal() {
         </main>
       </div>
     );
+  if (session.user.mfa_setup_required)
+    return <MfaEnrollment onComplete={setSession} onLogout={logout} />;
   if (session.mfa_required)
     return (
       <div className="mfa-card">

@@ -2,6 +2,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { openDatabase } from "../server/db.js";
 import { seedRoles } from "../server/auth.js";
+import { migrateMfaSecrets } from "../server/security-vault.js";
 import { applicationSchema, initializeSchema } from "../server/schema.js";
 import { createDocumentStorage } from "../server/document-storage.js";
 import { supabaseConfiguration, prepareDocumentBucket } from "../server/supabase.js";
@@ -20,6 +21,7 @@ try {
       await tx.query("SELECT pg_advisory_xact_lock(736774, 1)");
       await initializeSchema({ ...tx, exec: (sql) => tx.query(sql) }, { protectPublicTables: true });
       await seedRoles(tx);
+      await migrateMfaSecrets(tx);
     });
   }
   const { tables } = await applicationSchema();

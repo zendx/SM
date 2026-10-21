@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import nodemailer from "nodemailer";
 import { test, openTestDatabase } from "./database.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one, insert } from "../server/db.js";
 import { hashPassword, verifyPassword, digest } from "../server/security.js";
 
-test("tenant role creation emails escaped initial credentials; delivery failures keep accounts and report status", async () => {
+test("tenant role creation emails activation links without reusable passwords; failures preserve pending accounts", async () => {
   const db = await openTestDatabase();
   const app = await createApp(db);
   const originalTransport = nodemailer.createTransport;
@@ -67,15 +67,16 @@ test("tenant role creation emails escaped initial credentials; delivery failures
       const stored = await one(db, "SELECT * FROM users WHERE id=$1", [
         body.data.id,
       ]);
-      assert.ok(verifyPassword(password, stored.password_hash));
+      assert.equal(verifyPassword(password, stored.password_hash), false);
+      assert.equal(stored.activation_pending, true);
       if (!failure) {
         const message = messages.at(-1);
         assert.equal(message.to, stored.email);
-        assert.ok(message.text.includes(password));
+        assert.ok(!message.text.includes(password));
         assert.ok(message.text.includes(role.replaceAll("_", " ")));
         assert.ok(message.html.includes("New &lt;User&gt;"));
-        assert.ok(message.html.includes("New-&lt;pass&gt;&amp;2026!"));
-        assert.ok(message.html.includes("https://smpis.test/role-school/"));
+        assert.ok(!message.html.includes("New-&lt;pass&gt;&amp;2026!"));
+        assert.ok(message.html.includes("https://smpis.test/login?reset="));
         assert.ok(message.html.includes("cid:smpis-brand"));
         assert.ok(message.text.includes("Forgot your password?"));
         assert.ok(message.text.includes("Set up authenticator"));

@@ -1,4 +1,8 @@
-import { sendVerification, verificationMailer } from "./email-verification.js";
+import {
+  queueVerification,
+  verificationMailer,
+  deliverVerifications,
+} from "./verification-delivery.js";
 import { screenRegistrationEmail } from "./stopreg.js";
 import { one, rows, insert, audit } from "./db.js";
 import { PRIVACY_POLICY_VERSION } from "./contact-consent.js";
@@ -127,8 +131,9 @@ export async function registerSchool(db, values, owner = null) {
     fail(422, "Enter a valid timezone and school currency.");
   }
   await screenRegistrationEmail(b.email);
-  const mailer = await verificationMailer(db);
-  return db.transaction(async (tx) => {
+  await verificationMailer(db);
+  let deliveryUserId;
+  const result = await db.transaction(async (tx) => {
     // Public signup cannot win the owner bootstrap race.
     await tx.query("LOCK TABLE schools IN EXCLUSIVE MODE");
     if (
@@ -195,7 +200,8 @@ export async function registerSchool(db, values, owner = null) {
       b,
       owner?.id || admin.id,
     );
-    await sendVerification(tx, admin, mailer);
+    await queueVerification(tx, admin);
+    deliveryUserId = admin.id;
     await queueOnboardingEmails(tx, admin);
     return {
       verification_required: true,
@@ -209,6 +215,8 @@ export async function registerSchool(db, values, owner = null) {
       portal_url: portalPath(school.portal_slug),
     };
   });
+  await deliverVerifications(db, deliveryUserId);
+  return result;
 }
 export async function settings(db) {
   const config = await one(db, "SELECT * FROM saas_settings WHERE id=1");

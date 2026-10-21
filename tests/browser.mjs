@@ -1,3 +1,5 @@
+import { testMailbox } from "./mailbox.js";
+const verifyFixtureEmail = testMailbox();
 import { openTestDatabase } from "./database.js";
 import { randomBytes } from "node:crypto";
 import { chromium } from "@playwright/test";
@@ -9,6 +11,7 @@ import { createApp } from "../server/app.js";
 import { localClock } from "../server/security.js";
 import * as OTPAuth from "otpauth";
 process.env.REQUIRE_MFA = "true";
+process.env.BOOTSTRAP_TOKEN = randomBytes(32).toString("hex");
 process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 const db = await openTestDatabase(),
   app = await createApp(db, { dataDir: "test-results/uploads" });
@@ -41,8 +44,10 @@ async function closed() {
 }
 try {
   const setup = await page.request.post(origin + "/api/v1/auth/setup", {
+    headers: { "x-bootstrap-token": process.env.BOOTSTRAP_TOKEN },
     data: {
-      school_name: "Greenfield Academy", phone_number: "+2348012345678",
+      school_name: "Greenfield Academy",
+      phone_number: "+2348012345678",
       short_code: "GFA",
       currency_code: "NGN",
       timezone: "Africa/Lagos",
@@ -55,6 +60,7 @@ try {
     },
   });
   assert.equal(setup.status(), 201, await setup.text());
+  await verifyFixtureEmail("admin@greenfield.test", origin + "/api/v1");
   await page.goto(origin + "/login");
   await page
     .getByRole("button", { name: "Accept required cookies", exact: true })
@@ -63,24 +69,9 @@ try {
   await page.getByLabel(/^Password \*$/).fill("Browser-test-2026!");
   await save("Sign in to your workspace");
   await page
-    .getByRole("heading", { name: "Finish administrator security setup" })
+    .getByRole("heading", { name: "Secure your account", exact: true })
     .waitFor();
-  await page
-    .getByText("Complete this step to unlock the rest of SMPIS.")
-    .waitFor();
-  assert.equal(await page.locator("nav button").count(), 1);
-  const notificationRequests = [];
-  const recordNotificationRequest = (request) => {
-    if (request.url().includes("/api/v1/notifications"))
-      notificationRequests.push(request.url());
-  };
-  page.on("request", recordNotificationRequest);
-  await page.evaluate(() => {
-    location.hash = "notifications";
-  });
-  await page.waitForFunction(() => location.hash === "#administration");
-  assert.deepEqual(notificationRequests, []);
-  page.off("request", recordNotificationRequest);
+  assert.equal(await page.locator("nav button").count(), 0);
   await save("Set up authenticator");
   await page
     .getByRole("img", { name: "Authenticator setup QR code" })
@@ -92,8 +83,8 @@ try {
     label: "admin@greenfield.test",
     secret: OTPAuth.Secret.fromBase32(secret),
   });
-  await field("Verification code").fill(otp.generate());
-  await save("Enable verification");
+  await field("Authenticator code").fill(otp.generate());
+  await save("Enable and continue");
   await page.locator("nav").getByRole("button", { name: "Overview" }).waitFor();
   await navigate("Overview");
   await page.getByRole("heading", { name: "Welcome, School" }).waitFor();
@@ -235,11 +226,9 @@ try {
   await page
     .getByRole("heading", { name: "SMTP email", exact: true })
     .waitFor();
-  const paystackPanel = page
-    .locator("section.panel")
-    .filter({
-      has: page.getByRole("heading", { name: "Paystack", exact: true }),
-    });
+  const paystackPanel = page.locator("section.panel").filter({
+    has: page.getByRole("heading", { name: "Paystack", exact: true }),
+  });
   await paystackPanel.getByLabel("Enable this integration").check();
   await paystackPanel.getByLabel("Public key").fill("pk_test_browser");
   await paystackPanel

@@ -1,3 +1,4 @@
+import { smtpDns } from "../server/smtp-policy.js";
 import { test as standaloneTest } from "node:test";
 import { openTestDatabase } from "./database.js";
 import nodemailer from "nodemailer";
@@ -6,12 +7,14 @@ import { test } from './database.js';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { openDatabase, insert, one } from '../server/db.js';
-import { createApp } from '../server/app.js';
+import { createApp } from './app.js';
 import { digest } from '../server/security.js';
 import { integrationConfig, smtpConfig } from '../server/integrations.js';
 import { paystackConfig } from '../server/paystack.js';
 
 test('integration credentials enforce role, tenant isolation, encryption, redaction, retention and deletion', async (t) => {
+  process.env.SMTP_ALLOWED_HOSTS = 'smtp.example.com,smtp.other.example';
+  t.mock.method(smtpDns,'lookup',async () => [{address:'8.8.8.8',family:4}]);
   process.env.REQUIRE_MFA = 'false';
   process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString('hex');
   const db = await openTestDatabase();

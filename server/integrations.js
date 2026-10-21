@@ -3,6 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { one, audit } from "./db.js";
 import { fail } from "./security.js";
+import { allowedSmtpHost, smtpDestination } from "./smtp-policy.js";
 
 const value = z.string().trim().max(2000).default("");
 const secret = z.string().max(4000).default("");
@@ -133,6 +134,11 @@ function redact(provider, config) {
 }
 function validate(provider, c) {
   if (!c.enabled) return;
+  if (provider === "smtp") {
+    allowedSmtpHost(c.host);
+    if (![465, 587].includes(c.port) || c.secure !== (c.port === 465))
+      fail(422, "Use TLS on port 465 or STARTTLS on port 587.");
+  }
   const required = {
     manual: ["bank_name", "account_name", "account_number"],
     stripe: ["secret_key"],
@@ -262,9 +268,14 @@ export async function smtpConfig(db, schoolId) {
     return saved.enabled
       ? {
           transport: {
-            host: saved.host,
+            host: await smtpDestination(saved.host),
             port: saved.port,
             secure: saved.secure,
+            requireTLS: true,
+            tls: { servername: saved.host, rejectUnauthorized: true },
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 15000,
             ...(saved.username
               ? { auth: { user: saved.username, pass: saved.password } }
               : {}),

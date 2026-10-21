@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test as unitTest } from "node:test";
 import { test, openTestDatabase } from "./database.js";
 import { screenRegistrationEmail } from "../server/stopreg.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one } from "../server/db.js";
 import nodemailer from "nodemailer";
 

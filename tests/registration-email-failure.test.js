@@ -1,10 +1,11 @@
+import { deliverVerifications } from "../server/verification-delivery.js";
 import assert from "node:assert/strict";
 import nodemailer from "nodemailer";
 import { test, openTestDatabase } from "./database.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one } from "../server/db.js";
 
-test("SMTP failure returns a safe signup error, rolls back records and permits retry", async () => {
+test("SMTP failure preserves pending registration and encrypted delivery retries after commit", async () => {
   const db = await openTestDatabase();
   const keys = ["APP_URL", "SMTP_URL", "MAIL_FROM", "STOPREG_API_TOKEN"];
   const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
@@ -86,27 +87,16 @@ test("SMTP failure returns a safe signup error, rolls back records and permits r
     };
     rejectMail = true;
     const failed = await post("/saas/register", signup);
-    assert.equal(failed.status, 503);
-    assert.equal(failed.body.errors[0].code, "EMAIL_VERIFICATION_UNAVAILABLE");
-    assert.match(
-      failed.body.errors[0].message,
-      /couldn't send your verification email/,
-    );
+    assert.equal(failed.status, 201);
     assert.doesNotMatch(JSON.stringify(failed.body), /private|EAUTH|525/);
-    assert.deepEqual(await counts(), before);
-    assert.deepEqual(logs, [
-      [
-        "Verification email delivery failed",
-        {
-          code: "EAUTH",
-          responseCode: 525,
-          unauthorizedIP: true,
-        },
-      ],
-    ]);
-    rejectMail = false;
-    assert.equal((await post("/saas/register", signup)).status, 201);
     assert.equal((await counts()).schools, before.schools + 1);
+    assert.equal((await one(db, "SELECT email_verified FROM users WHERE email=$1", [signup.email])).email_verified, false);
+    assert.equal((await one(db, "SELECT attempts FROM verification_outbox")).attempts, 1);
+    assert.deepEqual(logs, [["Verification email delivery failed; queued for retry."]]);
+    rejectMail = false;
+    await db.query("UPDATE verification_outbox SET next_attempt_at=now()");
+    assert.equal(await deliverVerifications(db), 1);
+    assert.equal(await one(db, "SELECT id FROM verification_outbox"), undefined);
   } finally {
     nodemailer.createTransport = originalTransport;
     console.error = originalLog;

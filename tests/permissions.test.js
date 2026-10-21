@@ -5,7 +5,7 @@ import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { insert } from "../server/db.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import {
   ROLE_PERMISSIONS,
   hashPassword,

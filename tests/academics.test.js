@@ -3,7 +3,7 @@ import { test, before, after } from "./database.js";
 import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
 import { insert, one, rows } from "../server/db.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { hashPassword, localClock } from "../server/security.js";
 import { parseTopicCsv } from "../server/academic-routes.js";
 import { subjectResults } from "../server/academic-service.js";

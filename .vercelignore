@@ -3,6 +3,8 @@
 node_modules/
 .npm-cache/
 .vercel/
+.venv/
+.github/
 .env
 .env.*
 !.env.example
@@ -14,6 +16,10 @@ docs/
 dist/
 public/
 deploy/
+worker/
+railway.json
+scripts/*
+!scripts/vercel-preflight.mjs
 *.log
 branch_structure.json
 temp_*.bat

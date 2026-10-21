@@ -5,7 +5,7 @@ import { verifyCheckout } from "../server/saas-routes.js";
 import * as OTPAuth from "otpauth";
 import { test, before, after, openTestDatabase } from "./database.js";
 import assert from "node:assert/strict";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one } from "../server/db.js";
 import { digest } from "../server/security.js";
 process.env.REQUIRE_MFA = "false";
@@ -270,7 +270,7 @@ test("owner metrics and support tools cover customer accounts with audited recov
   assert.equal((await call("/me", { client: school })).status, 401);
 });
 
-test("standalone owner optionally enables MFA without school configuration", async () => {
+test("standalone owner fixture enables MFA without school configuration", async () => {
   process.env.REQUIRE_MFA = "true";
   try {
     owner = await login("owner@console.test", "/auth/owner/login");
@@ -310,7 +310,7 @@ test("standalone owner optionally enables MFA without school configuration", asy
         await call("/auth/mfa/verify", {
           client: owner,
           method: "POST",
-          body: { code: totp.generate() },
+          body: { code: totp.generate({ timestamp: Date.now() + 30000 }) },
         })
       ).status,
       200,

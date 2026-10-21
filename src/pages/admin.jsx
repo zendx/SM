@@ -779,13 +779,6 @@ export function Administration({
                   wide: true,
                 },
                 {
-                  name: "password",
-                  label: "Initial password",
-                  type: "password",
-                  minLength: 12,
-                  wide: true,
-                },
-                {
                   name: "role",
                   label: "Role",
                   options: config.roles,

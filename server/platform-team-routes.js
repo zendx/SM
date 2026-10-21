@@ -7,7 +7,11 @@ import {
   requireSubscriptions,
   staffScopes,
 } from "./platform-access.js";
-import { sendVerification, verificationMailer } from "./email-verification.js";
+import {
+  queueVerification,
+  deliverVerifications,
+  verificationMailer,
+} from "./email-verification.js";
 import { subscriptionEvent } from "./saas-service.js";
 
 export function platformTeamRoutes(db) {
@@ -31,7 +35,7 @@ export function platformTeamRoutes(db) {
       })
       .strict()
       .parse(req.body);
-    const mailer = await verificationMailer(db);
+    await verificationMailer(db);
     const created = await db.transaction(async (tx) => {
       const user = await insert(tx, "users", {
         school_id: null,
@@ -46,7 +50,7 @@ export function platformTeamRoutes(db) {
         scope: b.scope,
         created_by: req.user.id,
       });
-      await sendVerification(tx, user, mailer);
+      await queueVerification(tx, user);
       await subscriptionEvent(tx, null, req.user.id, "TEAM_ACCOUNT_CREATED", {
         user_id: user.id,
         scope: b.scope,
@@ -59,6 +63,7 @@ export function platformTeamRoutes(db) {
         scope: b.scope,
       };
     });
+    await deliverVerifications(db, created.id);
     res.status(201).json({ data: created });
   });
   r.patch("/saas/owner/team/:id", requireOwner, async (req, res) => {

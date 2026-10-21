@@ -1,4 +1,5 @@
 import { BrandLogo } from "./brand-logo";
+import { MfaEnrollment } from "./mfa-enrollment";
 import {
   NotificationBell,
   PlatformInbox,
@@ -117,6 +118,12 @@ function Auth({ onLogin, setup }) {
     );
   const year = new Date().getFullYear();
   const setupFields = [
+    {
+      name: "bootstrap_token",
+      label: "Deployment setup token",
+      type: "password",
+      wide: true,
+    },
     { name: "school_name", label: "School name", wide: true },
     {
       name: "phone_number",
@@ -541,7 +548,7 @@ function App() {
     })();
   }, []);
   useEffect(() => {
-    if (session && !session.mfa_required) {
+    if (session && !session.mfa_required && !session.user.mfa_setup_required) {
       reloadConfig().catch((e) => setFatal(e.message));
       reloadSubscription().catch((e) => setFatal(e.message));
     }
@@ -680,6 +687,16 @@ function App() {
           }}
         />
       </>
+    );
+  if (session.user.mfa_setup_required)
+    return (
+      <MfaEnrollment
+        onComplete={setSession}
+        onLogout={async () => {
+          await post("/auth/logout", {});
+          setSession(null);
+        }}
+      />
     );
   if (session.mfa_required)
     return (

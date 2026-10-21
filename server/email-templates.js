@@ -11,13 +11,12 @@ export const emailTemplates = {
     name: "Tenant account created",
     direction: "Outbound",
     subject: "Your {{school_name}} portal account is ready",
-    body: "Hello {{name}},\n\nYour administrator has created an account for you on the {{school_name}} SMPIS portal. Your role is {{role}}.\n\nUsername (email): {{email}}\nInitial password: {{password}}\n\nOpen your portal: {{link}}\n\nChoose your own password: on the sign-in page, select Forgot your password?, enter your email address, and use the reset email to set a new password. You can do this before your first sign-in or after signing out.\n\nSecure your account: sign in, open Administration > Security, and select Set up authenticator. Scan the QR code with your authenticator app, enter its code to enable MFA, and save your recovery codes somewhere safe.\n\nOpen Security settings: {{security_link}}\n\nKeep these sign-in details private. The menus available to you depend on your assigned role. Contact your school administrator if you need help.",
+    body: "Hello {{name}},\n\nYour {{school_name}} account ({{role}}) is ready.\n\nEmail: {{email}}\n\nChoose your password and activate your account within 30 minutes: {{link}}\n\nIf the link expires, select Forgot your password? on the sign-in page to request a new one.\n\nSet up authenticator verification after activation: {{security_link}}",
     variables: [
       "name",
       "school_name",
       "role",
       "email",
-      "password",
       "link",
       "security_link",
     ],
@@ -116,14 +115,17 @@ export async function renderEmail(db, key, values) {
     "SELECT subject,body FROM platform_email_templates WHERE key=$1",
     [key],
   );
-  const message = renderTemplate(template || emailTemplates[key], values);
+  const safeTemplate =
+    key === "account_created" && /{{\s*password\s*}}/.test(template?.body || "")
+      ? null
+      : template;
+  const message = renderTemplate(safeTemplate || emailTemplates[key], values);
   return {
     ...message,
     html: brandedEmail({
       ...message,
       link: values.link,
       key,
-      credentialsText: key === "account_created" ? values.password : undefined,
       unsubscribeLink: values.unsubscribe_link,
     }),
     attachments: [await emailLogo()],
@@ -181,9 +183,7 @@ export function emailTemplateRoutes(db) {
           fail(422, "Malformed template placeholder.");
       }
       for (const required of [
-        ...(key === "account_created"
-          ? ["email", "password", "security_link"]
-          : []),
+        ...(key === "account_created" ? ["email", "security_link"] : []),
         ...(defaults.variables.includes("link") ? ["link"] : []),
         ...(defaults.variables.includes("body") ? ["body"] : []),
       ])

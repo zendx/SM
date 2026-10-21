@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import * as OTPAuth from "otpauth";
 import { insert, one, rows } from "../server/db.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { hashPassword, localClock } from "../server/security.js";
 import { refreshOperationAlerts } from "../server/operations-service.js";
 import { refreshAlerts } from "../server/services.js";

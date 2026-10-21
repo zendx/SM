@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, openTestDatabase } from "./database.js";
 import { testMailbox } from "./mailbox.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one } from "../server/db.js";
 import { finalizeClosures } from "../server/account-lifecycle.js";
 

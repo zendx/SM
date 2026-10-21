@@ -4,7 +4,7 @@ import { test as unitTest } from "node:test";
 import { test, before, after, openTestDatabase } from "./database.js";
 import assert from "node:assert/strict";
 import { createHmac, randomBytes } from "node:crypto";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { one } from "../server/db.js";
 import { initializeSchema } from "../server/schema.js";
 import { runJobs } from "../server/jobs.js";
