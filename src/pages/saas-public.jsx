@@ -21,6 +21,7 @@ import { post } from "../api";
 import { useData } from "../hooks";
 import "../saas.css";
 import { WhatsAppHelp } from "./whatsapp-help";
+import { FeatureCards, ProductSnapshots } from "./product-features";
 
 export const planPrice = (cycle, config = {}) => {
   const monthly = Number(
@@ -283,38 +284,6 @@ export function Signup() {
     </div>
   );
 }
-const features = [
-  [
-    Users,
-    "Students & admissions",
-    "From the first application to enrolment, keep student profiles, guardians and documents together.",
-  ],
-  [
-    CalendarCheck,
-    "Attendance that tells a story",
-    "Record student and staff attendance. Spot repeated absences and follow up with confidence.",
-  ],
-  [
-    Wallet,
-    "A clearer view of school fees",
-    "Manage invoices, receipts, instalments, outstanding balances and collection reports.",
-  ],
-  [
-    BookOpen,
-    "Academics & curriculum",
-    "Manage assessments, report cards and curriculum coverage. See where learners need support.",
-  ],
-  [
-    MessageSquare,
-    "Parents & school experience",
-    "Give parents access to their children’s information, complaints and school communication.",
-  ],
-  [
-    Building2,
-    "People, facilities & assets",
-    "Bring staff records, leave, performance, maintenance and your asset register into one place.",
-  ],
-];
 export function Landing() {
   const [yearly, setYearly] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -394,7 +363,7 @@ export function Landing() {
             if (event.target.closest("a")) setMenuOpen(false);
           }}
         >
-          <a href="#features">Features</a>
+          <a href="/features">Features</a>
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQs</a>
@@ -425,9 +394,9 @@ export function Landing() {
             </div>
             <h1>A calmer, smarter way to run your school.</h1>
             <p>
-              Bring admissions, attendance, fees, academics and staff operations
-              into one connected school workspace—so your team can focus on
-              teaching, not admin.
+              Bring admissions, attendance, school fees, exams, report cards,
+              teaching plans and staff operations into one connected school
+              workspace—so your team can focus on teaching, not admin.
             </p>
             <div className="hero-actions">
               <a className="btn" href="/signup">
@@ -452,7 +421,7 @@ export function Landing() {
               <span>Admissions</span>
               <span>Attendance</span>
               <span>Fee tracking</span>
-              <span>Academics</span>
+              <span>Exams & report cards</span>
               <span>Staff records</span>
             </div>
           </div>
@@ -550,17 +519,13 @@ export function Landing() {
               workspace, tailored to each person’s role.
             </p>
           </div>
-          <div className="feature-grid">
-            {features.map(([Icon, title, copy], i) => (
-              <article key={title}>
-                <span className={`feature-icon tone-${i % 3}`}>
-                  <Icon size={24} />
-                </span>
-                <h3>{title}</h3>
-                <p>{copy}</p>
-              </article>
-            ))}
+          <div className="catalog-section-link">
+            <a className="sales-text-link" href="/features">
+              Browse the complete product guide <ArrowRight size={18} />
+            </a>
+            <span>12 connected modules, with workflows and setup notes</span>
           </div>
+          <FeatureCards />
           <div className="intelligence-band">
             <ChartNoAxesCombined size={42} />
             <div>
@@ -572,6 +537,71 @@ export function Landing() {
             </div>
             <a href="/signup">
               Bring your school into focus <ArrowUpRight size={18} />
+            </a>
+          </div>
+        </section>
+        <section className="sales-section product-spotlight">
+          <div>
+            <div className="eyebrow">YES, EXAMS AND REPORT CARDS TOO</div>
+            <h2>
+              A complete term.
+              <br />A report families can understand.
+            </h2>
+            <p>
+              Set continuous assessment and exam weights, enter scores, review
+              grades and comments, then publish PDF report cards to linked
+              parents and students.
+            </p>
+            <a className="sales-text-link" href="/features/exams-report-cards">
+              Explore exams & report cards <ArrowRight size={18} />
+            </a>
+          </div>
+          <ol aria-label="Report-card workflow">
+            <li>
+              <span>01</span>
+              <div>
+                <strong>Plan & assess</strong>
+                <p>
+                  Subjects, teacher assignments, exam timetables and weighted
+                  assessments.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <strong>Review & finalize</strong>
+                <p>
+                  Complete scores, grading rules, teacher comments and principal
+                  review.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <strong>Publish & share</strong>
+                <p>
+                  Families access their linked students' published reports and
+                  PDF downloads.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </section>
+        <section className="sales-section">
+          <div className="section-intro">
+            <div className="eyebrow">SEE THE WORKSPACE</div>
+            <h2>Built around real school tasks.</h2>
+            <p>
+              Actual SMPIS screens from our fictional Greenfield Academy starter
+              guide. Open a screen for a closer look.
+            </p>
+          </div>
+          <ProductSnapshots />
+          <div className="catalog-section-link">
+            <a className="sales-text-link" href="/features">
+              Find the tools for your team <ArrowRight size={18} />
             </a>
           </div>
         </section>
@@ -728,6 +758,18 @@ export function Landing() {
           <div className="faq-list">
             {[
               [
+                "Can we manage exams and generate report cards?",
+                "Yes. Set weighted assessments, record scores, manage exam timetables and generate term report cards. Review and finalize each batch before publishing it to linked parent and student accounts. Reports can be downloaded as PDFs. This is exam and results administration, not online test delivery.",
+              ],
+              [
+                "Which school operations are included?",
+                "Explore students and admissions, attendance, school fees and payments, exams and report cards, curriculum, family portals, recruitment and HR, complaints and discipline, satisfaction surveys, facilities and assets, dashboards, reporting and administration. Each module has a detailed guide linked from Features.",
+              ],
+              [
+                "Do payment and email services need configuration?",
+                "Yes. Online payments require a supported provider account, and tenant email requires an approved SMTP destination. Availability, currencies and third-party fees depend on the provider. School payment integrations are separate from your SMPIS subscription.",
+              ],
+              [
                 "What happens after the 30-day Free plan?",
                 "Your school’s operational access pauses. Your administrator can still sign in to the billing screen and upgrade to Pro. The trial does not charge your card automatically.",
               ],
@@ -793,6 +835,7 @@ export function Landing() {
             height="44"
           />
         </a>
+        <a href="/features">Explore all features</a>
         <span>Clarity for every school day.</span>
       </footer>
       <WhatsAppHelp />

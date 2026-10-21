@@ -1,3 +1,5 @@
+import { productModules, featurePath } from "./product-catalog.js";
+
 const homeDescription =
   "Manage admissions, attendance, school fees, academics and staff in one school management platform. Start a 30-day trial with no card required.";
 
@@ -26,6 +28,20 @@ const pages = {
       "See which essential cookies SMPIS uses for secure sign-in and cookie preferences, what they store and how long they last.",
   },
 };
+
+pages["/features"] = {
+  title: "School Management Features: Exams, Fees, HR & More | SMPIS",
+  heading: "Know what your school can do with SMPIS.",
+  description:
+    "Explore 12 connected SMPIS modules: admissions, exams and report cards, curriculum, attendance, fees, family portals, HR, facilities, reports and more.",
+};
+for (const module of productModules) {
+  pages[featurePath(module)] = {
+    title: `${module.title} | SMPIS School Management`,
+    heading: module.title,
+    description: module.summary,
+  };
+}
 
 export const publicSeoPaths = Object.freeze(Object.keys(pages));
 
@@ -75,7 +91,8 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
           "@context": "https://schema.org",
           "@type": "WebApplication",
           name: "SMPIS",
-          alternateName: "School Management, Performance and Intelligence System",
+          alternateName:
+            "School Management, Performance and Intelligence System",
           url: canonical,
           description: homeDescription,
           applicationCategory: "EducationalApplication",
@@ -106,10 +123,22 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
         ]
       : []),
   ].join("\n");
+  const module = productModules.find((item) => featurePath(item) === route);
+  const productContent = module
+    ? `<h2>What you can do</h2><ul>${module.capabilities.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul><h2>How it works</h2><ol>${module.steps.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol><h2>Good to know</h2><p>${escapeHtml(module.note)}</p><a href="/features">Explore all features</a>`
+    : route === "/features"
+      ? productModules
+          .map(
+            (item) =>
+              `<section><h2><a href="${featurePath(item)}">${escapeHtml(item.title)}</a></h2><p>${escapeHtml(item.summary)}</p></section>`,
+          )
+          .join("")
+      : "";
+  const featureLinks = `<nav aria-label="Product features"><a href="/features">Explore all features</a>${productModules.map((item) => `<a href="${featurePath(item)}">${escapeHtml(item.title)}</a>`).join(" ")}</nav>`;
   const intro =
     route === "/"
-      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p><footer><a href="https://maidensail.com/startup/smpis" rel="dofollow"><img src="https://maidensail.com/badge/smpis.svg" alt="Featured on Maidensail" width="190" height="44" /></a></footer><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
-      : `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><noscript>Enable JavaScript to view this page.</noscript></main>`;
+      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p>${featureLinks}<footer><a href="https://maidensail.com/startup/smpis" rel="dofollow"><img src="https://maidensail.com/badge/smpis.svg" alt="Featured on Maidensail" width="190" height="44" /></a></footer><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
+      : `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p>${productContent}<noscript>Enable JavaScript to view this page.</noscript></main>`;
   return html
     .replace(
       /<!-- seo:start -->[\s\S]*?<!-- seo:end -->/,

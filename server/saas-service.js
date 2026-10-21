@@ -14,6 +14,7 @@ import { providerSummaries } from "./saas-providers.js";
 const reserved = new Set([
   "api",
   "assets",
+  "features",
   "terms",
   "privacy",
   "cookies",

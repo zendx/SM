@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { api, get, post, setCsrf, tenantSlug } from "./api";
 import { Landing, Signup, PublicBrand } from "./pages/saas-public";
+import { ProductFeatures } from "./pages/product-features";
 import { Subscription, SaasOwner } from "./pages/saas-billing";
 import { OwnerPortal } from "./pages/owner";
 import { Form, Button, Loading, human } from "./components";
@@ -971,6 +972,8 @@ createRoot(document.getElementById("root")).render(
       <OwnerPortal />
     ) : applyCode ? (
       <PublicApplication code={applyCode} />
+    ) : /^\/features(?:\/|$)/.test(location.pathname) ? (
+      <ProductFeatures />
     ) : location.pathname.replace(/\/$/, "") === "/signup" ? (
       <Signup />
     ) : location.pathname === "/" &&

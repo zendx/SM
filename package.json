@@ -18,7 +18,8 @@
     "test:ui:operations": "node tests/operations-browser.mjs",
     "backup": "node scripts/backup.js",
     "supabase:setup": "node scripts/supabase.js setup",
-    "supabase:check": "node scripts/supabase.js check"
+    "supabase:check": "node scripts/supabase.js check",
+    "test:ui:marketing": "npm run build && node tests/product-marketing.browser.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -17,7 +17,10 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
         html,
         /<title>School Management Software for Growing Schools \| SMPIS<\/title>/,
       );
-      assert.match(html, /<h1>A calmer, smarter way to run your school\.<\/h1>/);
+      assert.match(
+        html,
+        /<h1>A calmer, smarter way to run your school\.<\/h1>/,
+      );
       assert.match(html, /href="\/signup">Start your 30-day free trial<\/a>/);
       assert.match(
         html,
@@ -129,4 +132,43 @@ test("server returns page-specific SEO without JavaScript or trusting Host heade
   assert.match(xml, /https:\/\/school\.example\.com\//);
   assert.match(xml, /https:\/\/school\.example\.com\/privacy/);
   assert.doesNotMatch(xml, /\/signup/);
+});
+
+test("feature guides are crawlable and discoverable without JavaScript", async () => {
+  const { productModules, featurePath } =
+    await import("../server/product-catalog.js");
+  const { publicSeoPaths } = await import("../server/seo.js");
+  const { portalSlug } = await import("../server/saas-service.js");
+  assert.equal(portalSlug.safeParse("features").success, false);
+  assert.equal(portalSlug.safeParse("greenfield-academy").success, true);
+  const template = await readFile("index.html", "utf8");
+  const directory = renderSeoHtml(
+    template,
+    "/features",
+    "https://school.example.com",
+  );
+  assert.doesNotMatch(directory, /name="robots" content="noindex/);
+  for (const module of productModules) {
+    const route = featurePath(module);
+    assert.ok(publicSeoPaths.includes(route));
+    assert.ok(directory.includes(`href="${route}"`));
+    const html = renderSeoHtml(
+      template,
+      route + "/",
+      "https://school.example.com",
+    );
+    assert.ok(html.includes(`href="https://school.example.com${route}"`));
+    assert.match(html, /<h2>What you can do<\/h2>/);
+    assert.match(html, /<h2>How it works<\/h2>/);
+    assert.match(html, /<h2>Good to know<\/h2>/);
+    assert.doesNotMatch(html, /name="robots" content="noindex/);
+    assert.equal(
+      renderSeoHtml(html, route, "https://school.example.com"),
+      html,
+    );
+  }
+  assert.match(
+    renderSeoHtml(template, "/features/unknown", "https://school.example.com"),
+    /name="robots" content="noindex/,
+  );
 });

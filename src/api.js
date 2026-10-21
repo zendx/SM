@@ -2,9 +2,15 @@ let csrf = "";
 const firstSegment = location.pathname.split("/").filter(Boolean)[0];
 export const tenantSlug =
   firstSegment &&
-  !["terms", "privacy", "cookies", "signup", "login", "owner"].includes(
-    firstSegment,
-  )
+  ![
+    "terms",
+    "privacy",
+    "cookies",
+    "signup",
+    "login",
+    "owner",
+    "features",
+  ].includes(firstSegment)
     ? firstSegment
     : "";
 export function setCsrf(value) {
