@@ -1,3 +1,4 @@
+import { autoRenewalSummary } from "./recurring-methods.js";
 import {
   queueVerification,
   verificationMailer,
@@ -271,6 +272,7 @@ export async function subscriptionSnapshot(db, schoolId) {
   return {
     ...sub,
     owner_workspace: ownerWorkspace,
+    auto_renewal: (await autoRenewalSummary(db, schoolId)) || null,
     access_allowed: ownerWorkspace || accessAllowed(sub, config.grace_days),
     settings: config.bank_enabled
       ? config
@@ -420,6 +422,8 @@ export async function settleSubscriptionPayment(
         (sub.status === "SUSPENDED" &&
           !["TRIAL_EXPIRED", "OVERDUE"].includes(sub.suspension_reason)))
     )
+      status = "REVIEW";
+    if (p.automatic && new Date(sub.period_end).getTime() > new Date(p.renewal_due_at).getTime())
       status = "REVIEW";
     const result = await one(
       tx,

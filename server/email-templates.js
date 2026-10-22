@@ -35,6 +35,13 @@ export const emailTemplates = {
     body: "Hello {{name}},\n\nHere’s a quick guide to finding your way around {{school_name}} on SMPIS. Verify your email, sign in, and choose the academic term at the top of your workspace.\n\n{{guide}}\n\nA good first session: review Administration, add classes and staff, enter your students, then explore attendance and finance. You can come back to this guide whenever you need it.\n\nOpen your portal: {{link}}\n\nFor a little extra peace of mind, enable two-factor authentication: {{security_link}}\n\nMenu access depends on each person’s role. Your team members may see fewer menus than the school administrator.",
     variables: ["name", "school_name", "guide", "link", "security_link"],
   },
+  auto_renewal_failed: {
+    name: "Automatic renewal payment issue",
+    direction: "Outbound",
+    subject: "A quick update about your SMPIS renewal",
+    body: "{{body}}\n\nReview your subscription: {{link}}",
+    variables: ["title", "body", "link"],
+  },
   subscription_reminder: {
     name: "Subscription reminder",
     direction: "Outbound",

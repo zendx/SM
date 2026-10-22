@@ -41,6 +41,7 @@ const actions = {
   ],
   support_reply: ["An update from the SMPIS team", "View support reply"],
   support_received: ["A school needs your support", "Open support ticket"],
+  auto_renewal_failed: ["A small billing update", "Review your subscription"],
   subscription_reminder: ["Keep your school connected", "Manage subscription"],
   mfa_reminder: [
     "A small step for a safer account",

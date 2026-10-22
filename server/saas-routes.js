@@ -1,3 +1,4 @@
+import { saveRecurringMethod } from "./recurring-methods.js";
 import { platformTeamRoutes } from "./platform-team-routes.js";
 import { requireRecaptcha } from "./recaptcha.js";
 import { accountLifecycleRoutes } from "./account-lifecycle-routes.js";
@@ -48,6 +49,8 @@ function owner(req, res, next) {
   next();
 }
 async function payable(db, schoolId) {
+  if (await one(db, "SELECT id FROM subscription_payments WHERE school_id=$1 AND automatic AND status='PENDING' LIMIT 1", [schoolId]))
+    fail(409, "An automatic renewal is being confirmed. Please wait before making another payment.");
   const sub = await one(
     db,
     "SELECT * FROM school_subscriptions WHERE school_id=$1",
@@ -134,9 +137,18 @@ export async function verifyCheckout(db, session) {
     session.livemode !== (p.mode === "LIVE")
   )
     fail(422, "Payment mode does not match configuration.");
-  return settleSubscriptionPayment(db, p.id, null, {
+  const settled = await settleSubscriptionPayment(db, p.id, null, {
     testMode: !session.livemode,
   });
+  if (p.auto_renew_requested && settled.status === "PAID" && session.payment_intent && session.customer) {
+    const intent = await providerRequest("stripe", c, `/payment_intents/${encodeURIComponent(session.payment_intent)}?expand[]=payment_method`);
+    if (intent.status === "succeeded" && intent.customer === session.customer &&
+        intent.livemode === true && intent.amount_received === Number(p.charge_amount_cents) &&
+        intent.currency === p.charge_currency.toLowerCase() && intent.payment_method?.type === "card") {
+      await saveRecurringMethod(db, settled, { customer: intent.customer, payment_method: intent.payment_method.id }, intent.payment_method.card);
+    }
+  }
+  return settled;
 }
 export function subscriptionWebhook(db) {
   return async (req, res) => {
@@ -265,6 +277,14 @@ export function saasRoutes(db) {
       },
     }),
   );
+  r.post("/subscription/auto-renewal/disable", schoolAdmin, async (req, res) => {
+    await db.transaction(async tx => {
+      await tx.query("UPDATE school_subscriptions SET auto_renew_revoked_at=now() WHERE school_id=$1", [req.user.school_id]);
+      await tx.query("UPDATE subscription_auto_renewals SET enabled=false,revoked_at=now(),updated_at=now() WHERE school_id=$1", [req.user.school_id]);
+      await subscriptionEvent(tx, req.user.school_id, req.user.id, "AUTO_RENEWAL_DISABLED");
+    });
+    res.json({ data: { message: "Automatic renewal is off. A payment already submitted to your bank may still complete." } });
+  });
   r.post("/subscription/bank", schoolAdmin, async (req, res) => {
     const b = cycleSchema
       .extend({
@@ -282,6 +302,8 @@ export function saasRoutes(db) {
     )
       fail(503, "The SMPIS owner has not published bank-transfer details yet.");
     const payment = await db.transaction(async (tx) => {
+      await tx.query("SELECT school_id FROM school_subscriptions WHERE school_id=$1 FOR UPDATE", [req.user.school_id]);
+      await payable(tx, req.user.school_id);
       const p = await insert(tx, "subscription_payments", {
         school_id: req.user.school_id,
         initiated_by: req.user.id,
@@ -310,7 +332,7 @@ export function saasRoutes(db) {
   });
   r.post("/subscription/checkout", schoolAdmin, async (req, res) => {
     const b = cycleSchema
-      .extend({ provider: z.enum(providerNames).default("stripe") })
+      .extend({ provider: z.enum(providerNames).default("stripe"), auto_renew: z.boolean().default(false) })
       .parse(req.body);
     await payable(db, req.user.school_id);
     const c = await providerConfig(db, b.provider);
@@ -322,7 +344,10 @@ export function saasRoutes(db) {
       "SELECT portal_slug FROM schools WHERE id=$1",
       [req.user.school_id],
     );
-    const p = await insert(db, "subscription_payments", {
+    const p = await db.transaction(async tx => {
+      await tx.query("SELECT school_id FROM school_subscriptions WHERE school_id=$1 FOR UPDATE", [req.user.school_id]);
+      await payable(tx, req.user.school_id);
+      return insert(tx, "subscription_payments", {
       school_id: req.user.school_id,
       initiated_by: req.user.id,
       reference: "SMPIS-" + token().slice(0, 20),
@@ -331,10 +356,12 @@ export function saasRoutes(db) {
       method: "CARD",
       provider: b.provider,
       mode: c.mode,
+      auto_renew_requested: b.auto_renew,
       ...chargeQuote(price(b.billing_cycle, config), {
         currency: config.landing_currency,
         usd_rate: config.landing_usd_rate,
       }),
+      });
     });
     const returnUrl = `${siteOrigin()}/${school.portal_slug}/?subscription_provider=${b.provider}#subscription`;
     if (b.provider !== "stripe") {
@@ -387,6 +414,10 @@ export function saasRoutes(db) {
         success_url: callback,
         cancel_url: `${siteOrigin()}/${school.portal_slug}/#subscription`,
         customer_email: req.user.email,
+        ...(b.auto_renew ? {
+          customer_creation: "always",
+          "payment_intent_data[setup_future_usage]": "off_session",
+        } : {}),
         client_reference_id: p.reference,
         "metadata[school_id]": String(p.school_id),
         "payment_method_types[0]": "card",

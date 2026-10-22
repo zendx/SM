@@ -95,6 +95,7 @@ export function Subscription({
 }) {
   const q = useData("/subscription", null),
     [cycle, setCycle] = useState("MONTHLY"),
+    [autoRenew, setAutoRenew] = useState(false),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -256,10 +257,25 @@ export function Subscription({
               </strong>
             </div>
             <p className="muted">
-              Payments cover one billing period. Renew when due; cards are not
-              charged automatically. Switching period applies to your next
+              Payments cover one billing period. You can authorize automatic
+              card renewal at checkout. Switching period applies to your next
               purchase and preserves remaining paid time.
             </p>
+          </Panel>
+          <Panel title="Automatic renewal">
+            {sub.auto_renewal?.enabled ? <>
+              <p>Your {sub.auto_renewal.card_brand} card {sub.auto_renewal.card_last4 ? `ending ${sub.auto_renewal.card_last4}` : ""} is authorized for {sub.auto_renewal.charge_currency} {(Number(sub.auto_renewal.charge_amount_cents) / 100).toLocaleString()} each {sub.auto_renewal.billing_cycle === "YEARLY" ? "year" : "month"}.</p>
+              <p>We charge when your subscription expires and retry every 12 hours during the {config.grace_days}-day grace period. Failed payments receive an email with a link to pay.</p>
+              <Button secondary disabled={busy} onClick={async () => {
+                setBusy(true);
+                try {
+                  const result = await post("/subscription/auto-renewal/disable", {});
+                  setMessage(result.message); q.reload();
+                } catch (e) { setError(e.message); } finally { setBusy(false); }
+              }}>Turn off automatic renewal</Button>
+            </> : <p>Automatic renewal is off. Authorize your card with your next payment to enable it.</p>}
+            {sub.auto_renewal?.payment_pending && <p role="status">A renewal payment is being confirmed. Please wait before making another payment.</p>}
+            {sub.auto_renewal?.action_url && <a className="btn" href={sub.auto_renewal.action_url} rel="noreferrer">Authorize renewal payment</a>}
           </Panel>
           <div className="billing-methods">
             {Object.keys(sub.providers).length > 0 && (
@@ -267,6 +283,10 @@ export function Subscription({
                 title="Pay by card"
                 description="Choose a payment provider. Your subscription activates after server verification."
               >
+                <label className="field check-field">
+                  <input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenew(e.target.checked)} />
+                  <span>Authorize this card for automatic {cycle === "YEARLY" ? "yearly" : "monthly"} renewal at the amount shown at checkout, with retries every 12 hours during the {config.grace_days}-day grace period. You can turn this off here.</span>
+                </label>
                 {Object.entries(sub.providers).map(([name, p]) => (
                   <div className="provider-choice" key={name}>
                     <div>
@@ -291,7 +311,7 @@ export function Subscription({
                     </div>
                     <Button
                       small
-                      disabled={!p.enabled || busy}
+                      disabled={!p.enabled || busy || sub.auto_renewal?.payment_pending}
                       onClick={async () => {
                         setBusy(true);
                         setError("");
@@ -299,6 +319,7 @@ export function Subscription({
                           const result = await post("/subscription/checkout", {
                             billing_cycle: cycle,
                             provider: name,
+                            auto_renew: autoRenew,
                           });
                           location.assign(result.url);
                         } catch (e) {

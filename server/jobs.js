@@ -1,3 +1,4 @@
+import { runAutoRenewals } from "./recurring-payments.js";
 import { deliverPlatformNotifications } from "./platform-notifications.js";
 import { finalizeClosures } from "./account-lifecycle.js";
 import { smtpConfig } from "./integrations.js";
@@ -21,6 +22,7 @@ export async function runJobs(db) {
   await reconcileDocumentUploads(db);
   await deliverVerifications(db);
   await finalizeClosures(db);
+  await runAutoRenewals(db);
   await expireSubscriptions(db);
   await deliverOnboardingEmails(db);
   await queueMfaReminders(db);
@@ -113,15 +115,17 @@ export async function deliverNotifications(
           to: n.email,
           ...(await renderEmail(
             db,
-            n.dedupe_key?.startsWith("saas-reminder:")
-              ? "subscription_reminder"
-              : "school_notification",
+            n.dedupe_key?.startsWith("auto-renewal-issue:")
+              ? "auto_renewal_failed"
+              : n.dedupe_key?.startsWith("saas-reminder:")
+                ? "subscription_reminder"
+                : "school_notification",
             {
               title: n.title,
               body: n.body,
               link: process.env.APP_URL
                 ? new URL(
-                    `/${(await one(db, "SELECT portal_slug FROM schools WHERE id=$1", [n.school_id])).portal_slug}/#${n.dedupe_key?.startsWith("saas-reminder:") ? "subscription" : "notifications"}`,
+                    `/${(await one(db, "SELECT portal_slug FROM schools WHERE id=$1", [n.school_id])).portal_slug}/#${n.dedupe_key?.startsWith("saas-reminder:") || n.dedupe_key?.startsWith("auto-renewal-issue:") ? "subscription" : "notifications"}`,
                     process.env.APP_URL,
                   ).href
                 : "",

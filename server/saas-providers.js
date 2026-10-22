@@ -1,3 +1,4 @@
+import { saveRecurringMethod } from "./recurring-methods.js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "./validation.js";
 import { one } from "./db.js";
@@ -197,8 +198,17 @@ export async function verifyAlternativePayment(
   )
     fail(422, "Payment mode mismatch.");
   if (!["success", "successful"].includes(data.status)) return p;
-  return settleSubscriptionPayment(db, p.id, null, {
+  const settled = await settleSubscriptionPayment(db, p.id, null, {
     testMode: p.mode === "SANDBOX",
     providerId: `${provider}:${data.id}`,
   });
+  const method = provider === "paystack"
+    ? data.authorization?.reusable === true && data.authorization.channel === "card" && data.authorization.authorization_code
+      ? { authorization_code: data.authorization.authorization_code, email: data.customer?.email } : null
+    : data.card?.token ? { token: data.card.token, email: data.customer?.email, country: data.card.country } : null;
+  await saveRecurringMethod(db, settled, method, {
+    brand: data.authorization?.card_type || data.card?.type,
+    last4: data.authorization?.last4 || data.card?.last_4digits,
+  });
+  return settled;
 }

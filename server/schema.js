@@ -10,6 +10,7 @@ export async function applicationSchema() {
     "site-schema.sql",
     "saas-schema.sql",
     "hardening-schema.sql",
+    "recurring-schema.sql",
   ];
   const sql = (
     await Promise.all(
