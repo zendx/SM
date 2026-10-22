@@ -271,7 +271,7 @@ export const productModules = [
       "School bank details and manual transfer instructions",
       "Stripe, PayPal, Paystack and Flutterwave school payment configurations",
       "Provider transaction tracking and verified payment callbacks",
-      "School SMTP configuration for approved email destinations",
+      "Platform-managed email delivery",
       "Configurable school email templates",
       "Encrypted integration secrets and permission-controlled configuration",
     ],
@@ -280,7 +280,7 @@ export const productModules = [
       "Have an authorized administrator configure the integration.",
       "Verify delivery or payment flow before enabling it for families.",
     ],
-    note: "Third-party accounts, supported currencies, approved SMTP hosts and provider availability are required. Setting up a school fee gateway is separate from paying your SMPIS subscription. Twilio settings can be stored, but SMS delivery is not currently implemented.",
+    note: "Third-party payment accounts, supported currencies and provider availability are required. Setting up a school fee gateway is separate from paying your SMPIS subscription. Twilio settings can be stored, but SMS delivery is not currently implemented.",
     audience: [
       "School administrators",
       "Finance officers",

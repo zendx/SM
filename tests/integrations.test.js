@@ -1,4 +1,3 @@
-import { smtpDns } from "../server/smtp-policy.js";
 import { test as standaloneTest } from "node:test";
 import { openTestDatabase } from "./database.js";
 import nodemailer from "nodemailer";
@@ -9,12 +8,18 @@ import { randomBytes } from 'node:crypto';
 import { openDatabase, insert, one } from '../server/db.js';
 import { createApp } from './app.js';
 import { digest } from '../server/security.js';
-import { integrationConfig, smtpConfig } from '../server/integrations.js';
+import { encrypt, integrationConfig, smtpConfig } from '../server/integrations.js';
 import { paystackConfig } from '../server/paystack.js';
 
 test('integration credentials enforce role, tenant isolation, encryption, redaction, retention and deletion', async (t) => {
-  process.env.SMTP_ALLOWED_HOSTS = 'smtp.example.com,smtp.other.example';
-  t.mock.method(smtpDns,'lookup',async () => [{address:'8.8.8.8',family:4}]);
+  const previousMail = { SMTP_URL: process.env.SMTP_URL, MAIL_FROM: process.env.MAIL_FROM };
+  t.after(() => {
+    for (const [key, value] of Object.entries(previousMail)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  });
+  process.env.SMTP_URL = 'smtp://platform.example.com:587';
+  process.env.MAIL_FROM = 'platform@example.com';
   process.env.REQUIRE_MFA = 'false';
   process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString('hex');
   const db = await openTestDatabase();
@@ -51,30 +56,42 @@ test('integration credentials enforce role, tenant isolation, encryption, redact
     assert.equal((await admin('/admin/integrations/paystack',{enabled:false,clear_secrets:['secret_key']})).status,200);
     assert.equal(await paystackConfig(a.id,db),null);
     assert.equal((await integrationConfig(db,a.id,'paystack')).secret_key,'');
-    assert.equal((await admin('/admin/integrations/smtp',{enabled:true,host:'smtp.example.com',port:587,username:'mail',password:'private-smtp',from:'sender@example.com'})).status,200);
-    assert.equal((await smtpConfig(db,a.id)).transport.auth.pass,'private-smtp');
-    assert.equal((await other('/admin/integrations/smtp',{enabled:true,host:'smtp.other.example',port:465,secure:true,username:'other-mail',password:'other-private',from:'other@example.com'})).status,200);
+    // Legacy tenant records must neither override nor disable platform delivery.
+    for (const [school, enabled] of [[a, true], [b, false]]) {
+      await insert(db, 'school_integrations', {
+        school_id: school.id, provider: 'smtp',
+        encrypted_config: encrypt({ enabled, host: 'tenant.example.com', password: 'legacy-secret', from: 'tenant@example.com' }, school.id, 'smtp'),
+      });
+    }
+    assert.equal((await admin('/admin/integrations/smtp',{enabled:true})).status,422);
+    assert.equal((await other('/admin/integrations/smtp',{enabled:false})).status,422);
+    assert.ok(!Object.hasOwn(JSON.parse((await admin('/admin/integrations')).text).data, 'smtp'));
+    assert.deepEqual(await smtpConfig(db,a.id), {transport:process.env.SMTP_URL,from:process.env.MAIL_FROM});
+    assert.deepEqual(await smtpConfig(db,b.id), await smtpConfig(db,null));
     const deliveries=[];
     t.mock.method(nodemailer,'createTransport', transport => ({sendMail:async message => {deliveries.push({transport,message});}}));
     await insert(db,'notifications',{school_id:a.id,email:'parent-a@example.com',title:'A notice',body:'For A',dedupe_key:'test-a'});
     await insert(db,'notifications',{school_id:b.id,email:'parent-b@example.com',title:'B notice',body:'For B',dedupe_key:'test-b'});
     await runJobs(db);
     assert.equal(deliveries.length,2);
-    assert.equal(deliveries.find(d=>d.message.to==='parent-a@example.com').transport.auth.pass,'private-smtp');
-    assert.equal(deliveries.find(d=>d.message.to==='parent-b@example.com').transport.auth.pass,'other-private');
+    assert.equal(deliveries.find(d=>d.message.to==='parent-a@example.com').transport.url,process.env.SMTP_URL);
+    assert.equal(deliveries.find(d=>d.message.to==='parent-b@example.com').transport.url,process.env.SMTP_URL);
     const appUrl = process.env.APP_URL;
     process.env.APP_URL='https://school.example.com';
     try {
       const reset = await fetch(base+'/auth/password-reset/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@test.school'})});
       assert.equal(reset.status,200,await reset.text());
-      assert.equal(deliveries.at(-1).transport.auth.pass,'private-smtp');
-      assert.equal(deliveries.at(-1).message.from,'sender@example.com');
+      assert.equal(deliveries.at(-1).transport,process.env.SMTP_URL);
+      assert.equal(deliveries.at(-1).message.from,process.env.MAIL_FROM);
     } finally {if(appUrl===undefined)delete process.env.APP_URL;else process.env.APP_URL=appUrl;}
 
     assert.equal((await admin('/admin/integrations/twilio',{enabled:true})).status,422);
     const key = process.env.INTEGRATION_ENCRYPTION_KEY;
     process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString('hex');
     await assert.rejects(integrationConfig(db,a.id,'smtp'), /decrypted/);
+    assert.equal((await smtpConfig(db,a.id)).transport, process.env.SMTP_URL);
+    delete process.env.SMTP_URL;
+    assert.equal(await smtpConfig(db,a.id), null);
     process.env.INTEGRATION_ENCRYPTION_KEY = key;
   } finally { await new Promise(resolve => server.close(resolve)); await db.close(); }
 });

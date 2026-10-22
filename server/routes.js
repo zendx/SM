@@ -79,6 +79,8 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     const b = z
       .object({
         name: text,
+        boarding_status: z.enum(["DAY", "BOARDING", "MIXED"]).optional(),
+        transportation_available: z.boolean().optional(),
         currency_code: z.string().regex(/^[A-Z]{3}$/),
         timezone: text,
         attendance_threshold: z.coerce.number().int().min(1).max(100),
@@ -103,7 +105,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       )
         fail(422, "Currency cannot change after invoicing begins.");
       await tx.query(
-        "UPDATE schools SET name=$1,currency_code=$2,timezone=$3,attendance_threshold=$4,staff_start=$5,attendance_cutoff=$6 WHERE id=$7",
+        "UPDATE schools SET name=$1,currency_code=$2,timezone=$3,attendance_threshold=$4,staff_start=$5,attendance_cutoff=$6,boarding_status=COALESCE($8,boarding_status),transportation_available=COALESCE($9,transportation_available) WHERE id=$7",
         [
           b.name,
           b.currency_code,
@@ -112,6 +114,8 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
           b.staff_start,
           b.attendance_cutoff,
           req.user.school_id,
+          b.boarding_status ?? null,
+          b.transportation_available ?? null,
         ],
       );
       await audit(
@@ -332,6 +336,8 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         });
       const b = z.object(shape).partial().strict().parse(req.body);
       if (!Object.keys(b).length) fail(422, "No editable fields supplied.");
+      if (b.transportation_required && !(await currentSchool(db, req.user)).transportation_available)
+        fail(422, "This school does not offer school bus transportation.");
       if (b.parent_user_id) {
         const p = await schoolRecord(db, req.user, "users", b.parent_user_id);
         if (p.role !== "PARENT")
@@ -428,6 +434,8 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     requirePermission("admissions.write"),
     async (req, res) => {
       const b = studentSchema.parse(req.body);
+      if (b.transportation_required && !(await currentSchool(db, req.user)).transportation_available)
+        fail(422, "This school does not offer school bus transportation.");
       await schoolRecord(db, req.user, "classes", b.applied_class_id);
       const result = await db.transaction(async (tx) => {
         const { applied_class_id, previous_school, ...fields } = b;
@@ -776,6 +784,14 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         ),
       ),
   );
+  r.get("/hr/staff/accounts", requirePermission("staff.write"), async (req, res) => {
+    ok(res, await rows(db,
+      `SELECT u.id,u.name,u.email,u.role FROM users u
+       WHERE u.school_id=$1 AND u.status='ACTIVE'
+       AND u.role NOT IN ('PARENT','STUDENT','PROPRIETOR')
+       AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.user_id=u.id)
+       ORDER BY u.name`, [req.user.school_id]));
+  });
   r.post("/hr/staff", requirePermission("staff.write"), async (req, res) => {
     const b = z
       .object({
@@ -790,8 +806,10 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       .parse(req.body);
     if (b.user_id) {
       const u = await schoolRecord(db, req.user, "users", b.user_id);
-      if (["PARENT", "STUDENT", "PROPRIETOR"].includes(u.role))
-        fail(422, "Choose a staff user account.");
+      if (u.status !== "ACTIVE" || ["PARENT", "STUDENT", "PROPRIETOR"].includes(u.role))
+        fail(422, "Choose an active staff user account.");
+      if (await one(db, "SELECT id FROM staff WHERE user_id=$1", [u.id]))
+        fail(409, "This account already has a staff profile.");
     }
     const s = await insert(db, "staff", {
       school_id: req.user.school_id,
@@ -821,6 +839,17 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       );
     },
   );
+  r.get("/attendance/staff/today", requirePermission("staff.self"), async (req, res) => {
+    const school = await currentSchool(db, req.user);
+    const date = localClock(school.timezone).date;
+    const staff = await one(db,
+      "SELECT id,first_name,last_name,status FROM staff WHERE school_id=$1 AND user_id=$2",
+      [req.user.school_id, req.user.id]);
+    const attendance = staff ? await one(db,
+      "SELECT id,status,check_in_time,check_out_time FROM staff_attendance WHERE school_id=$1 AND staff_id=$2 AND attendance_date=$3",
+      [req.user.school_id, staff.id, date]) : null;
+    ok(res, { date, timezone: school.timezone, staff: staff || null, attendance: attendance || null });
+  });
   for (const action of ["check-in", "check-out"])
     r.post(`/attendance/staff/${action}`, async (req, res) => {
       const staffId = req.body.staff_id ? id.parse(req.body.staff_id) : null;

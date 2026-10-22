@@ -327,7 +327,7 @@ export function LegalPage({ type }) {
             The application uses hosted Supabase PostgreSQL and private Supabase
             document storage. Hosting, database and storage providers process
             information needed to provide those services. If configured, the
-            platform or school's SMTP provider processes recipient addresses and
+            platform's SMTP provider processes recipient addresses and
             email content, and configured payment providers process payment
             information under their own notices. Paystack handles school fee
             checkout; Stripe, Paystack and Flutterwave support SMPIS

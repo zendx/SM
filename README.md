@@ -33,7 +33,7 @@ For local background jobs, start `npm run worker` in a second terminal. For prod
 
 ## Administration
 
-Super admins manage school-specific SMTP, Paystack, Flutterwave, and Twilio credentials in **Administration > Integrations**. Secrets are encrypted and hidden after saving. SMTP and Paystack power the existing email and payment workflows. Flutterwave checkout and Twilio SMS delivery are not implemented.
+Super admins manage school-specific Paystack, Flutterwave, and Twilio credentials in **Administration > Integrations**. Secrets are encrypted and hidden after saving. All email uses the product owner?s server-configured SMTP_URL and MAIL_FROM; tenants cannot configure or override email delivery. Legacy tenant SMTP records are ignored. Paystack powers the existing payment workflows. Flutterwave checkout and Twilio SMS delivery are not implemented.
 
 
 ## Verification
@@ -48,7 +48,7 @@ Browser tests use `dist`; run `npm run build` before `npm run test:ui`. Keep `.e
 
 Authentication rate limits are shared through PostgreSQL and apply by IP and account. Production mode (`npm start`, `NODE_ENV=production`, or Vercel) enables Secure session cookies and requires HTTPS for browser login. Run `npm run supabase:setup` before deploying these changes to create the rate-limit table and notification claim columns.
 
-Email workers claim each notification for five minutes before sending; overlapping workers cannot claim the same active message, and expired claims can be retried. SMTP cannot guarantee exactly-once delivery if a worker stops after the provider accepts a message but before its sent status is saved. Password reset requests return the same public response for unknown accounts, missing school SMTP settings, and delivery failures; delivery failures are logged on the server.
+Email workers claim each notification for five minutes before sending; overlapping workers cannot claim the same active message, and expired claims can be retried. SMTP cannot guarantee exactly-once delivery if a worker stops after the provider accepts a message but before its sent status is saved. Password reset requests return the same public response for unknown accounts, missing platform SMTP settings, and delivery failures; delivery failures are logged on the server.
 
 ## Legal pages and cookies
 
@@ -93,3 +93,9 @@ School signup requires an unchecked privacy-policy acknowledgment and stores the
 New school registrations receive a queued welcome email with account-security guidance and a portal menu tour scheduled 30 minutes after registration. Full owners manage New-user email sequence under Email templates: content, branded HTML previews, enable/pause, delay in minutes, additional steps, delivery queue and failed-email retries. Enabled steps enroll future registrations automatically. The minute-by-minute worker sends due onboarding messages independently of inbox activity; verification is still required to sign in. These are service emails, separate from promotional newsletters. Apply the onboarding schema with npm run supabase:setup before deploying the web app and Railway worker. See docs/RAILWAY-WORKER.md for timing, retry and editing behavior.
 
 Tenant administrators creating role accounts in Administration receive an immediate delivery result. New accounts have an unknown random password and remain activation-pending. The branded account email contains a single-use 30-minute activation link, never an initial password. The recipient chooses their password through the reset screen; consuming the link verifies their mailbox and enables sign-in. SMTP failure leaves the pending account intact; the recipient can request a password reset to activate. Apply the hardening schema before deployment. Privileged users must complete authenticator enrollment before ordinary workspace access; other users may enroll voluntarily.
+
+School administrators can edit School boarding status under Administration > School: Day, Boarding, or Day and boarding. This school-wide setting is separate from each student's boarding status. Existing schools default to Day; apply the new column with npm run supabase:setup before deployment.
+
+School administrators choose whether school buses are available under Administration > School > School bus service available. The option defaults off. Enabling it shows the optional transportation checkbox on public and staff application forms; disabling it hides the checkbox and rejects new transportation requests through the API. Existing student records are preserved. Apply the new schools column with npm run supabase:setup before deployment.
+
+Teachers receive a daily attendance popup after entering their school portal. Present records a check-in for their own active linked staff profile using the server time and school timezone; arrival after the configured staff start time is recorded as Late. Saved attendance suppresses the popup for that school date across reloads and logins. The portal checks again each minute and on returning to the tab. Teachers without an active linked staff profile see administrator-linking guidance. Check-out remains in Staff & attendance.

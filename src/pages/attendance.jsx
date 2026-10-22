@@ -240,12 +240,15 @@ export function Attendance({ config, can, notify, term }) {
 export function Staff({ can, notify, config }) {
   const staff = useData("/hr/staff"),
     attendance = useData("/attendance/staff"),
+    accounts = useData(can("staff.write") ? "/hr/staff/accounts" : null),
+    [accountId, setAccountId] = useState(""),
     [tab, setTab] = useState("directory"),
     [modal, setModal] = useState(null);
   async function action(path, body) {
     await post(path, body);
     staff.reload();
     attendance.reload();
+    accounts.reload();
     setModal(null);
     notify("Staff record updated.");
   }
@@ -253,6 +256,8 @@ export function Staff({ can, notify, config }) {
     value: s.id,
     label: `${s.first_name} ${s.last_name}`,
   }));
+  const selectedAccount = accounts.data.find((account) => String(account.id) === accountId);
+  const nameParts = selectedAccount?.name.trim().split(/\s+/) || [];
   return (
     <>
       <PageHead
@@ -260,7 +265,7 @@ export function Staff({ can, notify, config }) {
         description="Support your team and keep the school day accountable."
       >
         {can("staff.write") && (
-          <Button onClick={() => setModal({ type: "new" })}>
+          <Button onClick={() => { setAccountId(""); setModal({ type: "new" }); }}>
             <Plus size={17} />
             Add staff member
           </Button>
@@ -406,7 +411,28 @@ export function Staff({ can, notify, config }) {
           }
           onClose={() => setModal(null)}
         >
+          {modal.type === "new" && (
+            <label className="field">
+              <span>Existing staff account (optional)</span>
+              <select value={accountId} onChange={(event) => setAccountId(event.target.value)} disabled={accounts.loading}>
+                <option value="">Add staff without a linked account</option>
+                {accounts.data.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} ? {account.email} ({human(account.role)})
+                  </option>
+                ))}
+              </select>
+              <small>Select an existing teacher or staff account to fill in their name. They keep their current login. Accounts already linked to staff are excluded.</small>
+              {accounts.error && <span className="form-error">{accounts.error}</span>}
+            </label>
+          )}
           <Form
+            key={modal.type === "new" ? accountId : "status"}
+            initial={modal.type === "new" ? {
+              first_name: nameParts[0] || "",
+              last_name: nameParts.slice(1).join(" "),
+              position: selectedAccount?.role === "TEACHER" ? "Teacher" : "",
+            } : {}}
             fields={
               modal.type === "new"
                 ? [
@@ -426,14 +452,7 @@ export function Staff({ can, notify, config }) {
                       type: "date",
                       default: config.today,
                     },
-                    {
-                      name: "user_id",
-                      label: "Linked user account ID",
-                      type: "number",
-                      required: false,
-                      wide: true,
-                      hint: "Create a staff user in Administration and enter its ID here.",
-                    },
+
                   ]
                 : [
                     {
@@ -458,7 +477,7 @@ export function Staff({ can, notify, config }) {
               modal.type === "new"
                 ? action("/hr/staff", {
                     ...v,
-                    user_id: v.user_id ? Number(v.user_id) : null,
+                    user_id: accountId ? Number(accountId) : null,
                   })
                 : action("/attendance/staff/status", {
                     ...v,

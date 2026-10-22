@@ -3,7 +3,6 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { one, audit } from "./db.js";
 import { fail } from "./security.js";
-import { allowedSmtpHost, smtpDestination } from "./smtp-policy.js";
 
 const value = z.string().trim().max(2000).default("");
 const secret = z.string().max(4000).default("");
@@ -33,18 +32,6 @@ export const integrationDefinitions = {
       client_id: value,
       client_secret: secret,
       live_enabled: z.boolean().default(false),
-    }),
-  },
-  smtp: {
-    secrets: ["password"],
-    schema: z.object({
-      enabled: z.boolean(),
-      host: value,
-      port: z.coerce.number().int().min(1).max(65535).default(587),
-      secure: z.boolean().default(false),
-      username: value,
-      password: secret,
-      from: value,
     }),
   },
   paystack: {
@@ -134,16 +121,10 @@ function redact(provider, config) {
 }
 function validate(provider, c) {
   if (!c.enabled) return;
-  if (provider === "smtp") {
-    allowedSmtpHost(c.host);
-    if (![465, 587].includes(c.port) || c.secure !== (c.port === 465))
-      fail(422, "Use TLS on port 465 or STARTTLS on port 587.");
-  }
   const required = {
     manual: ["bank_name", "account_name", "account_number"],
     stripe: ["secret_key"],
     paypal: ["client_id", "client_secret"],
-    smtp: ["host", "from"],
     paystack: ["secret_key"],
     flutterwave: ["public_key", "secret_key"],
     twilio: ["account_sid", "auth_token"],
@@ -153,13 +134,6 @@ function validate(provider, c) {
       422,
       "Complete the required provider details before enabling this integration.",
     );
-  if (
-    provider === "smtp" &&
-    (!z.string().email().safeParse(c.from).success || /[\s/:]/.test(c.host))
-  )
-    fail(422, "Enter a valid SMTP hostname and sender email.");
-  if (provider === "smtp" && c.username && !c.password)
-    fail(422, "An SMTP password is required when a username is provided.");
   if (provider === "paystack" && !/^sk_(test|live)_\S+$/.test(c.secret_key))
     fail(422, "Enter a valid Paystack secret key.");
   if (
@@ -213,7 +187,6 @@ export function integrationRoutes(db) {
   r.patch("/admin/integrations/:provider", async (req, res) => {
     const provider = z
       .enum([
-        "smtp",
         "paystack",
         "flutterwave",
         "twilio",
@@ -262,27 +235,9 @@ export function integrationRoutes(db) {
   });
   return r;
 }
-export async function smtpConfig(db, schoolId) {
-  const saved = await integrationConfig(db, schoolId, "smtp");
-  if (saved)
-    return saved.enabled
-      ? {
-          transport: {
-            host: await smtpDestination(saved.host),
-            port: saved.port,
-            secure: saved.secure,
-            requireTLS: true,
-            tls: { servername: saved.host, rejectUnauthorized: true },
-            connectionTimeout: 10000,
-            greetingTimeout: 10000,
-            socketTimeout: 15000,
-            ...(saved.username
-              ? { auth: { user: saved.username, pass: saved.password } }
-              : {}),
-          },
-          from: saved.from,
-        }
-      : null;
+// All email uses the product owner's server configuration. Legacy tenant SMTP
+// records are intentionally ignored, including disabled or undecryptable records.
+export async function smtpConfig() {
   return process.env.SMTP_URL && process.env.MAIL_FROM
     ? { transport: process.env.SMTP_URL, from: process.env.MAIL_FROM }
     : null;

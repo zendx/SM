@@ -224,7 +224,7 @@ export function authRoutes(
   r.get("/public-admissions/:code", async (req, res) => {
     const school = await one(
       db,
-      "SELECT id,name,short_code FROM schools WHERE short_code=$1",
+      "SELECT id,name,short_code,transportation_available FROM schools WHERE short_code=$1",
       [req.params.code],
     );
     if (!school) fail(404, "School not found.");
@@ -241,7 +241,7 @@ export function authRoutes(
     res.json({ data: { school, classes } });
   });
   r.post("/public-admissions/:code", async (req, res) => {
-    const school = await one(db, "SELECT id FROM schools WHERE short_code=$1", [
+    const school = await one(db, "SELECT id,transportation_available FROM schools WHERE short_code=$1", [
       req.params.code,
     ]);
     if (!school) fail(404, "School not found.");
@@ -251,6 +251,8 @@ export function authRoutes(
         "This school portal is inactive. Contact the school administrator.",
       );
     const b = studentSchema.parse(req.body);
+    if (b.transportation_required && !school.transportation_available)
+      fail(422, "This school does not offer school bus transportation.");
     if (
       !(await one(
         db,

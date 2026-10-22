@@ -18,47 +18,6 @@ const definitions = {
       },
     ],
   },
-  stripe: {
-    title: "Stripe",
-    description: "Collect school fees through Stripe Checkout.",
-    fields: [
-      { name: "secret_key", label: "Secret key", type: "password" },
-      { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
-    ],
-  },
-  paypal: {
-    title: "PayPal",
-    description:
-      "Collect school fees using PayPal. Your school currency must be supported by PayPal.",
-    fields: [
-      { name: "client_id", label: "Client ID" },
-      { name: "client_secret", label: "Client secret", type: "password" },
-      { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
-    ],
-  },
-  smtp: {
-    title: "SMTP email",
-    description: "Used for password reset emails and notification delivery.",
-    fields: [
-      { name: "host", label: "SMTP hostname" },
-      {
-        name: "port",
-        label: "Port",
-        type: "number",
-        default: 587,
-        min: 1,
-        max: 65535,
-      },
-      {
-        name: "secure",
-        label: "Use TLS immediately (usually port 465)",
-        type: "checkbox",
-      },
-      { name: "username", label: "Username" },
-      { name: "password", label: "Password", type: "password" },
-      { name: "from", label: "Sender email", type: "email" },
-    ],
-  },
   paystack: {
     title: "Paystack",
     description:
@@ -76,6 +35,24 @@ const definitions = {
       { name: "public_key", label: "Public key" },
       { name: "secret_key", label: "Secret key", type: "password" },
       { name: "webhook_secret", label: "Webhook secret", type: "password" },
+      { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
+    ],
+  },
+  stripe: {
+    title: "Stripe",
+    description: "Collect school fees through Stripe Checkout.",
+    fields: [
+      { name: "secret_key", label: "Secret key", type: "password" },
+      { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
+    ],
+  },
+  paypal: {
+    title: "PayPal",
+    description:
+      "Collect school fees using PayPal. Your school currency must be supported by PayPal.",
+    fields: [
+      { name: "client_id", label: "Client ID" },
+      { name: "client_secret", label: "Client secret", type: "password" },
       { name: "live_enabled", label: "Allow live payments", type: "checkbox" },
     ],
   },

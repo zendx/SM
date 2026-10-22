@@ -1,3 +1,4 @@
+import { TeacherAttendancePrompt } from "./teacher-attendance-prompt";
 import { BrandLogo } from "./brand-logo";
 import { MfaEnrollment } from "./mfa-enrollment";
 import {
@@ -86,7 +87,7 @@ function PublicApplication({ code }) {
             are collected securely by the admissions office.
           </div>
           <Form
-            fields={applicationFields(q.data.classes)}
+            fields={applicationFields(q.data.classes, q.data.school)}
             onSubmit={async (v) =>
               setResult(
                 await post(
@@ -829,6 +830,9 @@ function App() {
     }[page] || Dashboard;
   return (
     <div className="app-shell">
+      {session.user.role === "TEACHER" && (
+        <TeacherAttendancePrompt key={session.user.id} notify={notify} />
+      )}
       {mobile && (
         <div className="sidebar-scrim" onClick={() => setMobile(false)} />
       )}

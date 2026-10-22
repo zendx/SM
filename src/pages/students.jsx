@@ -17,7 +17,7 @@ import {
 } from "../components";
 const classOptions = (data) =>
   data.map((c) => ({ value: c.id, label: c.name }));
-export const applicationFields = (classes) => [
+export const applicationFields = (classes, school = {}) => [
   { name: "first_name", label: "First name" },
   { name: "last_name", label: "Last name" },
   { name: "middle_name", label: "Middle name", required: false },
@@ -56,11 +56,11 @@ export const applicationFields = (classes) => [
     required: false,
   },
   { name: "previous_school", label: "Previous school", required: false },
-  {
+  ...(school.transportation_available ? [{
     name: "transportation_required",
     label: "School transportation required",
     type: "checkbox",
-  },
+  }] : []),
   {
     name: "medical_info",
     label: "Medical information",
@@ -76,7 +76,8 @@ export const applicationFields = (classes) => [
 ];
 export function Admissions({ term, notify, go }) {
   const q = useData("/admissions/applications"),
-    classes = useData("/classes");
+    classes = useData("/classes"),
+    settings = useData("/config", null);
   const [modal, setModal] = useState(null),
     [filter, setFilter] = useState("");
   const stages = [
@@ -213,7 +214,7 @@ export function Admissions({ term, notify, go }) {
                 </div>
               )}
               <Form
-                fields={applicationFields(classes.data)}
+                fields={applicationFields(classes.data, settings.data?.school)}
                 onSubmit={(v) =>
                   save(() => post("/admissions/applications", v))
                 }

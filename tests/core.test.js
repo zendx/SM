@@ -495,6 +495,14 @@ test("attendance rejects foreign class, duplicates, future dates; upserts and al
 });
 test("staff check-in duplicates rejected; staff can only check themselves in", async () => {
   const u = await one(db, "SELECT id FROM users WHERE role='TEACHER'");
+  const unlinked = await expect(teacher, "/attendance/staff/today", "GET");
+  assert.equal(unlinked.staff, null);
+  assert.equal(unlinked.attendance, null);
+  const accounts = await expect(admin, "/hr/staff/accounts", "GET");
+  assert.ok(accounts.some(account => account.id === u.id));
+  assert.ok(accounts.every(account => !["PARENT", "STUDENT", "PROPRIETOR"].includes(account.role)));
+  assert.ok(accounts.every(account => !Object.hasOwn(account, "password_hash")));
+  await expect(teacher, "/hr/staff/accounts", "GET", undefined, 403);
   const s = await expect(admin, "/hr/staff", "POST", {
     first_name: "Test",
     last_name: "Teacher",
@@ -504,7 +512,21 @@ test("staff check-in duplicates rejected; staff can only check themselves in", a
     employment_type: "FULL_TIME",
     user_id: u.id,
   });
+  assert.ok(!(await expect(admin, "/hr/staff/accounts", "GET")).some(account => account.id === u.id));
+  await expect(admin, "/hr/staff", "POST", {
+    first_name: "Duplicate", last_name: "Teacher", department: "Primary", position: "Teacher",
+    hire_date: today, employment_type: "FULL_TIME", user_id: u.id,
+  }, 409);
+  const beforeCheckIn = await expect(teacher, "/attendance/staff/today", "GET");
+  assert.equal(beforeCheckIn.staff.id, s.id);
+  assert.equal(beforeCheckIn.attendance, null);
+  assert.equal(beforeCheckIn.date, today);
   await expect(teacher, "/attendance/staff/check-in", "POST", {});
+  const afterCheckIn = await expect(teacher, "/attendance/staff/today", "GET");
+  assert.ok(afterCheckIn.attendance.check_in_time);
+  assert.ok(["PRESENT", "LATE"].includes(afterCheckIn.attendance.status));
+  const adminToday = await expect(admin, "/attendance/staff/today", "GET");
+  assert.notEqual(adminToday.staff?.id, s.id);
   await expect(teacher, "/attendance/staff/check-in", "POST", {}, 409);
   await expect(teacher, "/attendance/staff/check-out", "POST", {});
   await expect(teacher, "/attendance/staff/check-out", "POST", {}, 409);

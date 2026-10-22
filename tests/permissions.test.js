@@ -100,7 +100,9 @@ const readRoutes = [
     ],
   ],
   ["/hr/staff", ["staff.read", "staff.attendance.read", "staff.self"]],
+  ["/hr/staff/accounts", ["staff.write"]],
   ["/attendance/staff", ["staff.attendance.read", "staff.self"]],
+  ["/attendance/staff/today", ["staff.self"]],
   ["/finance/fee-structures", ["finance.read"]],
   ["/finance/invoices", ["finance.read", "finance.own"]],
   [

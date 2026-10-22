@@ -767,7 +767,7 @@ export function Landing() {
               ],
               [
                 "Do payment and email services need configuration?",
-                "Yes. Online payments require a supported provider account, and tenant email requires an approved SMTP destination. Availability, currencies and third-party fees depend on the provider. School payment integrations are separate from your SMPIS subscription.",
+                "Yes. Online payments require a supported provider account, and email delivery uses the platform?s email service. Availability, currencies and third-party fees depend on the provider. School payment integrations are separate from your SMPIS subscription.",
               ],
               [
                 "What happens after the 30-day Free plan?",

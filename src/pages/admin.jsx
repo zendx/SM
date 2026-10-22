@@ -313,6 +313,22 @@ export function Administration({
               initial={config.school}
               fields={[
                 { name: "name", label: "School name", wide: true },
+                {
+                  name: "boarding_status",
+                  label: "School boarding status",
+                  options: [
+                    { value: "DAY", label: "Day" },
+                    { value: "BOARDING", label: "Boarding" },
+                    { value: "MIXED", label: "Day and boarding" },
+                  ],
+                  default: "DAY",
+                },
+                {
+                  name: "transportation_available",
+                  label: "School bus service available",
+                  type: "checkbox",
+                  hint: "Show the school transportation option on application forms.",
+                },
                 { name: "currency_code", label: "Currency code", maxLength: 3 },
                 { name: "timezone", label: "Timezone" },
                 {
