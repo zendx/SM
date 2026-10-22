@@ -1,5 +1,5 @@
 import { SiteSettings } from "./site-settings";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { IntegrationSettings } from "./integrations";
 import {
@@ -218,6 +218,7 @@ export function Administration({
   notify,
   reloadConfig,
   reloadSession,
+  go,
 }) {
   const isAdmin = can("admin.write") && !user.mfa_setup_required,
     users = useData(isAdmin ? "/users" : null),
@@ -226,14 +227,54 @@ export function Administration({
   const [tab, setTab] = useState(
       !isAdmin || new URLSearchParams(location.search).get("security") === "mfa"
         ? "security"
-        : "school",
+        : ["school", "classes", "calendar", "users"].includes(
+              location.hash.split("/")[1],
+            )
+          ? location.hash.split("/")[1]
+          : "school",
     ),
     [modal, setModal] = useState(null),
     [mfa, setMfa] = useState(null),
     [enabled, setEnabled] = useState(user.mfa_enabled),
     [recovery, setRecovery] = useState(null);
+  const [success, setSuccess] = useState(null);
+  useEffect(() => {
+    const sync = () => {
+      const section = location.hash.split("/")[1];
+      if (
+        isAdmin &&
+        ["school", "classes", "calendar", "users"].includes(section)
+      )
+        setTab(section);
+    };
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [isAdmin]);
   async function save(path, v, method = post) {
     const result = await method(path, v);
+    setSuccess(
+      path.startsWith("/classes")
+        ? {
+            text: "Class saved. You can now add students.",
+            page: "admissions",
+            label: "Add a student",
+            permission: "admissions.write",
+          }
+        : path === "/config"
+          ? {
+              text: "School settings saved. Next, check your calendar and classes.",
+              page: "administration",
+              section: "calendar",
+              label: "Check calendar",
+              permission: "admin.write",
+            }
+          : {
+              text: "Saved. Continue getting your school ready.",
+              page: "dashboard",
+              label: "Continue setup",
+              permission: "dashboard.read",
+            },
+    );
     setModal(null);
     users.reload();
     classes.reload();
@@ -261,6 +302,19 @@ export function Administration({
           <strong>Complete this step to unlock the rest of SMPIS.</strong> Add
           this account to an authenticator app, enter its six-digit code below,
           and enable verification. Your other workspace pages will then appear.
+        </div>
+      )}
+      {success && (
+        <div className="notice" role="status">
+          <p>{success.text}</p>
+          {can(success.permission) && (
+            <Button
+              type="button"
+              onClick={() => go(success.page, success.section)}
+            >
+              {success.label}
+            </Button>
+          )}
         </div>
       )}
       <div className="tabs">
@@ -372,6 +426,24 @@ export function Administration({
         >
           <Table
             rows={classes.data}
+            empty={{
+              title: "Create your first class",
+              description:
+                "Classes give students a place in your school. Add one before creating an application.",
+              children: (
+                <Button
+                  onClick={() =>
+                    config.years.length
+                      ? setModal({ type: "class" })
+                      : setTab("calendar")
+                  }
+                >
+                  {config.years.length
+                    ? "Create a class"
+                    : "Add an academic year first"}
+                </Button>
+              ),
+            }}
             columns={[
               { label: "Class", key: "name" },
               { label: "Capacity", key: "capacity" },

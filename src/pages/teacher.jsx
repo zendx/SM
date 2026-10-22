@@ -1,9 +1,10 @@
+import { DailyWork } from "../getting-started";
 import React from "react";
 import { BookOpen, CalendarCheck, GraduationCap } from "lucide-react";
 import { useData } from "../hooks";
 import { Button, Empty, Loading, PageHead, Panel, Table } from "../components";
 
-export function TeacherWorkspace({ go }) {
+export function TeacherWorkspace({ go, can }) {
   const setup = useData("/academics/setup", null);
   const classes = setup.data?.classes || [],
     assignments = setup.data?.assignments || [];
@@ -15,6 +16,7 @@ export function TeacherWorkspace({ go }) {
         title="Teacher workspace"
         description="Your assigned classes, subjects and learner records are gathered here."
       />
+      <DailyWork can={can} go={go} />
       {setup.error ? (
         <p className="form-error">{setup.error}</p>
       ) : !setup.data ? (

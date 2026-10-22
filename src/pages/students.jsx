@@ -1,3 +1,4 @@
+import { DailyWork } from "../getting-started";
 import React, { useState, useEffect } from "react";
 import { Plus, ArrowRight, Upload, ExternalLink } from "lucide-react";
 import { api, get, post, patch } from "../api";
@@ -56,11 +57,15 @@ export const applicationFields = (classes, school = {}) => [
     required: false,
   },
   { name: "previous_school", label: "Previous school", required: false },
-  ...(school.transportation_available ? [{
-    name: "transportation_required",
-    label: "School transportation required",
-    type: "checkbox",
-  }] : []),
+  ...(school.transportation_available
+    ? [
+        {
+          name: "transportation_required",
+          label: "School transportation required",
+          type: "checkbox",
+        },
+      ]
+    : []),
   {
     name: "medical_info",
     label: "Medical information",
@@ -74,12 +79,14 @@ export const applicationFields = (classes, school = {}) => [
     required: false,
   },
 ];
-export function Admissions({ term, notify, go }) {
+export function Admissions({ term, notify, go, can }) {
   const q = useData("/admissions/applications"),
     classes = useData("/classes"),
     settings = useData("/config", null);
   const [modal, setModal] = useState(null),
-    [filter, setFilter] = useState("");
+    [filter, setFilter] = useState(""),
+    [creatingClass, setCreatingClass] = useState(false),
+    [success, setSuccess] = useState(null);
   const stages = [
     "SUBMITTED",
     "REVIEWED",
@@ -90,7 +97,8 @@ export function Admissions({ term, notify, go }) {
     "ENROLLED",
   ];
   async function save(fn) {
-    await fn();
+    const result = await fn();
+    setSuccess({ result, type: modal?.type, row: modal?.row });
     q.reload();
     setModal(null);
     notify("Application updated.");
@@ -106,6 +114,20 @@ export function Admissions({ term, notify, go }) {
           New application
         </Button>
       </PageHead>
+      {success && (
+        <div className="notice" role="status">
+          <p>
+            {success.type === "new"
+              ? "Application created. Next, review the application in the pipeline below."
+              : success.row?.stage === "FEES_PENDING"
+                ? "Student enrolled. Their record is ready."
+                : "Application updated. Follow the next step in the pipeline below."}
+          </p>
+          {success.row?.stage === "FEES_PENDING" && can("students.read") && (
+            <Button onClick={() => go("students")}>View students</Button>
+          )}
+        </div>
+      )}
       <div className="mini-stats">
         {[
           [
@@ -188,7 +210,12 @@ export function Admissions({ term, notify, go }) {
           empty={{
             title: "Your next school story starts here",
             description:
-              "Create an application to begin the admission workflow.",
+              "Create an application, review it, issue an offer and confirm enrollment.",
+            children: (
+              <Button onClick={() => setModal({ type: "new" })}>
+                Create your first application
+              </Button>
+            ),
           }}
         />
       </Panel>
@@ -209,9 +236,76 @@ export function Admissions({ term, notify, go }) {
             <>
               {!classes.data.length && (
                 <div className="notice">
-                  Create a class in Administration before submitting an
-                  application.
+                  <p>
+                    Add a class before submitting this application. Your entries
+                    stay here while you create it.
+                  </p>
+                  {(can("admin.write") || can("classes.write")) &&
+                  settings.data?.years?.length > 0 ? (
+                    <Button
+                      type="button"
+                      onClick={() => setCreatingClass((v) => !v)}
+                    >
+                      Create a class here
+                    </Button>
+                  ) : (
+                    <p>
+                      Ask your administrator to add a class and academic year.
+                      Then reopen this form.
+                    </p>
+                  )}
                 </div>
+              )}
+              {creatingClass && (
+                <Panel title="Create a class without leaving your application">
+                  <Form
+                    fields={[
+                      {
+                        name: "name",
+                        label: "Class name",
+                        placeholder: "Grade 5A",
+                      },
+                      {
+                        name: "capacity",
+                        label: "Capacity",
+                        type: "number",
+                        min: 1,
+                        max: 500,
+                        default: 30,
+                      },
+                      {
+                        name: "academic_year_id",
+                        label: "Academic year",
+                        options: (settings.data?.years || []).map((y) => ({
+                          value: y.id,
+                          label: y.name,
+                        })),
+                      },
+                    ]}
+                    submit="Create class and continue"
+                    onSubmit={async (values) => {
+                      await post("/classes", values);
+                      const updated = await get("/classes");
+                      classes.setData(updated);
+                      setCreatingClass(false);
+                      notify(
+                        "Class created. Select it in your application below and continue.",
+                      );
+                    }}
+                  />
+                  <Button
+                    secondary
+                    type="button"
+                    onClick={() => setCreatingClass(false)}
+                  >
+                    Cancel class creation
+                  </Button>
+                </Panel>
+              )}
+              {classes.error && (
+                <p role="alert" className="form-error">
+                  {classes.error}
+                </p>
               )}
               <Form
                 fields={applicationFields(classes.data, settings.data?.school)}
@@ -390,6 +484,7 @@ export function Students({ can, user, notify, go }) {
           </Button>
         )}
       </PageHead>
+      {user.role === "PARENT" && <DailyWork parent can={can} go={go} />}
       <Panel>
         <div className="table-toolbar">
           <SearchBox
@@ -458,9 +553,34 @@ export function Students({ can, user, notify, go }) {
             },
           ]}
           empty={{
-            title: "A place for every student",
+            title:
+              search || status
+                ? "No students match these filters"
+                : user.role === "PARENT"
+                  ? "No children linked yet"
+                  : "Add your first student",
             description:
-              "Student records appear here after an application is created.",
+              search || status
+                ? "Try a different name or clear the filters."
+                : user.role === "PARENT"
+                  ? "Ask the school administrator to link your account to your child's record."
+                  : "Start with an application in Admissions, then follow the enrollment steps.",
+            children:
+              search || status ? (
+                <Button
+                  onClick={() => {
+                    setSearch("");
+                    setStatus("");
+                    setPage(1);
+                  }}
+                >
+                  Clear filters
+                </Button>
+              ) : can("admissions.write") ? (
+                <Button onClick={() => go("admissions")}>
+                  Create an application
+                </Button>
+              ) : null,
           }}
         />
         <div className="pagination">

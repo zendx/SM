@@ -1,3 +1,4 @@
+import { GettingStarted } from "../getting-started";
 import { PlatformInbox } from "./platform-notifications";
 import React, { useEffect } from "react";
 import {
@@ -128,6 +129,7 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
           </Button>
         )}
       </PageHead>
+      <GettingStarted data={d} config={config} can={can} go={go} />
       <div className="overview-banner">
         <div className="banner-icon">
           <GraduationCap size={30} />

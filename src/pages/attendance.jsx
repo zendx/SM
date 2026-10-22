@@ -22,7 +22,7 @@ const statuses = [
   "SICK",
   "AUTHORIZED_ABSENCE",
 ];
-export function Attendance({ config, can, notify, term }) {
+export function Attendance({ config, can, notify, term, go }) {
   const classes = useData("/classes");
   const [cls, setCls] = useState(""),
     [day, setDay] = useState(config.today),
@@ -231,6 +231,7 @@ export function Attendance({ config, can, notify, term }) {
             title: "No enrolled students in this class",
             description:
               "Complete an admission and class assignment to begin recording attendance.",
+            children: can("admissions.write") ? <Button onClick={() => go("admissions")}>Enroll a student</Button> : null,
           }}
         />
       </Panel>
@@ -256,7 +257,9 @@ export function Staff({ can, notify, config }) {
     value: s.id,
     label: `${s.first_name} ${s.last_name}`,
   }));
-  const selectedAccount = accounts.data.find((account) => String(account.id) === accountId);
+  const selectedAccount = accounts.data.find(
+    (account) => String(account.id) === accountId,
+  );
   const nameParts = selectedAccount?.name.trim().split(/\s+/) || [];
   return (
     <>
@@ -265,7 +268,12 @@ export function Staff({ can, notify, config }) {
         description="Record staff arrival and departure times, and review attendance."
       >
         {can("staff.write") && (
-          <Button onClick={() => { setAccountId(""); setModal({ type: "new" }); }}>
+          <Button
+            onClick={() => {
+              setAccountId("");
+              setModal({ type: "new" });
+            }}
+          >
             <Plus size={17} />
             Add staff member
           </Button>
@@ -292,6 +300,21 @@ export function Staff({ can, notify, config }) {
         {tab === "directory" ? (
           <Table
             rows={staff.data}
+            empty={{
+              title: "Add your first staff member",
+              description:
+                "Create staff records so you can track attendance and build your school team.",
+              children: can("staff.write") ? (
+                <Button
+                  onClick={() => {
+                    setAccountId("");
+                    setModal({ type: "new" });
+                  }}
+                >
+                  Add staff member
+                </Button>
+              ) : null,
+            }}
             columns={[
               {
                 label: "Staff member",
@@ -414,7 +437,11 @@ export function Staff({ can, notify, config }) {
           {modal.type === "new" && (
             <label className="field">
               <span>Existing staff account (optional)</span>
-              <select value={accountId} onChange={(event) => setAccountId(event.target.value)} disabled={accounts.loading}>
+              <select
+                value={accountId}
+                onChange={(event) => setAccountId(event.target.value)}
+                disabled={accounts.loading}
+              >
                 <option value="">Add staff without a linked account</option>
                 {accounts.data.map((account) => (
                   <option key={account.id} value={account.id}>
@@ -422,17 +449,28 @@ export function Staff({ can, notify, config }) {
                   </option>
                 ))}
               </select>
-              <small>Teachers appear in the directory automatically and use their existing login. Select an account here for other staff members who need attendance access.</small>
-              {accounts.error && <span className="form-error">{accounts.error}</span>}
+              <small>
+                Teachers appear in the directory automatically and use their
+                existing login. Select an account here for other staff members
+                who need attendance access.
+              </small>
+              {accounts.error && (
+                <span className="form-error">{accounts.error}</span>
+              )}
             </label>
           )}
           <Form
             key={modal.type === "new" ? accountId : "status"}
-            initial={modal.type === "new" ? {
-              first_name: nameParts[0] || "",
-              last_name: nameParts.slice(1).join(" "),
-              position: selectedAccount?.role === "TEACHER" ? "Teacher" : "",
-            } : {}}
+            initial={
+              modal.type === "new"
+                ? {
+                    first_name: nameParts[0] || "",
+                    last_name: nameParts.slice(1).join(" "),
+                    position:
+                      selectedAccount?.role === "TEACHER" ? "Teacher" : "",
+                  }
+                : {}
+            }
             fields={
               modal.type === "new"
                 ? [
@@ -452,7 +490,6 @@ export function Staff({ can, notify, config }) {
                       type: "date",
                       default: config.today,
                     },
-
                   ]
                 : [
                     {

@@ -88,6 +88,20 @@ try {
   await page.locator("nav").getByRole("button", { name: "Overview" }).waitFor();
   await navigate("Overview");
   await page.getByRole("heading", { name: "Welcome, School" }).waitFor();
+  await page
+    .getByRole("heading", { name: "Get your school ready", exact: true })
+    .waitFor();
+  const progressBefore = await page.locator("progress").getAttribute("value");
+  await save("Continue setup");
+  await page.getByRole("heading", { name: "Classes", exact: true }).waitFor();
+  assert.equal(new URL(page.url()).hash, "#administration/classes");
+  await page.reload();
+  await page.getByRole("heading", { name: "Classes", exact: true }).waitFor();
+  await navigate("Overview");
+  assert.equal(
+    await page.locator("progress").getAttribute("value"),
+    progressBefore,
+  );
   await page.screenshot({
     path: "test-results/dashboard-desktop.png",
     fullPage: true,
@@ -101,16 +115,19 @@ try {
   await page
     .getByRole("heading", { name: "Historical class records" })
     .waitFor();
-  await navigate("Administration");
-  await save("Classes");
-  await save("New class");
-  await field("Class name").fill("Grade 5A");
-  await field("Academic year").last().selectOption({ index: 1 });
-  await save("Save");
-  await closed();
   await navigate("Admissions");
   await save("New application");
   await field("First name").fill("Amara");
+  await save("Create a class here");
+  await field("Class name").fill("Grade 5A");
+  await field("Academic year").last().selectOption({ index: 1 });
+  await save("Create class and continue");
+  await page
+    .getByRole("heading", {
+      name: "Create a class without leaving your application",
+    })
+    .waitFor({ state: "hidden" });
+  assert.equal(await field("First name").inputValue(), "Amara");
   await field("Last name").fill("Obi");
   await field("Gender").selectOption("FEMALE");
   await field("Date of birth").fill("2016-04-12");
@@ -205,6 +222,14 @@ try {
     path: "test-results/dashboard-populated.png",
     fullPage: true,
   });
+  await page.getByRole("heading", { name: "Your school is ready. Start today's work.", exact: true }).waitFor();
+  assert.equal(await page.locator("progress").count(), 0);
+  if (process.argv.includes("--onboarding")) {
+    await page.setViewportSize({width: 390, height: 844});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    assert.deepEqual(errors, []);
+    console.log("Onboarding passed: persistent progress, direct setup routing, inline class creation with preserved entries, first enrollment, staff, daily-work transition and mobile layout.");
+  } else {
   for (const label of [
     "Students",
     "Admissions",
@@ -280,6 +305,7 @@ try {
   console.log(
     "Browser workflow passed: setup, login, class, admissions, fees, invoice, payment, enrollment, profile/upload, attendance, staff check-in, export, all navigation, integration credential save/removal, mobile, logout.",
   );
+  }
 } catch (error) {
   await page.screenshot({
     path: "test-results/browser-failure.png",

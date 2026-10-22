@@ -14,6 +14,7 @@
     "test:embedded": "node scripts/test-embedded.mjs",
     "test:ui:saas": "node scripts/test-embedded.mjs tests/saas-browser.mjs",
     "test:ui": "node tests/browser.mjs",
+    "test:ui:onboarding": "npm run build && node scripts/test-embedded.mjs tests/browser.mjs --onboarding",
     "test:ui:academics": "node tests/academic-browser.mjs",
     "test:ui:operations": "node tests/operations-browser.mjs",
     "backup": "node scripts/backup.js",

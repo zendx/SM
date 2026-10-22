@@ -307,6 +307,7 @@ export function Finance({ can, term, config, money, notify }) {
               title: "A clearer picture of school fees",
               description:
                 "Set up class fees, then generate an invoice for a student.",
+              children: can("finance.write") ? <Button onClick={() => setTab("fee structures")}>Set up class fees</Button> : null,
             }}
           />
         ) : tab === "fee structures" ? (

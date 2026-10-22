@@ -2263,3 +2263,47 @@ textarea:focus-visible {
 @media (max-width: 600px) {
   .sales-nav .brand .brand-logo { width: 150px; }
 }
+
+.setup-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.setup-progress {
+  display: grid;
+  gap: 8px;
+}
+.setup-progress progress {
+  width: 100%;
+  accent-color: var(--accent, #157565);
+}
+.setup-steps {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.setup-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.setup-steps li > div {
+  flex: 1;
+}
+.setup-steps p,
+.setup-next p {
+  margin: 6px 0;
+}
+@media (max-width: 600px) {
+  .setup-next {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .setup-steps li {
+    flex-wrap: wrap;
+  }
+}
