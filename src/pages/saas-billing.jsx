@@ -298,16 +298,7 @@ export function Subscription({
                             : `Live · ${p.currency}`
                           : "Not configured"}
                       </small>
-                      {p.enabled && p.currency === "NGN" && (
-                        <small>
-                          ₦
-                          {(
-                            (amount / 100) *
-                            Number(p.usd_rate)
-                          ).toLocaleString()}{" "}
-                          at ₦{Number(p.usd_rate).toLocaleString()} / $1
-                        </small>
-                      )}
+
                     </div>
                     <Button
                       small
