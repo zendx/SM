@@ -319,7 +319,7 @@ export function authRoutes(
       fail(422, "Invalid timezone or currency.");
     }
     if (b.end_date <= b.start_date)
-      fail(422, "The academic year end must follow its start.");
+      fail(422, "Choose an academic year end date after the start date.");
     await screenRegistrationEmail(b.email);
     await verificationMailer(db);
     const deliveryUserId = await db.transaction(async (tx) => {
@@ -549,7 +549,7 @@ export function authRoutes(
         "DELETE FROM reset_tokens WHERE token_hash=$1 AND expires_at>now() RETURNING *",
         [digest(b.token)],
       );
-      if (!reset) fail(422, "This reset link is invalid or expired.");
+      if (!reset) fail(422, "This password reset link has expired or is no longer valid. Request a new link to continue.");
       await tx.query(
         "UPDATE users SET password_hash=$1,activation_pending=false,email_verified=true WHERE id=$2",
         [hashPassword(b.password), reset.user_id],
@@ -574,12 +574,12 @@ export function authenticate(db, { enforcePrivilegedMfa = true } = {}) {
     await checkAccountAccess(db, u);
     u.fixture_mfa_optional = !enforcePrivilegedMfa;
     if (u.activation_pending)
-      fail(403, "Activate your account first.", "ACTIVATION_REQUIRED");
+      fail(403, "Open the activation link in your email before continuing.", "ACTIVATION_REQUIRED");
     if (
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
       req.get("x-csrf-token") !== u.csrf
     )
-      fail(403, "Invalid request token. Reload the page.", "FORBIDDEN");
+      fail(403, "Please reload the page and try again.", "FORBIDDEN");
     const enrollment = !u.mfa_enabled && requiresMfa(u) && enforcePrivilegedMfa;
     if (
       enrollment &&
@@ -669,7 +669,7 @@ export function accountRoutes(db) {
           "DELETE FROM mfa_recovery_codes WHERE user_id=$1 AND code_hash=$2 RETURNING user_id",
           [req.user.id, digest(code)],
         );
-        if (!used) fail(422, "Invalid or already used recovery code.");
+        if (!used) fail(422, "This recovery code is incorrect or has already been used. Try another unused code.");
         await tx.query(
           "UPDATE sessions SET mfa_verified=true WHERE token_hash=$1",
           [req.sessionHash],

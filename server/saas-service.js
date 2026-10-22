@@ -122,7 +122,7 @@ export async function registerSchool(db, values, owner = null) {
       "PRIVACY_ACCEPTANCE_REQUIRED",
     );
   if (b.end_date <= b.start_date)
-    fail(422, "Academic year end must follow its start.");
+    fail(422, "Choose an academic year end date after the start date.");
   try {
     new Intl.DateTimeFormat("en", { timeZone: b.timezone });
     new Intl.NumberFormat("en", {
@@ -207,7 +207,7 @@ export async function registerSchool(db, values, owner = null) {
     await queueOnboardingEmails(tx, admin);
     return {
       verification_required: true,
-      message: "Check your email to verify your account before signing in.",
+      message: "Check your email and open the verification link. Once your email is verified, you can sign in.",
       school: {
         id: school.id,
         name: school.name,

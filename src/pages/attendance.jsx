@@ -82,7 +82,7 @@ export function Attendance({ config, can, notify, term }) {
     <>
       <PageHead
         title="Student attendance"
-        description="Start the day with a complete picture of who’s here."
+        description="Choose a class and date, mark each student, then save the register."
       >
         {can("attendance.write") && (
           <Button disabled={!records.length || busy} onClick={save}>
@@ -262,7 +262,7 @@ export function Staff({ can, notify, config }) {
     <>
       <PageHead
         title="Staff & attendance"
-        description="Support your team and keep the school day accountable."
+        description="Record staff arrival and departure times, and review attendance."
       >
         {can("staff.write") && (
           <Button onClick={() => { setAccountId(""); setModal({ type: "new" }); }}>

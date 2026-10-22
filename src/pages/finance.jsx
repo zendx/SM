@@ -122,7 +122,7 @@ export function Finance({ can, term, config, money, notify }) {
     <>
       <PageHead
         title="Finance"
-        description="Clear balances. Confident decisions. Every payment accounted for."
+        description="Set school fees, issue invoices, record payments and see what is still owed."
       >
         {can("finance.write") && (
           <>

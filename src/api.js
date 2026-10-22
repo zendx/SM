@@ -43,7 +43,7 @@ export async function api(path, options = {}) {
             (e) =>
               `${e.field ? `${e.field.replaceAll("_", " ")}: ` : ""}${e.message}`,
           )
-          .join("\n") || "Request failed.",
+          .join("\n") || "We couldn’t complete that request. Please try again.",
       ),
       { status: response.status, code: payload.errors?.[0]?.code },
     );

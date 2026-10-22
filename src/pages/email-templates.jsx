@@ -176,7 +176,7 @@ export function EmailTemplates({ notify = () => {} }) {
       <OnboardingEmails notify={notify} />
       <Panel
         title="Email templates"
-        description="Manage the messages sent to schools and support teams. Each template includes branded HTML and a plain-text version."
+        description="Edit the emails schools and support teams receive. SMPIS adds the branding and includes a plain-text version."
       >
         <div className="email-template-library">
           {q.error ? (

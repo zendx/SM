@@ -128,7 +128,7 @@ export async function verifyCheckout(db, session) {
     session.amount_total !== Number(p.charge_amount_cents || p.amount_cents) ||
     session.metadata?.school_id !== String(p.school_id)
   )
-    fail(422, "Card verification does not match the recorded payment.");
+    fail(422, "The payment details do not match our records. Contact support before paying again.");
   if (session.payment_status !== "paid") return p;
   const c = await providerConfig(db, "stripe");
   if (
@@ -401,7 +401,7 @@ export function saasRoutes(db) {
         !hosts.includes(new URL(url).hostname) ||
         new URL(url).protocol !== "https:"
       )
-        fail(502, "Invalid payment checkout address.");
+        fail(502, "We couldn’t open a secure payment page. Please try again.");
       return res.json({ data: { url } });
     }
     const callback = `${siteOrigin()}/${school.portal_slug}/?checkout_session={CHECKOUT_SESSION_ID}#subscription`;
@@ -429,7 +429,7 @@ export function saasRoutes(db) {
       p.reference,
     );
     if (!session.id || !session.url?.startsWith("https://checkout.stripe.com/"))
-      fail(502, "Invalid checkout response.");
+      fail(502, "The payment provider couldn’t start checkout. Please try again.");
     await db.query(
       "UPDATE subscription_payments SET provider_id=$2 WHERE id=$1",
       [p.id, session.id],
@@ -448,7 +448,7 @@ export function saasRoutes(db) {
     if (b.provider !== "stripe") {
       const identifier =
         b.provider === "paystack" ? b.reference : b.transaction_id;
-      if (!identifier) fail(422, "Missing payment reference.");
+      if (!identifier) fail(422, "A payment reference is needed to check this payment.");
       return res.json({
         data: await verifyAlternativePayment(
           db,

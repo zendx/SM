@@ -392,11 +392,11 @@ export function Landing() {
             <div className="hero-tag">
               <span /> ONE SCHOOL. ONE CONNECTED WORKSPACE.
             </div>
-            <h1>A calmer, smarter way to run your school.</h1>
+            <h1>Run your school with less paperwork.</h1>
             <p>
               Bring admissions, attendance, school fees, exams, report cards,
-              teaching plans and staff operations into one connected school
-              workspace—so your team can focus on teaching, not admin.
+              teaching plans and staff records together. Give your team one
+              place to handle the school day and keep families informed.
             </p>
             <div className="hero-actions">
               <a className="btn" href="/signup">
@@ -523,16 +523,16 @@ export function Landing() {
             <a className="sales-text-link" href="/features">
               Browse the complete product guide <ArrowRight size={18} />
             </a>
-            <span>12 connected modules, with workflows and setup notes</span>
+            <span>12 areas of school life, with guides to help you get started</span>
           </div>
           <FeatureCards />
           <div className="intelligence-band">
             <ChartNoAxesCombined size={42} />
             <div>
-              <h3>Go beyond records. See the bigger picture.</h3>
+              <h3>See where your school needs attention.</h3>
               <p>
-                Executive dashboards, reports and management alerts help you
-                monitor school performance and decide where to act.
+                See attendance, fee balances and academic progress together.
+                Use reports and alerts to spot issues and plan your next steps.
               </p>
             </div>
             <a href="/signup">
@@ -562,8 +562,8 @@ export function Landing() {
               <div>
                 <strong>Plan & assess</strong>
                 <p>
-                  Subjects, teacher assignments, exam timetables and weighted
-                  assessments.
+                  Choose subjects, assign teachers and set exam dates. Decide
+                  how much each assessment counts towards the final grade.
                 </p>
               </div>
             </li>
@@ -572,8 +572,8 @@ export function Landing() {
               <div>
                 <strong>Review & finalize</strong>
                 <p>
-                  Complete scores, grading rules, teacher comments and principal
-                  review.
+                  Check that scores and comments are complete, then have the
+                  principal review the reports before you finalize them.
                 </p>
               </div>
             </li>
@@ -582,8 +582,8 @@ export function Landing() {
               <div>
                 <strong>Publish & share</strong>
                 <p>
-                  Families access their linked students' published reports and
-                  PDF downloads.
+                  Publish the reports so parents and students can view them
+                  in their accounts and download a PDF.
                 </p>
               </div>
             </li>
@@ -609,9 +609,9 @@ export function Landing() {
           <div className="section-intro">
             <div className="eyebrow">FROM SIGNUP TO SCHOOL DAY</div>
             <h2>
-              Your portal. Your people.
+              Set up your school.
               <br />
-              Ready for your next chapter.
+              Bring your team on board.
             </h2>
           </div>
           <div className="steps-grid">
@@ -644,9 +644,9 @@ export function Landing() {
           <div className="section-intro">
             <div className="eyebrow">SIMPLE PLANS. CLEAR PRICING.</div>
             <h2>
-              Start with a school day.
+              Try SMPIS free for 30 days.
               <br />
-              Build a better school year.
+              Choose a plan when you are ready.
             </h2>
             <p>All core modules. One subscription for your school.</p>
           </div>
@@ -767,7 +767,7 @@ export function Landing() {
               ],
               [
                 "Do payment and email services need configuration?",
-                "Yes. Online payments require a supported provider account, and email delivery uses the platform?s email service. Availability, currencies and third-party fees depend on the provider. School payment integrations are separate from your SMPIS subscription.",
+                "To collect school fees online, your administrator needs to connect a supported payment account. The provider sets available currencies and transaction fees. SMPIS handles account emails through its email service. Paying your SMPIS subscription is separate from collecting fees from families.",
               ],
               [
                 "What happens after the 30-day Free plan?",

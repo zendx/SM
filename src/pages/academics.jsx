@@ -359,7 +359,7 @@ function ReportsTab({ term, classes, can, user, notify }) {
       batches.reload();
       cards.reload();
       setModal(null);
-      notify("Report workflow updated.");
+      notify("Report status updated.");
     } finally {
       setBusy(false);
     }
@@ -369,7 +369,7 @@ function ReportsTab({ term, classes, can, user, notify }) {
       {!own && (
         <Panel
           title="Class report batches"
-          description="Generate a draft, review comments, finalize results, then publish to families."
+          description="Create draft report cards, check scores and comments, then finalize and publish them for families."
           action={
             can("reports.generate") && (
               <Button small onClick={() => setModal({ type: "generate" })}>
@@ -690,7 +690,7 @@ function AnalyticsTab({ term, setup, can, notify }) {
             ))}
             <Panel
               title="Term-over-term performance"
-              description="Finalized results in chronological order"
+              description="View completed results from earlier terms, starting with the oldest."
             >
               <Table
                 rows={q.data.trend}
@@ -730,7 +730,7 @@ function AnalyticsTab({ term, setup, can, notify }) {
       {can("analytics.read") && (
         <Panel
           title="Students needing academic support"
-          description="Flags are evaluated when reports are finalized. Teachers see their homeroom students."
+          description="Students who may need academic support appear here after reports are finalized. Teachers see students in their own class."
         >
           {risks.error && <p className="form-error">{risks.error}</p>}
           <Table
@@ -804,7 +804,7 @@ function AnalyticsTab({ term, setup, can, notify }) {
               );
               setSelected(null);
               risks.reload();
-              notify("Academic risk flag resolved.");
+              notify("This academic support alert has been marked as resolved.");
             }}
           />
         </Modal>
@@ -817,7 +817,7 @@ export function AcademicExports({ term, notify, curriculum = false }) {
   return (
     <Panel
       title="Export academic reports"
-      description="Exports use the selected term and your assigned access scope."
+      description="Choose a term to download its reports. You can only download records your role allows you to view."
     >
       <div className="table-toolbar">
         <select
@@ -911,7 +911,7 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
       </div>
       <Panel
         title="Grading and academic policy"
-        description="Changes apply to calculations going forward. Finalized report snapshots retain the policy used at finalization."
+        description="New calculations will use these rules. Reports already finalized keep the rules they were created with."
       >
         <div className="settings-form">
           <Form
@@ -1003,7 +1003,7 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
       {can("admin.write") && (
         <Panel
           title="Term entry controls"
-          description="Date-based locks apply after the term end. An explicit unlock can temporarily reopen score entry."
+          description="Score entry closes after the term ends. Unlock it temporarily if a teacher needs to make a correction."
         >
           <div className="settings-form">
             <Form
@@ -1224,7 +1224,7 @@ export function Academics({ user, can, term, config, notify }) {
           {tab === "assessments" && (
             <Panel
               title="Assessments & examinations"
-              description="Assessment weights must total 100% per subject before report generation."
+              description="For each subject, the assessment weights must add up to 100% before you can create reports."
               action={
                 <select
                   aria-label="Filter assessments by subject"
@@ -1306,7 +1306,7 @@ export function Academics({ user, can, term, config, notify }) {
           {tab === "gradebook" && (
             <Panel
               title="Class gradebook"
-              description="Blank or incomplete results remain ungraded."
+              description="Students with missing scores will not receive a grade until their results are complete."
               action={
                 <select
                   aria-label="Gradebook class"

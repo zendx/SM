@@ -28,7 +28,7 @@ export function Intelligence({ money, can }) {
     <>
       <PageHead
         title="Management intelligence"
-        description="Explore recorded trends, support needs and the evidence behind planning estimates."
+        description="See attendance, fees and academic trends to help you plan and follow up."
       />
       <div className="metrics-grid">
         <Metric
@@ -162,7 +162,7 @@ export function Platform({ notify }) {
     <>
       <PageHead
         title="Schools"
-        description="Provision isolated school workspaces. Each school administrator manages their own school."
+        description="Create a separate portal for each school. Its administrator manages the school’s accounts and records."
         action={null}
       >
         <Button onClick={() => setCreate(true)}>Add school</Button>

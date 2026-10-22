@@ -10,7 +10,7 @@ export function ContactPreferences() {
   return (
     <Panel
       title="Communication preferences"
-      description="Choose promotional messages separately from account, security and service notifications."
+      description="Choose which offers and product news you want to receive. You will still receive essential account, security and service messages."
     >
       {q.error && <p className="form-error">{q.error}</p>}
       {message && (

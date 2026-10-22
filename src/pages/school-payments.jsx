@@ -65,7 +65,7 @@ export function SchoolPayments({ invoices, money, can, onPaid, notify }) {
       {available.length > 0 && (
         <Panel
           title="Pay school fees"
-          description="Use a payment method made available by your school. Manual transfers are credited after school finance confirms receipt."
+          description="Choose one of your school’s payment methods below. Bank transfers appear on your account after the finance team confirms receipt."
         >
           <Button onClick={() => setOpen(true)}>Make a fee payment</Button>
         </Panel>

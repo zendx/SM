@@ -9,12 +9,12 @@ export const productModules = [
       "Follow every learner from application to enrolment, with their records in one place.",
     outcome: "A clear next step for every application.",
     capabilities: [
-      "Public online application form and application references",
-      "Admissions pipeline, assessment scheduling, offers and decisions",
-      "Student profiles, guardian links and supporting documents",
-      "Class placement, term enrolment and student status tracking",
+      "Let families apply online and receive an application reference",
+      "Track applications, arrange assessments and send offers",
+      "Keep student details, guardian contacts and documents together",
+      "Place students in classes and track their enrolment each term",
       "Boarding and transport eligibility recorded on student profiles",
-      "Student search, filters and paginated records",
+      "Find students by searching or filtering the school register",
     ],
     steps: [
       "Set up your classes and share your school application link.",
@@ -60,7 +60,7 @@ export const productModules = [
     category: "Teaching & learning",
     icon: "BookOpen",
     summary:
-      "Connect teaching plans, classroom activity and curriculum coverage.",
+      "Plan what to teach and keep track of what each class has covered.",
     outcome: "Know what was planned, what was taught and what needs attention.",
     capabilities: [
       "Dedicated teacher workspace for assigned classes and subjects",
@@ -85,7 +85,7 @@ export const productModules = [
     category: "School office",
     icon: "CalendarCheck",
     summary:
-      "Keep daily attendance visible and manage corrections with accountability.",
+      "Mark daily attendance for students and staff, and keep a record of corrections.",
     outcome: "A dependable daily register for learners and staff.",
     capabilities: [
       "Class-based student attendance registers",
@@ -98,7 +98,7 @@ export const productModules = [
     steps: [
       "Select the class and date, or open the staff attendance register.",
       "Record attendance and submit the day's register.",
-      "Review patterns and use authorized correction workflows when changes are needed.",
+      "Review attendance patterns. Ask an authorized administrator to unlock a register if it needs correcting.",
     ],
     note: "Attendance is recorded in the application. Biometric terminals, GPS tracking and hardware integrations are not included.",
     audience: ["Teachers", "School office", "HR teams"],
@@ -110,7 +110,7 @@ export const productModules = [
     category: "School office",
     icon: "Wallet",
     summary:
-      "Bring fee structures, invoices, payments and outstanding balances into one view.",
+      "Set fees, send invoices, record payments and see what families still owe.",
     outcome: "Follow the money from the first invoice to the final receipt.",
     capabilities: [
       "Class and term fee structures with charge categories",
@@ -140,7 +140,7 @@ export const productModules = [
       "Give families a focused view of their own children's records, fees and published results.",
     outcome: "Families know where to look and what to do next.",
     capabilities: [
-      "School-specific portal address and role-based sign-in",
+      "Give your school its own portal address and each person the right access",
       "Parent accounts linked to their children's records",
       "Student accounts linked to their own published academic results",
       "Published report-card viewing and PDF downloads",
@@ -164,7 +164,7 @@ export const productModules = [
     category: "School operations",
     icon: "Building2",
     summary:
-      "Manage staff records, recruitment, leave and reviews with a traceable history.",
+      "Keep staff details, job applications, leave requests and reviews in one place.",
     outcome: "Support your staff through every stage of school life.",
     capabilities: [
       "Staff profiles and staff document records",
@@ -189,8 +189,8 @@ export const productModules = [
     category: "School community",
     icon: "MessageSquare",
     summary:
-      "Track complaints, discipline and family feedback through clear responsibilities.",
-    outcome: "Concerns get a record, an owner and a resolution trail.",
+      "Record concerns, assign someone to follow up and keep families informed.",
+    outcome: "Know who is handling each concern and what has been done.",
     capabilities: [
       "Complaint records, assignment, actions and case history",
       "Discipline incident records and repeated-incident visibility",
@@ -214,8 +214,8 @@ export const productModules = [
     category: "School operations",
     icon: "Building2",
     summary:
-      "Keep a register of school facilities and assets, with maintenance activity attached.",
-    outcome: "School resources stay visible beyond the purchase date.",
+      "List your school buildings and equipment, record repairs and track unfinished work.",
+    outcome: "Know what your school owns and what needs repairing.",
     capabilities: [
       "Facilities register with condition and location details",
       "Asset register with assignment and lifecycle information",
@@ -238,7 +238,7 @@ export const productModules = [
     category: "School leadership",
     icon: "ChartNoAxesCombined",
     summary:
-      "Turn the records your team captures into a clearer management picture.",
+      "See how your school is doing using the records your team enters each day.",
     outcome: "See what needs attention, with the evidence behind it.",
     capabilities: [
       "Role-based school dashboards and quick actions",
@@ -253,7 +253,7 @@ export const productModules = [
     steps: [
       "Capture day-to-day records in each school module.",
       "Review dashboards, alerts and the reports library.",
-      "Use historical evidence and support flags to decide where to follow up.",
+      "Review past results and support alerts to decide who needs a follow-up.",
     ],
     note: "Forecasts depend on sufficient historical data and show evaluation context. They are estimates, not guaranteed outcomes; incomplete records limit what can be inferred.",
     audience: ["Proprietors", "Principals", "Management teams"],
@@ -265,15 +265,15 @@ export const productModules = [
     category: "School operations",
     icon: "Wallet",
     summary:
-      "Connect supported services while keeping each school's settings separate.",
+      "Set up payment services for your school and see how email delivery works.",
     outcome: "Use payment and email services that fit your school's workflow.",
     capabilities: [
       "School bank details and manual transfer instructions",
       "Stripe, PayPal, Paystack and Flutterwave school payment configurations",
-      "Provider transaction tracking and verified payment callbacks",
+      "Track payments and confirm their status with the payment provider",
       "Platform-managed email delivery",
       "Configurable school email templates",
-      "Encrypted integration secrets and permission-controlled configuration",
+      "Keep payment keys encrypted and limit who can change settings",
     ],
     steps: [
       "Choose a supported provider and obtain its account credentials.",
@@ -305,7 +305,7 @@ export const productModules = [
       "Account activation links, password recovery and audit trails",
       "Protected school records and private supporting-document storage",
       "Subscription status, billing and support-ticket conversations",
-      "Platform-operator school portfolio and provisioning tools for authorized operators",
+      "Tools for authorized SMPIS staff to create and manage school portals",
     ],
     steps: [
       "Create your school portal and configure its calendar and classes.",

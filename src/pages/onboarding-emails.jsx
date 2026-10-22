@@ -22,7 +22,7 @@ export function OnboardingEmails({ notify = () => {} }) {
     <>
       <Panel
         title="New-user email sequence"
-        description="Welcome emails queue immediately after school registration. The default portal tour follows 30 minutes later. The worker sends due emails even when users are online. These are account guidance emails, separate from promotional newsletters."
+        description="New schools receive a welcome email after registration and, by default, a portal tour 30 minutes later. These setup emails are sent even when the administrator is online. They are separate from promotional newsletters."
         action={
           <Button
             small
@@ -82,7 +82,7 @@ export function OnboardingEmails({ notify = () => {} }) {
       </Panel>
       <Panel
         title="Onboarding delivery queue"
-        description="Recent onboarding emails, including their scheduled delivery times. The worker checks every minute and retries failures up to five times."
+        description="See recent welcome and tour emails and when they are due. Delivery is checked every minute, with up to five attempts if sending fails."
       >
         <p>
           {(q.data?.counts || [])

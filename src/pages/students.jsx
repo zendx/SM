@@ -99,7 +99,7 @@ export function Admissions({ term, notify, go }) {
     <>
       <PageHead
         title="Admissions"
-        description="A clear path from first application to the first day of school."
+        description="Review applications, arrange assessments and confirm places for new students."
       >
         <Button onClick={() => setModal({ type: "new" })}>
           <Plus size={17} />
@@ -374,14 +374,14 @@ export function Students({ can, user, notify, go }) {
             label: "Linked parent account ID",
             type: "number",
             required: false,
-            hint: "Find the parent user ID in Administration.",
+            hint: "Open the parent’s account in Administration and copy its user ID here.",
           },
         ];
   return (
     <>
       <PageHead
         title={user.role === "PARENT" ? "My children" : "Students"}
-        description="Every student’s story, connected in one place."
+        description="Find a student’s details, class, guardian contacts and supporting documents."
       >
         {can("admissions.write") && (
           <Button onClick={() => go("admissions")}>

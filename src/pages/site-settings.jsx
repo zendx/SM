@@ -8,7 +8,7 @@ export function SiteSettings({ notify }) {
     <div className="admin-settings">
       <Panel
         title="Terms and privacy contact"
-        description="Published publicly on the site's legal pages. These settings apply to this server, across its schools."
+        description="Add the operator name and privacy contact shown on the public policy pages. These details apply to every school on this SMPIS installation."
       >
         {legal.error ? (
           <p role="alert">{legal.error}</p>

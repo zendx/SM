@@ -522,7 +522,7 @@ function OperationsPolicy({ setup, notify, onChange }) {
   return (
     <Panel
       title="Workflow policy"
-      description="Response targets, discipline alerts and staff review weights are configurable."
+      description="Set response deadlines, choose when discipline alerts appear and adjust staff review weights."
     >
       <Form
         initial={{
@@ -562,7 +562,7 @@ function OperationsPolicy({ setup, notify, onChange }) {
             ),
           });
           onChange();
-          notify("Workflow policy saved.");
+          notify("Your response and review rules have been saved.");
         }}
         submit="Save workflow policy"
       />
@@ -579,7 +579,7 @@ function RepeatedIncidents({ config, setup }) {
   return (
     <Panel
       title="Repeated discipline incidents"
-      description="Students with at least two recorded incidents in the selected period. This is a review aid; decisions require investigation."
+      description="These students have at least two recorded incidents in this period. Review each case before deciding what support or action is needed."
     >
       <div className="table-toolbar">
         <label className="inline-field">

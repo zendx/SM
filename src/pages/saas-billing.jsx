@@ -257,9 +257,9 @@ export function Subscription({
               </strong>
             </div>
             <p className="muted">
-              Payments cover one billing period. Card renewal authorization is
-              checked by default at checkout; uncheck it to pay once. Switching period applies to your next
-              purchase and preserves remaining paid time.
+              Choose a month or a year of access. Card renewal is checked by default;
+              uncheck it to pay once. If you switch billing periods, the new
+              period starts with your next purchase. You keep any paid time left.
             </p>
           </Panel>
           <Panel title="Automatic renewal">
@@ -281,7 +281,7 @@ export function Subscription({
             {Object.keys(sub.providers).length > 0 && (
               <Panel
                 title="Pay by card"
-                description="Choose a payment provider. Your subscription activates after server verification."
+                description="Choose how to pay. Your subscription starts once the payment is confirmed."
               >
                 <label className="field check-field">
                   <input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenew(e.target.checked)} />
@@ -658,7 +658,7 @@ export function SaasOwner({ notify = () => {}, section }) {
       {tab === "tenants" && (
         <Panel
           title="School subscriptions"
-          description="Manual suspensions require owner restoration. Verified renewals restore subscriptions suspended for expiry."
+          description="A confirmed renewal restores access after expiry. If you suspended a school yourself, you must restore its access here."
         >
           <Table
             rows={d.tenants.filter((t) => !t.owner_school)}
@@ -895,7 +895,7 @@ export function SaasOwner({ notify = () => {}, section }) {
       {tab === "audit" && (
         <Panel
           title="Subscription audit trail"
-          description="Includes automatic suspension, payment reviews, provider settings and owner actions."
+          description="See subscription changes, payment reviews and payment setting updates, including who made each change."
         >
           <Table
             rows={d.events}

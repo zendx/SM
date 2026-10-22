@@ -70,7 +70,7 @@ export function Curriculum({ can, term, config, notify }) {
       <PageHead
         eyebrow="TEACHING & DELIVERY"
         title="Curriculum"
-        description="Connect the teaching plan with what happens in the classroom."
+        description="Plan topics for the term and record what has been taught."
       >
         {can("curriculum.manage") && (
           <>
@@ -137,7 +137,7 @@ export function Curriculum({ can, term, config, notify }) {
       {tab === "topics" ? (
         <Panel
           title="Teaching plan"
-          description="Completion follows the latest teaching-date entry. Partial topics need a reason."
+          description="The most recent lesson date determines a topic’s progress. Add a reason if you only covered part of a topic."
           action={
             <select
               aria-label="Curriculum class subject"

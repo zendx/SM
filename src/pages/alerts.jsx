@@ -36,7 +36,7 @@ export function ManagementAlerts({ go, notify }) {
     <>
       <PageHead
         title="Management alerts"
-        description="Prioritized issues across the school. Alerts clear automatically when their source condition is resolved."
+        description="See school issues that need attention, with the most urgent first. An alert disappears when the issue is fixed."
       />
       {q.error && <p className="form-error">{q.error}</p>}
       <Panel>

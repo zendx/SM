@@ -296,7 +296,7 @@ export function Administration({
       {tab === "school" && (
         <Panel
           title="School settings"
-          description="School-wide preferences and operational thresholds"
+          description="Set the preferences and limits your school uses each day."
         >
           <div className="settings-form">
             <div className="notice">
@@ -525,7 +525,7 @@ export function Administration({
       {tab === "permissions" && (
         <Panel
           title="Role permissions"
-          description="Permissions are enforced by the API. Teachers are restricted to their assigned classes; parents to linked children."
+          description="Each role controls what a person can see and do. Teachers see their assigned classes, and parents see only their linked children."
         >
           <Table
             rows={Object.entries(config.role_permissions || {}).map(
@@ -550,7 +550,7 @@ export function Administration({
       {tab === "audit trail" && (
         <Panel
           title="Audit trail"
-          description="Latest 200 recorded actions. Previous and new values are available per event."
+          description="See the latest 200 changes. Open an entry to compare the old and new details."
         >
           <Table
             rows={audit.data}
@@ -583,7 +583,7 @@ export function Administration({
       {tab === "security" && (
         <Panel
           title="Two-step verification"
-          description="Protect your account with a time-based authenticator code."
+          description="Add a second sign-in step using a code from an authenticator app."
         >
           <div className="security-panel">
             <ShieldCheck size={42} />

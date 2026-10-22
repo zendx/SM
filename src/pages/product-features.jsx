@@ -231,8 +231,8 @@ function Directory() {
         </h1>
         <p>
           From the first application to the final report card, explore the tools
-          your team can use every day. Open any module for its capabilities,
-          workflow and setup requirements.
+          your team can use every day. Choose an area below to see what you
+          can do, how it works and what you need to set up first.
         </p>
         <div className="hero-actions">
           <a className="btn" href="/signup">

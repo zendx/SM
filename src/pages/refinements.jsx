@@ -58,7 +58,7 @@ export function AcademicRecords({ setup, term, notify }) {
     <>
       <Panel
         title="Historical class records"
-        description="Term rosters remain stable after transfers. Review inferred older rosters against your register; add missing students with a recorded reason."
+        description="A class transfer does not change earlier term lists. Check older lists against your school register. If someone is missing, add them and explain why."
       >
         <label className="field">
           Class
@@ -322,7 +322,7 @@ export function WorkCalendar({ notify }) {
   return (
     <Panel
       title="Working days and leave allowance"
-      description="Applies to new approvals. Existing approvals retain the days recorded at approval. Allowance is per calendar year; public holidays are entered by your school."
+      description="These rules apply to leave approved from now on. Earlier approvals keep their original number of days. Allowances reset each calendar year; add your school’s public holidays separately."
     >
       <Form
         key={JSON.stringify(q.data)}
@@ -543,7 +543,7 @@ export function ModelLab() {
   return (
     <Panel
       title="Historical model evaluation"
-      description="Import observed history, compare candidate models with simple baselines, and inspect held-out results. Evaluations do not enable production predictions."
+      description="Upload past records to compare forecasting methods. Review how well each method predicts records it has not seen. Running a comparison does not switch on live forecasts."
     >
       {(error || q.error) && <p className="form-error">{error || q.error}</p>}
       <label className="field">

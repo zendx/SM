@@ -15,7 +15,7 @@ export function PlatformTeam({ notify = () => {} }) {
   return (
     <Panel
       title="Owner console team"
-      description="Delegate one area of work per account. Delegated accounts cannot view tenant dashboards, payment settings, or manage other staff."
+      description="Give each team member one area to manage. They cannot open school dashboards, change payment settings or manage other team members."
       action={
         <Button onClick={() => setCreate(true)}>Create team account</Button>
       }
@@ -130,7 +130,7 @@ export function TenantAccountControls({ sub, reload }) {
   return (
     <Panel
       title="Manage your SMPIS account"
-      description="Your school records are retained when you request account deletion."
+      description="Closing your account does not erase your school’s records. Read what happens below before you continue."
     >
       {sub.deletion_requested_at ? (
         <div className="notice">
@@ -217,7 +217,7 @@ export function ManagedSchools({
       title={
         onlyDeletion ? "Account closure requests" : "Schools and subscriptions"
       }
-      description="Manage school subscription access. Account deletion retains records and email addresses."
+      description="Manage which schools can use SMPIS. Closing a school account keeps its records and email addresses."
       action={
         fullOwner &&
         !onlyDeletion && (

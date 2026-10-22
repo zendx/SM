@@ -37,7 +37,7 @@ await mkdir("test-results/product-marketing", { recursive: true });
 try {
   await page.goto(origin);
   await page
-    .getByRole("heading", { name: "A calmer, smarter way to run your school." })
+    .getByRole("heading", { name: "Run your school with less paperwork." })
     .waitFor();
   await page.getByRole("button", { name: "Accept required cookies" }).click();
   await page.emulateMedia({ reducedMotion: "reduce" });
