@@ -69,6 +69,12 @@ test("tenant role creation emails activation links without reusable passwords; f
       ]);
       assert.equal(verifyPassword(password, stored.password_hash), false);
       assert.equal(stored.activation_pending, true);
+      if (role === "TEACHER") {
+        const staff = await one(db, "SELECT * FROM staff WHERE user_id=$1", [stored.id]);
+        assert.ok(staff, "Teacher account creation automatically creates attendance profile");
+        assert.equal(staff.school_id, school.id);
+        assert.equal(staff.position, "Teacher");
+      }
       if (!failure) {
         const message = messages.at(-1);
         assert.equal(message.to, stored.email);

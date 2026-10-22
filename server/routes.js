@@ -1,3 +1,4 @@
+import { ensureTeacherStaff } from "./teacher-staff.js";
 import { smtpConfig } from "./integrations.js";
 import express from "express";
 import multer from "multer";
@@ -771,8 +772,9 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
   r.get(
     "/hr/staff",
     allow("staff.read", "staff.attendance.read", "staff.self"),
-    async (req, res) =>
-      ok(
+    async (req, res) => {
+      await ensureTeacherStaff(db, req.user.school_id);
+      return ok(
         res,
         await rows(
           db,
@@ -782,9 +784,11 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
             ? [req.user.school_id]
             : [req.user.school_id, req.user.id],
         ),
-      ),
+      );
+    },
   );
   r.get("/hr/staff/accounts", requirePermission("staff.write"), async (req, res) => {
+    await ensureTeacherStaff(db, req.user.school_id);
     ok(res, await rows(db,
       `SELECT u.id,u.name,u.email,u.role FROM users u
        WHERE u.school_id=$1 AND u.status='ACTIVE'
@@ -840,6 +844,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     },
   );
   r.get("/attendance/staff/today", requirePermission("staff.self"), async (req, res) => {
+    await ensureTeacherStaff(db, req.user.school_id);
     const school = await currentSchool(db, req.user);
     const date = localClock(school.timezone).date;
     const staff = await one(db,
@@ -852,6 +857,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
   });
   for (const action of ["check-in", "check-out"])
     r.post(`/attendance/staff/${action}`, async (req, res) => {
+      await ensureTeacherStaff(db, req.user.school_id);
       const staffId = req.body.staff_id ? id.parse(req.body.staff_id) : null;
       let staff;
       if (staffId && permitted(req.user, "staff.attendance.write"))

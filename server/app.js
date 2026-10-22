@@ -1,3 +1,4 @@
+import { ensureTeacherStaff } from "./teacher-staff.js";
 import { platformNotificationRoutes } from "./platform-notifications.js";
 import { onboardingEmailRoutes } from "./onboarding-emails.js";
 import {
@@ -43,6 +44,7 @@ export async function createApp(db, options = {}) {
     );
   await migrateMfaSecrets(db);
   await seedRoles(db);
+  await ensureTeacherStaff(db);
   options = {
     ...options,
     production: Boolean(

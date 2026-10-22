@@ -13,7 +13,7 @@ try {
   const app = await createApp(db);
   const school = await insert(db, "schools", { name: "Daily Academy", short_code: "DAILY", portal_slug: "daily-academy" });
   const teacher = await insert(db, "users", { school_id: school.id, name: "Daily Teacher", email: "daily@teacher.test", role: "TEACHER", password_hash: "unused" });
-  const staff = await insert(db, "staff", { school_id: school.id, user_id: teacher.id, staff_number: "STF-DAILY", first_name: "Daily", last_name: "Teacher", department: "Teaching", position: "Teacher", hire_date: "2026-01-01" });
+
   const token = "daily-teacher-browser-session";
   await insert(db, "sessions", { user_id: teacher.id, token_hash: digest(token), csrf: token, mfa_verified: true, expires_at: new Date(Date.now() + 300000) });
   serveFrontend(app, path.resolve("dist"));
@@ -31,6 +31,8 @@ try {
   await dialog.waitFor();
   await dialog.getByRole("button", { name: "Present", exact: true }).click();
   await dialog.waitFor({ state: "detached" });
+  const staff = await one(db, "SELECT * FROM staff WHERE user_id=$1", [teacher.id]);
+  assert.ok(staff, "Teacher gets a staff profile without manual linking");
   const record = await one(db, "SELECT * FROM staff_attendance WHERE staff_id=$1", [staff.id]);
   assert.ok(record.check_in_time);
   assert.ok(["PRESENT", "LATE"].includes(record.status));

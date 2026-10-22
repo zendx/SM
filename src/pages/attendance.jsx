@@ -366,7 +366,7 @@ export function Staff({ can, notify, config }) {
             empty={{
               title: "Meet your school team",
               description:
-                "Add staff records and link user accounts to enable self check-in.",
+                "Teacher accounts appear here automatically. Add other staff members as needed.",
             }}
           />
         ) : (
@@ -422,7 +422,7 @@ export function Staff({ can, notify, config }) {
                   </option>
                 ))}
               </select>
-              <small>Select an existing teacher or staff account to fill in their name. They keep their current login. Accounts already linked to staff are excluded.</small>
+              <small>Teachers appear in the directory automatically and use their existing login. Select an account here for other staff members who need attendance access.</small>
               {accounts.error && <span className="form-error">{accounts.error}</span>}
             </label>
           )}

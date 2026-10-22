@@ -496,22 +496,14 @@ test("attendance rejects foreign class, duplicates, future dates; upserts and al
 test("staff check-in duplicates rejected; staff can only check themselves in", async () => {
   const u = await one(db, "SELECT id FROM users WHERE role='TEACHER'");
   const unlinked = await expect(teacher, "/attendance/staff/today", "GET");
-  assert.equal(unlinked.staff, null);
+  assert.ok(unlinked.staff.id);
   assert.equal(unlinked.attendance, null);
   const accounts = await expect(admin, "/hr/staff/accounts", "GET");
-  assert.ok(accounts.some(account => account.id === u.id));
+  assert.ok(!accounts.some(account => account.id === u.id));
   assert.ok(accounts.every(account => !["PARENT", "STUDENT", "PROPRIETOR"].includes(account.role)));
   assert.ok(accounts.every(account => !Object.hasOwn(account, "password_hash")));
   await expect(teacher, "/hr/staff/accounts", "GET", undefined, 403);
-  const s = await expect(admin, "/hr/staff", "POST", {
-    first_name: "Test",
-    last_name: "Teacher",
-    department: "Primary",
-    position: "Teacher",
-    hire_date: today,
-    employment_type: "FULL_TIME",
-    user_id: u.id,
-  });
+  const s = await one(db, "SELECT * FROM staff WHERE user_id=$1", [u.id]);
   assert.ok(!(await expect(admin, "/hr/staff/accounts", "GET")).some(account => account.id === u.id));
   await expect(admin, "/hr/staff", "POST", {
     first_name: "Duplicate", last_name: "Teacher", department: "Primary", position: "Teacher",

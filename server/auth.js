@@ -1,3 +1,4 @@
+import { ensureTeacherStaff } from "./teacher-staff.js";
 import { checkAccountAccess } from "./account-lifecycle.js";
 import { screenRegistrationEmail } from "./stopreg.js";
 import { requireRecaptcha } from "./recaptcha.js";
@@ -765,6 +766,7 @@ export function accountRoutes(db) {
         email_verified: false,
         role: b.role,
       });
+      if (user.role === "TEACHER") await ensureTeacherStaff(tx, user.school_id);
       await audit(tx, req.user, "users", user.id, "CREATE", null, {
         name: user.name,
         email: user.email,
@@ -805,6 +807,7 @@ export function accountRoutes(db) {
         b.status,
         uid,
       ]);
+      if (b.role === "TEACHER") await ensureTeacherStaff(tx, req.user.school_id);
       await tx.query("DELETE FROM sessions WHERE user_id=$1", [uid]);
       await audit(tx, req.user, "users", uid, "UPDATE", u, b);
     });

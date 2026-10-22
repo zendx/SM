@@ -57,7 +57,7 @@ export function TeacherAttendancePrompt({ notify }) {
           }}>{busy ? "Saving…" : "Present"}</Button>
         </>
       ) : today ? (
-        <p>Your account needs an active staff profile before you can mark attendance. Ask your school administrator to link your existing teacher account under Staff &amp; attendance.</p>
+        <p>Your staff profile is inactive. Please contact your school administrator to restore attendance access.</p>
       ) : null}
       {error && <p className="form-error" role="alert">{error}</p>}
     </Modal>
