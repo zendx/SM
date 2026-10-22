@@ -389,6 +389,7 @@ function App() {
   const can = (p) =>
     session?.user.permissions.includes("*") ||
     session?.user.permissions.includes(p);
+  const canViewSubscription = ["SUPER_ADMIN", "PROPRIETOR", "PRINCIPAL", "VICE_PRINCIPAL"].includes(session?.user.role);
   const nav = [
     [
       "teaching",
@@ -464,7 +465,7 @@ function App() {
     ["people", "People & HR", Users, can("operations.staff")],
     ["facilities", "Facilities & assets", School, can("operations.staff")],
     ["intelligence", "Intelligence", ArrowUpRight, can("intelligence.read")],
-    ["subscription", "Subscription", Wallet, true],
+    ["subscription", "Subscription", Wallet, canViewSubscription],
     ["support", "Support", LifeBuoy, session?.user.role === "SUPER_ADMIN"],
     ["platform", "SaaS business", School, !!session?.user.platform_operator],
     [
@@ -502,7 +503,7 @@ function App() {
     );
   }
   async function reloadSubscription() {
-    const sub = await get("/subscription");
+    const sub = await get("/subscription/access");
     setSubscription(sub);
   }
   useEffect(() => {
@@ -774,6 +775,8 @@ function App() {
           <PlatformInbox />
         ) : page === "support" && session.user.role === "SUPER_ADMIN" ? (
           <SchoolSupport />
+        ) : !canViewSubscription ? (
+          <p role="alert">Your school portal is currently unavailable. Contact your school administrator for help.</p>
         ) : (
           <Subscription
             user={session.user}

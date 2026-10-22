@@ -197,3 +197,15 @@ test("platform routes require explicit designation even for a Super Admin", asyn
   const me = await request(client, "/me");
   assert.equal((await me.json()).data.user.platform_operator, true);
 });
+
+
+test("subscription details are restricted to school leadership", async () => {
+  const leadership = ["SUPER_ADMIN", "PROPRIETOR", "PRINCIPAL", "VICE_PRINCIPAL"];
+  for (const [role, client] of clients) {
+    const response = await request(client, "/subscription");
+    assert.equal(response.status, leadership.includes(role) ? 200 : 403, role);
+    const access = await request(client, "/subscription/access");
+    assert.equal(access.status, 200, role);
+    assert.deepEqual(Object.keys((await access.json()).data), ["access_allowed"]);
+  }
+});

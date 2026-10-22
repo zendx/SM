@@ -249,7 +249,15 @@ export function saasRoutes(db) {
   r.use(platformTeamRoutes(db));
   r.use(accountLifecycleRoutes(db));
   r.use(ownerSupportRoutes(db));
-  r.get("/subscription", async (req, res) =>
+  r.get("/subscription/access", async (req, res) => {
+    const snapshot = await subscriptionSnapshot(db, req.user.school_id);
+    res.json({ data: { access_allowed: snapshot.access_allowed } });
+  });
+  r.get("/subscription", (req, res, next) => {
+    if (!["SUPER_ADMIN", "PROPRIETOR", "PRINCIPAL", "VICE_PRINCIPAL"].includes(req.user.role))
+      fail(403, "Only school leadership can view the subscription.");
+    next();
+  }, async (req, res) =>
     res.json({
       data: {
         ...(await subscriptionSnapshot(db, req.user.school_id)),

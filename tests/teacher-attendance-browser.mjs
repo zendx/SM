@@ -29,6 +29,7 @@ try {
   await page.goto(origin + "/daily-academy/#teaching");
   const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Your attendance today" }) });
   await dialog.waitFor();
+  assert.equal(await page.locator(".sidebar").getByRole("button", { name: "Subscription", exact: true }).count(), 0);
   await dialog.getByRole("button", { name: "Present", exact: true }).click();
   await dialog.waitFor({ state: "detached" });
   const staff = await one(db, "SELECT * FROM staff WHERE user_id=$1", [teacher.id]);
