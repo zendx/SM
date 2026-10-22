@@ -114,14 +114,16 @@ export function renderTemplate(template, values) {
     text: replace(template.body),
   };
 }
-export async function renderEmail(db, key, values) {
+export async function renderEmail(db, key, values, draft = null) {
   if (key === "promotional_newsletter" && !emailLink(values.unsubscribe_link))
     fail(503, "Promotional email requires a working unsubscribe link.");
-  const template = await one(
-    db,
-    "SELECT subject,body FROM platform_email_templates WHERE key=$1",
-    [key],
-  );
+  const template =
+    draft ||
+    (await one(
+      db,
+      "SELECT subject,body FROM platform_email_templates WHERE key=$1",
+      [key],
+    ));
   const safeTemplate =
     key === "account_created" && /{{\s*password\s*}}/.test(template?.body || "")
       ? null
@@ -144,6 +146,41 @@ export async function renderEmail(db, key, values) {
       : {}),
   };
 }
+function validatedTemplate(key, body) {
+  const defaults = emailTemplates[key];
+  if (!Object.hasOwn(emailTemplates, key))
+    fail(404, "Email template not found.");
+  const b = z
+    .object({
+      subject: z
+        .string()
+        .trim()
+        .min(1)
+        .max(200)
+        .refine((v) => !/[\r\n]/.test(v)),
+      body: z.string().trim().min(1).max(10000),
+    })
+    .strict()
+    .parse(body);
+  for (const field of [b.subject, b.body]) {
+    const remaining = field.replace(/{{\s*(\w+)\s*}}/g, (_, variable) => {
+      if (!defaults.variables.includes(variable))
+        fail(422, `Unknown placeholder: ${variable}.`);
+      return "";
+    });
+    if (remaining.includes("{{") || remaining.includes("}}"))
+      fail(422, "Malformed template placeholder.");
+  }
+  for (const required of [
+    ...(key === "account_created" ? ["email", "security_link"] : []),
+    ...(defaults.variables.includes("link") ? ["link"] : []),
+    ...(defaults.variables.includes("body") ? ["body"] : []),
+  ])
+    if (!new RegExp(`{{\\s*${required}\\s*}}`).test(b.body))
+      fail(422, `The message must include {{${required}}}.`);
+  return b;
+}
+
 export function emailTemplateRoutes(db) {
   const r = express.Router();
   r.get("/saas/owner/email-templates", requireOwner, async (req, res) => {
@@ -160,42 +197,47 @@ export function emailTemplateRoutes(db) {
       });
     res.json({ data });
   });
+  r.post(
+    "/saas/owner/email-templates/:key/preview",
+    requireOwner,
+    async (req, res) => {
+      const key = req.params.key;
+      const draft = validatedTemplate(key, req.body);
+      const values = {
+        name: "School Administrator",
+        school_name: "Example Academy",
+        email: "administrator@example.com",
+        role: "Teacher",
+        title: "An update from SMPIS",
+        body:
+          key === "auto_renewal_failed"
+            ? "A small billing update: we were unable to charge your saved card. Please review your subscription and pay to continue using SMPIS."
+            : "This is an example message. Actual recipient and school details will appear when the email is sent.",
+        link: "https://example.com/school/#subscription",
+        security_link: "https://example.com/school/#administration",
+        unsubscribe_link: "https://example.com/?unsubscribe=preview",
+        guide:
+          "Open Administration to review your school settings, then add your team and classes.",
+      };
+      const message = await renderEmail(db, key, values, draft);
+      res.json({
+        data: {
+          subject: message.subject,
+          text: message.text,
+          html: message.html.replace(
+            "cid:smpis-brand",
+            `data:image/png;base64,${message.attachments[0].content.toString("base64")}`,
+          ),
+        },
+      });
+    },
+  );
   r.patch(
     "/saas/owner/email-templates/:key",
     requireOwner,
     async (req, res) => {
-      const key = req.params.key,
-        defaults = emailTemplates[key];
-      if (!Object.hasOwn(emailTemplates, key))
-        fail(404, "Email template not found.");
-      const b = z
-        .object({
-          subject: z
-            .string()
-            .trim()
-            .min(1)
-            .max(200)
-            .refine((v) => !/[\r\n]/.test(v)),
-          body: z.string().trim().min(1).max(10000),
-        })
-        .strict()
-        .parse(req.body);
-      for (const field of [b.subject, b.body]) {
-        const remaining = field.replace(/{{\s*(\w+)\s*}}/g, (_, variable) => {
-          if (!defaults.variables.includes(variable))
-            fail(422, `Unknown placeholder: ${variable}.`);
-          return "";
-        });
-        if (remaining.includes("{{") || remaining.includes("}}"))
-          fail(422, "Malformed template placeholder.");
-      }
-      for (const required of [
-        ...(key === "account_created" ? ["email", "security_link"] : []),
-        ...(defaults.variables.includes("link") ? ["link"] : []),
-        ...(defaults.variables.includes("body") ? ["body"] : []),
-      ])
-        if (!new RegExp(`{{\\s*${required}\\s*}}`).test(b.body))
-          fail(422, `The message must include {{${required}}}.`);
+      const key = req.params.key;
+      const b = validatedTemplate(key, req.body);
       await db.transaction(async (tx) => {
         await tx.query(
           "INSERT INTO platform_email_templates(key,subject,body,updated_by) VALUES($1,$2,$3,$4) ON CONFLICT(key) DO UPDATE SET subject=EXCLUDED.subject,body=EXCLUDED.body,updated_by=EXCLUDED.updated_by,updated_at=now()",

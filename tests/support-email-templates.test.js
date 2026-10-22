@@ -75,6 +75,17 @@ test("owner replies retain history, bulk reads stay private, and email templates
       subject: "Helpdesk: {{title}}",
       body: "SMPIS team\n{{body}}\nView {{link}}",
     };
+    const previewPath = "/saas/owner/email-templates/support_reply/preview";
+    assert.equal((await call(previewPath, a, edited)).status, 403);
+    assert.equal((await call(previewPath, owner, { ...edited, body: "Missing placeholders" })).status, 422);
+    const preview = await call(previewPath, owner, { ...edited, subject: "Unsaved preview {{title}}", body: "Unsaved draft <script>alert(1)</script> {{body}} {{link}}" });
+    assert.equal(preview.status, 200);
+    assert.ok(preview.data.subject.startsWith("Unsaved preview"));
+    assert.ok(preview.data.html.includes("Unsaved draft"));
+    assert.ok(!preview.data.html.includes("<script>"));
+    assert.ok(preview.data.html.includes("data:image/png;base64,"));
+    assert.ok(preview.data.text.includes("Unsaved draft"));
+    assert.ok(!await one(db, "SELECT key FROM platform_email_templates WHERE key='support_reply'"));
     assert.equal(
       (
         await call(
