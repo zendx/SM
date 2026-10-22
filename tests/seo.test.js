@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import express from "express";
 import path from "node:path";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { renderSeoHtml, siteOrigin } from "../server/seo.js";
+import { publicSeoPaths, renderRobots, renderSitemap, renderSeoHtml, siteOrigin } from "../server/seo.js";
 import { serveFrontend } from "../server/frontend.js";
 
 test("public HTML contains crawlable SEO metadata and a visible primary heading", async () => {
@@ -66,6 +66,9 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
 });
 
 test("canonical origin comes from configuration and rejects unsafe deployment URLs", () => {
+  assert.equal(siteOrigin({ APP_URL: "https://smpis.digital" }), "https://www.smpis.digital");
+  assert.equal(siteOrigin({ APP_URL: "https://www.smpis.digital" }), "https://www.smpis.digital");
+  assert.equal(siteOrigin({ APP_URL: "https://smpis.digital", PUBLIC_SITE_URL: "https://new.example.com" }), "https://new.example.com");
   assert.equal(
     siteOrigin({ APP_URL: "https://school.example.com/path?reset=secret" }),
     "https://school.example.com",
@@ -86,6 +89,23 @@ test("canonical origin comes from configuration and rejects unsafe deployment UR
   assert.throws(() => siteOrigin({ VERCEL: "1" }), /APP_URL/);
 });
 
+test("production canonical, robots and sitemap consistently use the final www host", async () => {
+  const origin = siteOrigin({ APP_URL: "https://smpis.digital" });
+  const html = renderSeoHtml(await readFile("index.html", "utf8"), "/", origin);
+  assert.ok(html.includes('<link rel="canonical" href="https://www.smpis.digital/"'));
+  assert.ok(html.includes('<meta property="og:url" content="https://www.smpis.digital/"'));
+  assert.doesNotMatch(html, /noindex|http-equiv="refresh"/i);
+  const xml = renderSitemap(origin);
+  const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]);
+  assert.equal(locations.length, publicSeoPaths.length);
+  assert.equal(new Set(locations).size, locations.length);
+  assert.ok(locations.includes("https://www.smpis.digital/"));
+  assert.ok(locations.every(location => new URL(location).origin === origin));
+  assert.ok(locations.every(location => !/[?#]/.test(location)));
+  assert.doesNotMatch(xml, /https:\/\/smpis.digital|\/index.html|\/login|\/signup|\/owner/);
+  assert.match(renderRobots(origin), /Sitemap: https:\/\/www.smpis.digital\/sitemap.xml/);
+});
+
 test("server returns page-specific SEO without JavaScript or trusting Host headers", async (t) => {
   const directory = path.resolve("test-results/seo");
   await mkdir(directory, { recursive: true });
@@ -102,6 +122,9 @@ test("server returns page-specific SEO without JavaScript or trusting Host heade
   const server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
+  const homepage = await fetch(`http://127.0.0.1:${server.address().port}/`, { redirect: "manual" });
+  assert.equal(homepage.status, 200);
+  assert.equal(homepage.headers.get("location"), null);
   const response = await fetch(
     `http://127.0.0.1:${server.address().port}/privacy?reset=private`,
     { headers: { Host: "untrusted.example.com" } },

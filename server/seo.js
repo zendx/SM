@@ -57,6 +57,7 @@ function escapeHtml(value) {
 
 export function siteOrigin(env = process.env) {
   const configured =
+    env.PUBLIC_SITE_URL ||
     env.APP_URL ||
     (env.VERCEL_PROJECT_PRODUCTION_URL &&
       `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`);
@@ -74,7 +75,25 @@ export function siteOrigin(env = process.env) {
     throw new Error(
       "APP_URL must be a public HTTP(S) site URL without credentials; Vercel requires HTTPS.",
     );
+  // The production edge redirects the apex to www. Never advertise that
+  // redirecting URL as canonical or include it in the sitemap. An explicit
+  // PUBLIC_SITE_URL can override this if the hosting primary domain changes.
+  if (!env.PUBLIC_SITE_URL && ["smpis.digital", "www.smpis.digital"].includes(url.hostname)) {
+    url.hostname = "www.smpis.digital";
+    url.protocol = "https:";
+  }
   return url.origin;
+}
+
+export function renderSitemap(origin = siteOrigin()) {
+  const urls = publicSeoPaths.map((route) =>
+    `  <url><loc>${escapeHtml(new URL(route, origin).href)}</loc></url>`
+  ).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+}
+
+export function renderRobots(origin = siteOrigin()) {
+  return `User-agent: *\nAllow: /\nSitemap: ${new URL("/sitemap.xml", origin).href}\n`;
 }
 
 // Render at build time too: crawlers and the static hosting layer see these tags

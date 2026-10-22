@@ -1,12 +1,17 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-import { renderSeoHtml, siteOrigin } from "./server/seo.js";
+import { renderRobots, renderSitemap, renderSeoHtml, siteOrigin } from "./server/seo.js";
 
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     {
       name: "smpis-public-seo",
+      generateBundle() {
+        const origin = siteOrigin({ ...loadEnv(mode, process.cwd(), ""), ...process.env });
+        this.emitFile({ type: "asset", fileName: "sitemap.xml", source: renderSitemap(origin) });
+        this.emitFile({ type: "asset", fileName: "robots.txt", source: renderRobots(origin) });
+      },
       transformIndexHtml: {
         order: "pre",
         handler: (html, context) =>

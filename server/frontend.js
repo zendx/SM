@@ -1,28 +1,16 @@
 import path from "node:path";
 import { readFile } from "node:fs/promises";
-import { publicSeoPaths, renderSeoHtml, siteOrigin } from "./seo.js";
+import { renderRobots, renderSitemap, renderSeoHtml, siteOrigin } from "./seo.js";
 
 // Vercel ignores express.static(); explicit file routes also cover requests
 // that reach the function instead of the static asset layer.
 export function serveFrontend(app, directory, { origin = siteOrigin() } = {}) {
   let template;
   app.get("/robots.txt", (req, res) => {
-    res.type("text/plain").send(
-      `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`,
-    );
+    res.type("text/plain").send(renderRobots(origin));
   });
   app.get("/sitemap.xml", (req, res) => {
-    const urls = publicSeoPaths
-      .map((route) => {
-        const location = new URL(route, origin).href;
-        return `  <url><loc>${location}</loc></url>`;
-      })
-      .join("\n");
-    res
-      .type("application/xml")
-      .send(
-        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
-      );
+    res.type("application/xml").send(renderSitemap(origin));
   });
   app.get("/assets/{*asset}", (req, res) => {
     const asset = req.params.asset.join("/");
