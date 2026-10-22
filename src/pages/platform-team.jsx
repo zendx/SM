@@ -128,17 +128,13 @@ export function PlatformTeam({ notify = () => {} }) {
 export function TenantAccountControls({ sub, reload }) {
   const [action, setAction] = useState(null);
   return (
-    <Panel
-      title="Manage your SMPIS account"
-      description="Closing your account does not erase your school’s records. Read what happens below before you continue."
-    >
+    <Panel title="Close your school’s SMPIS account">
       {sub.deletion_requested_at ? (
         <div className="notice">
           Account deletion requested. School operations are suspended.
           Administrator Support access ends on{" "}
           {new Date(sub.deletion_effective_at).toLocaleDateString()}. After this
-          date, all school sign-in is blocked and your email addresses remain
-          reserved. Contact SMPIS for reactivation.
+          date, all school sign-in is blocked. Contact SMPIS for reactivation.
         </div>
       ) : (
         <>
@@ -170,7 +166,7 @@ export function TenantAccountControls({ sub, reload }) {
         >
           <p>
             {action === "DELETE"
-              ? "School operations stop immediately. Administrators can use Support for three calendar months, then every school account is blocked from signing in. Records remain in SMPIS and registered email addresses cannot be reused until the owner reactivates your school."
+              ? "School operations stop immediately. Administrators can use Support for three calendar months, then every school account is blocked from signing in."
               : "Your original subscription expiry will stay unchanged. Resuming an expired subscription requires renewal before school operations are available."}
           </p>
           <Form
