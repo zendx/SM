@@ -197,7 +197,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         res,
         await rows(
           db,
-          `SELECT c.*,u.name AS teacher_name,(SELECT count(*)::int FROM students s WHERE s.class_id=c.id AND s.status='ENROLLED') AS enrolled FROM classes c LEFT JOIN users u ON u.id=c.teacher_user_id WHERE c.school_id=$1${req.user.role === "TEACHER" ? " AND c.teacher_user_id=$2" : ""} ORDER BY c.name`,
+          `SELECT c.*,u.name AS teacher_name,(SELECT count(*)::int FROM students s WHERE s.class_id=c.id AND s.status='ENROLLED') AS enrolled FROM classes c LEFT JOIN users u ON u.id=c.teacher_user_id WHERE c.school_id=$1${req.user.role === "TEACHER" ? " AND (c.teacher_user_id=$2 OR EXISTS(SELECT 1 FROM class_subjects cs WHERE cs.school_id=c.school_id AND cs.class_id=c.id AND cs.teacher_user_id=$2))" : ""} ORDER BY c.name`,
           req.user.role === "TEACHER"
             ? [req.user.school_id, req.user.id]
             : [req.user.school_id],

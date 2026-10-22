@@ -78,6 +78,7 @@ export function Panel({
   action,
   children,
   className = "",
+  padded = false,
 }) {
   return (
     <section className={`panel ${className}`}>
@@ -90,7 +91,7 @@ export function Panel({
           {action}
         </div>
       )}
-      {children}
+      {padded ? <div className="panel-body">{children}</div> : children}
     </section>
   );
 }
@@ -203,6 +204,7 @@ export function Form({
   submit = "Save",
   children,
   recaptcha = false,
+  onValuesChange,
 }) {
   const idPrefix = useId();
   const [values, setValues] = useState(() =>
@@ -216,6 +218,9 @@ export function Form({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [visiblePasswords, setVisiblePasswords] = useState({});
+  useEffect(() => {
+    onValuesChange?.(values);
+  }, [values, onValuesChange]);
   async function save(e) {
     e.preventDefault();
     setBusy(true);

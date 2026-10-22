@@ -16,6 +16,7 @@
     "test:ui": "node tests/browser.mjs",
     "test:ui:onboarding": "npm run build && node scripts/test-embedded.mjs tests/browser.mjs --onboarding",
     "test:ui:academics": "node tests/academic-browser.mjs",
+    "test:ui:assignments": "npm run build && node scripts/test-embedded.mjs tests/teaching-assignments-browser.mjs",
     "test:ui:operations": "node tests/operations-browser.mjs",
     "backup": "node scripts/backup.js",
     "supabase:setup": "node scripts/supabase.js setup",

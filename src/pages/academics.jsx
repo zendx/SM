@@ -1,3 +1,4 @@
+import { TeachingAssignmentForm } from "../teaching-assignment-form";
 import { AcademicRecords } from "./refinements";
 import { TeachingAssignmentSetup } from "../teaching-assignment-setup";
 import React, { useEffect, useState } from "react";
@@ -893,7 +894,7 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
         </Panel>
         <Panel
           title="Teaching assignments"
-          description="Only the assigned teacher may enter this subject’s scores."
+          description="Assign every subject a teacher will teach in each class. Creating subjects does not create teaching assignments."
           action={
             <Button small onClick={() => setModal("assignment")}>
               <Plus size={14} />
@@ -1077,63 +1078,42 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
           }
           onClose={() => setModal(null)}
         >
-          <Form
-            fields={
-              modal === "subject"
-                ? [
-                    { name: "name", label: "Subject name" },
-                    { name: "code", label: "Subject code" },
-                    {
-                      name: "department",
-                      label: "Department",
-                      wide: true,
-                      default: "General",
-                    },
-                  ]
-                : [
-                    {
-                      name: "class_id",
-                      label: "Class",
-                      options: classOptions(setup.classes),
-                    },
-                    {
-                      name: "subject_id",
-                      label: "Subject",
-                      options: setup.subjects.map((s) => ({
-                        value: s.id,
-                        label: s.name,
-                      })),
-                    },
-                    {
-                      name: "teacher_user_id",
-                      label: "Teacher",
-                      options: setup.teachers.map((t) => ({
-                        value: t.id,
-                        label: t.name,
-                      })),
-                    },
-                    {
-                      name: "credits",
-                      label: "Subject credits",
-                      type: "number",
-                      min: 0.01,
-                      max: 20,
-                      step: 0.01,
-                      default: 1,
-                    },
-                  ]
-            }
-            onSubmit={(v) =>
-              save(modal === "subject" ? "/subjects" : "/class-subjects", v)
-            }
-            submit={modal === "subject" ? "Create subject" : "Save assignment"}
-          >
-            <p className="muted">
-              {modal === "assignment"
-                ? "Saving an existing class/subject updates its teacher and credits."
-                : ""}
-            </p>
-          </Form>
+          {modal === "assignment" ? (
+            <TeachingAssignmentForm
+              setup={setup}
+              yearId={
+                config.terms.find((t) => Number(t.id) === Number(term))
+                  ?.academic_year_id
+              }
+              onSaved={(rows) => {
+                setModal(null);
+                reload();
+                notify(
+                  `${rows.length} teaching assignments saved. They are now available in Curriculum and New assessment.`,
+                );
+              }}
+            />
+          ) : (
+            <Form
+              fields={[
+                { name: "name", label: "Subject name" },
+                { name: "code", label: "Subject code" },
+                {
+                  name: "department",
+                  label: "Department",
+                  wide: true,
+                  default: "General",
+                },
+              ]}
+              onSubmit={(v) => save("/subjects", v)}
+              submit="Create subject"
+            >
+              <p className="muted">
+                After creating a subject, use Assign subject to choose its
+                classes and teacher.
+              </p>
+            </Form>
+          )}
         </Modal>
       )}
     </>

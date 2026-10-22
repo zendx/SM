@@ -128,6 +128,53 @@ export function parseTopicCsv(input) {
     return Object.fromEntries(expected.map((key, i) => [key, values[i]]));
   });
 }
+async function saveTeachingAssignments(db, user, entries) {
+  return db.transaction(async (tx) => {
+    // Validate the entire selection before saving; a failure rolls back every row.
+    for (const classId of [...new Set(entries.map((e) => e.class_id))].sort(
+      (a, b) => a - b,
+    ))
+      await academicClass(tx, user, classId, { lock: true });
+    for (const subjectId of new Set(entries.map((e) => e.subject_id)))
+      await schoolRecord(tx, user, "subjects", subjectId);
+    for (const teacherId of new Set(entries.map((e) => e.teacher_user_id))) {
+      const teacher = await schoolRecord(tx, user, "users", teacherId);
+      if (teacher.role !== "TEACHER" || teacher.status !== "ACTIVE")
+        fail(422, "Choose an active teacher account.");
+    }
+    const saved = [];
+    for (const b of entries) {
+      const before = await one(
+        tx,
+        "SELECT * FROM class_subjects WHERE school_id=$1 AND class_id=$2 AND subject_id=$3",
+        [user.school_id, b.class_id, b.subject_id],
+      );
+      const row = await one(
+        tx,
+        "INSERT INTO class_subjects(school_id,class_id,subject_id,teacher_user_id,credits) VALUES($1,$2,$3,$4,$5) ON CONFLICT(class_id,subject_id) DO UPDATE SET teacher_user_id=EXCLUDED.teacher_user_id,credits=EXCLUDED.credits RETURNING *",
+        [
+          user.school_id,
+          b.class_id,
+          b.subject_id,
+          b.teacher_user_id,
+          b.credits,
+        ],
+      );
+      await audit(
+        tx,
+        user,
+        "class_subjects",
+        row.id,
+        before ? "UPDATE" : "CREATE",
+        before,
+        row,
+      );
+      saved.push(row);
+    }
+    return saved;
+  });
+}
+
 export function academicRoutes(db) {
   const r = express.Router();
   r.get(
@@ -209,6 +256,35 @@ export function academicRoutes(db) {
     },
   );
   r.post(
+    "/class-subjects/bulk",
+    requirePermission("academics.manage"),
+    async (req, res) => {
+      const b = z
+        .object({
+          class_ids: z.array(id).min(1).max(100),
+          subject_ids: z.array(id).min(1).max(100),
+          teacher_user_id: id,
+          credits: decimal.refine((n) => n > 0 && n <= 20).default(1),
+        })
+        .parse(req.body);
+      const classes = [...new Set(b.class_ids)].sort((a, b) => a - b);
+      const subjects = [...new Set(b.subject_ids)].sort((a, b) => a - b);
+      if (classes.length * subjects.length > 100)
+        fail(422, "Save at most 100 teaching assignments at a time.");
+      const entries = classes.flatMap((class_id) =>
+        subjects.map((subject_id) => ({
+          class_id,
+          subject_id,
+          teacher_user_id: b.teacher_user_id,
+          credits: b.credits,
+        })),
+      );
+      ok(res, {
+        assignments: await saveTeachingAssignments(db, req.user, entries),
+      });
+    },
+  );
+  r.post(
     "/class-subjects",
     requirePermission("academics.manage"),
     async (req, res) => {
@@ -220,45 +296,7 @@ export function academicRoutes(db) {
           credits: decimal.refine((n) => n > 0 && n <= 20).default(1),
         })
         .parse(req.body);
-      await academicClass(db, req.user, b.class_id);
-      await schoolRecord(db, req.user, "subjects", b.subject_id);
-      const teacher = await schoolRecord(
-        db,
-        req.user,
-        "users",
-        b.teacher_user_id,
-      );
-      if (teacher.role !== "TEACHER" || teacher.status !== "ACTIVE")
-        fail(422, "Choose an active teacher account.");
-      const cs = await db.transaction(async (tx) => {
-        await academicClass(tx, req.user, b.class_id, { lock: true });
-        const before = await one(
-          tx,
-          "SELECT * FROM class_subjects WHERE school_id=$1 AND class_id=$2 AND subject_id=$3",
-          [req.user.school_id, b.class_id, b.subject_id],
-        );
-        const row = await one(
-          tx,
-          "INSERT INTO class_subjects(school_id,class_id,subject_id,teacher_user_id,credits) VALUES($1,$2,$3,$4,$5) ON CONFLICT(class_id,subject_id) DO UPDATE SET teacher_user_id=EXCLUDED.teacher_user_id,credits=EXCLUDED.credits RETURNING *",
-          [
-            req.user.school_id,
-            b.class_id,
-            b.subject_id,
-            b.teacher_user_id,
-            b.credits,
-          ],
-        );
-        await audit(
-          tx,
-          req.user,
-          "class_subjects",
-          row.id,
-          before ? "UPDATE" : "CREATE",
-          before,
-          row,
-        );
-        return row;
-      });
+      const [cs] = await saveTeachingAssignments(db, req.user, [b]);
       ok(res, cs);
     },
   );

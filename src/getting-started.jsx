@@ -57,38 +57,41 @@ export function GettingStarted({ data, config, can, go }) {
   const complete = visible.filter((s) => s.done).length;
   return (
     <Panel
+      padded
       title="Get your school ready"
       description="Your progress comes from saved school records. Return here any time to continue."
     >
-      <div className="setup-next">
-        <div>
-          <strong>Next: {next.title}</strong>
-          <p>{next.detail}</p>
+      <div className="setup-layout">
+        <div className="setup-next">
+          <div>
+            <strong>Next: {next.title}</strong>
+            <p>{next.detail}</p>
+          </div>
+          <Button onClick={() => go(next.page, next.section)}>
+            Continue setup
+          </Button>
+          <label className="setup-progress">
+            {complete} of {visible.length} steps complete
+            <progress value={complete} max={visible.length} />
+          </label>
         </div>
-        <Button onClick={() => go(next.page, next.section)}>
-          Continue setup
-        </Button>
+        <ol className="setup-steps">
+          {visible.map((step) => (
+            <li key={step.title}>
+              <span aria-label={step.done ? "Complete" : "Incomplete"}>
+                {step.done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+              </span>
+              <div>
+                <strong>{step.title}</strong>
+                <p>{step.detail}</p>
+              </div>
+              <Button secondary onClick={() => go(step.page, step.section)}>
+                {step.done ? "Review" : "Open"}
+              </Button>
+            </li>
+          ))}
+        </ol>
       </div>
-      <label className="setup-progress">
-        {complete} of {visible.length} steps complete
-        <progress value={complete} max={visible.length} />
-      </label>
-      <ol className="setup-steps">
-        {visible.map((step) => (
-          <li key={step.title}>
-            <span aria-label={step.done ? "Complete" : "Incomplete"}>
-              {step.done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-            </span>
-            <div>
-              <strong>{step.title}</strong>
-              <p>{step.detail}</p>
-            </div>
-            <Button secondary onClick={() => go(step.page, step.section)}>
-              {step.done ? "Review" : "Open"}
-            </Button>
-          </li>
-        ))}
-      </ol>
     </Panel>
   );
 }
@@ -110,6 +113,7 @@ export function DailyWork({ can, go, ready = false, parent = false }) {
   if (!available.length) return null;
   return (
     <Panel
+      padded
       title={
         parent
           ? "Your next steps"

@@ -1088,3 +1088,39 @@ test("exam timetable rejects overlapping rooms, classes and invigilators and per
     2,
   );
 });
+
+
+test("bulk teaching assignments persist every class/subject pair and are usable across teacher tools", async () => {
+  const extraClass = await insert(db, "classes", {school_id: school.id, academic_year_id: year.id, name: "Additional teaching class", capacity: 30, teacher_user_id: accounts.english.id});
+  const payload = {class_ids: [cls.id, extraClass.id], subject_ids: [math.id, english.id], teacher_user_id: accounts.teacher.id, credits: 1};
+  await request("teacher", "/class-subjects/bulk", "POST", payload, 403);
+  const saved = await request("principal", "/class-subjects/bulk", "POST", payload);
+  assert.equal(saved.assignments.length, 4);
+  const repeat = await request("principal", "/class-subjects/bulk", "POST", {...payload, class_ids: [cls.id, extraClass.id, cls.id]});
+  assert.deepEqual(repeat.assignments.map(a => a.id), saved.assignments.map(a => a.id));
+  const setup = await request("teacher", "/academics/setup");
+  for (const row of saved.assignments) assert.ok(setup.assignments.some(a => a.id === row.id));
+  assert.ok(setup.classes.some(c => c.id === extraClass.id));
+  const listedClasses = await request("teacher", "/classes");
+  assert.ok(listedClasses.some(c => c.id === extraClass.id), "subject teachers see every assigned class, including classes with another homeroom teacher");
+  assert.ok(!listedClasses.some(c => c.id === otherClass.id), "unassigned classes stay hidden");
+  const pupil = await insert(db, "students", {school_id: school.id, first_name: "Additional", last_name: "Learner", gender: "OTHER", date_of_birth: "2015-01-01", guardian_name: "Guardian", guardian_phone: "08000000000", status: "ENROLLED", class_id: extraClass.id});
+  const learners = await fetch(base + "/students", {headers: {Cookie: clients.teacher.cookie}}).then(r => r.json());
+  assert.ok(learners.data.some(s => s.id === pupil.id));
+  await request("teacher", `/students/${pupil.id}`);
+  await request("teacher", `/attendance/students?class_id=${extraClass.id}&date=${today}`);
+  for (const row of saved.assignments.filter(a => a.class_id === extraClass.id)) {
+    await request("teacher", "/assessments", "POST", {class_subject_id: row.id, term_id: term.id, name: "Additional subject assessment", type: "TEST", max_score: 10, weight_percent: 10, assessment_date: today});
+    await request("principal", "/curriculum/topics", "POST", {class_subject_id: row.id, term_id: term.id, topic_name: "Additional subject topic", planned_week: 1, sequence_order: 1});
+  }
+  const assessments = await request("teacher", `/assessments?term_id=${term.id}`);
+  const topics = await request("teacher", `/curriculum/topics?term_id=${term.id}`);
+  for (const row of saved.assignments.filter(a => a.class_id === extraClass.id)) {
+    assert.ok(assessments.some(a => a.class_subject_id === row.id));
+    assert.ok(topics.some(t => t.class_subject_id === row.id));
+  }
+  const foreignSubject = await insert(db, "subjects", {school_id: otherSchool.id, name: "Foreign subject", code: "FOREIGN"});
+  const before = await rows(db, "SELECT * FROM class_subjects WHERE school_id=$1 ORDER BY id", [school.id]);
+  await request("principal", "/class-subjects/bulk", "POST", {...payload, subject_ids: [math.id, foreignSubject.id], teacher_user_id: accounts.english.id}, 404);
+  assert.deepEqual(await rows(db, "SELECT * FROM class_subjects WHERE school_id=$1 ORDER BY id", [school.id]), before, "invalid selections cannot partially save or reassign existing teachers");
+});

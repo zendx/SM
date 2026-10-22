@@ -12,7 +12,8 @@ export async function schoolRecord(db, u, table, id) {
 }
 export async function classAccess(db, u, id) {
   const c = await schoolRecord(db, u, "classes", id);
-  if (u.role === "TEACHER" && c.teacher_user_id !== u.id)
+  if (u.role === "TEACHER" && c.teacher_user_id !== u.id &&
+      !(await one(db, "SELECT id FROM class_subjects WHERE school_id=$1 AND class_id=$2 AND teacher_user_id=$3", [u.school_id, c.id, u.id])))
     fail(403, "This class is not assigned to you.", "FORBIDDEN");
   return c;
 }
@@ -29,7 +30,7 @@ export async function studentAccess(db, u, id) {
 export function studentScope(u, alias = "s", start = 2) {
   return u.role === "TEACHER"
     ? {
-        sql: ` AND ${alias}.class_id IN (SELECT id FROM classes WHERE teacher_user_id=$${start} AND school_id=$1)`,
+        sql: ` AND ${alias}.class_id IN (SELECT c.id FROM classes c WHERE c.school_id=$1 AND (c.teacher_user_id=$${start} OR EXISTS(SELECT 1 FROM class_subjects cs WHERE cs.school_id=c.school_id AND cs.class_id=c.id AND cs.teacher_user_id=$${start})))`,
         args: [u.id],
       }
     : u.role === "PARENT"

@@ -29,6 +29,18 @@ export function useData(path, initial = []) {
       alive = false;
     };
   }, [path, version]);
+  useEffect(() => {
+    if (!path) return;
+    const refresh = () => {
+      if (document.visibilityState !== "hidden") setVersion((v) => v + 1);
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [path]);
   return {
     data,
     error,

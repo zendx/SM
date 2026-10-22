@@ -4,18 +4,29 @@ import { BookOpen, CalendarCheck, GraduationCap } from "lucide-react";
 import { useData } from "../hooks";
 import { Button, Empty, Loading, PageHead, Panel, Table } from "../components";
 
-export function TeacherWorkspace({ go, can }) {
+export function TeacherWorkspace({ go, can, term, config }) {
   const setup = useData("/academics/setup", null);
-  const classes = setup.data?.classes || [],
-    assignments = setup.data?.assignments || [];
+  const yearId = config.terms.find(
+    (t) => Number(t.id) === Number(term),
+  )?.academic_year_id;
+  const classes = (setup.data?.classes || []).filter(
+      (c) => Number(c.academic_year_id) === Number(yearId),
+    ),
+    assignments = (setup.data?.assignments || []).filter(
+      (a) => Number(a.academic_year_id) === Number(yearId),
+    );
 
   return (
     <>
       <PageHead
         eyebrow="YOUR TEACHING DAY"
         title="Teacher workspace"
-        description="Your assigned classes, subjects and learner records are gathered here."
-      />
+        description={`Your teaching work for the selected term: ${classes.length} classes and ${assignments.length} class/subject assignments.`}
+      >
+        <Button secondary onClick={setup.reload}>
+          Refresh assignments
+        </Button>
+      </PageHead>
       <DailyWork can={can} go={go} />
       {setup.error ? (
         <p className="form-error">{setup.error}</p>
