@@ -1,4 +1,5 @@
 import { AcademicRecords } from "./refinements";
+import { TeachingAssignmentSetup } from "../teaching-assignment-setup";
 import React, { useEffect, useState } from "react";
 import {
   Plus,
@@ -804,7 +805,9 @@ function AnalyticsTab({ term, setup, can, notify }) {
               );
               setSelected(null);
               risks.reload();
-              notify("This academic support alert has been marked as resolved.");
+              notify(
+                "This academic support alert has been marked as resolved.",
+              );
             }}
           />
         </Modal>
@@ -1160,13 +1163,13 @@ export function Academics({ user, can, term, config, notify }) {
     [selectedClass, setSelectedClass] = useState(""),
     [assignment, setAssignment] = useState("");
   const yearId = config.terms.find(
-      (t) => t.id === Number(term),
+      (t) => Number(t.id) === Number(term),
     )?.academic_year_id,
     classes = (setup.data?.classes || []).filter(
-      (c) => c.academic_year_id === yearId,
+      (c) => Number(c.academic_year_id) === Number(yearId),
     ),
     assignments = (setup.data?.assignments || []).filter(
-      (a) => a.academic_year_id === yearId,
+      (a) => Number(a.academic_year_id) === Number(yearId),
     );
   useEffect(() => {
     if (!classes.some((c) => String(c.id) === selectedClass))
@@ -1418,12 +1421,29 @@ export function Academics({ user, can, term, config, notify }) {
           title={modal.row ? "Edit assessment" : "Create assessment"}
           onClose={() => setModal(null)}
         >
-          <Form
-            initial={modal.row || {}}
-            fields={assessmentFields(assignments, config.today)}
-            onSubmit={saveAssessment}
-            submit="Save assessment"
-          />
+          {assignments.length ? (
+            <Form
+              initial={modal.row || {}}
+              fields={assessmentFields(assignments, config.today)}
+              onSubmit={saveAssessment}
+              submit="Save assessment"
+            />
+          ) : setup.loading ? (
+            <Loading />
+          ) : (
+            setup.data && (
+              <TeachingAssignmentSetup
+                setup={setup.data}
+                yearId={yearId}
+                canManage={can("academics.manage")}
+                onSaved={setup.reload}
+                onSetup={() => {
+                  setModal(null);
+                  setTab("setup");
+                }}
+              />
+            )
+          )}
         </Modal>
       )}
       {modal?.type === "delete" && (

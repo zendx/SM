@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
 import { insert } from "../server/db.js";
-import { createApp } from "../server/app.js";
+import { createApp } from "./app.js";
 import { hashPassword, localClock } from "../server/security.js";
 process.env.REQUIRE_MFA = "false";
 const db = await openTestDatabase(),
@@ -112,14 +112,23 @@ const navigate = (name) =>
   page.locator("nav").getByRole("button", { name, exact: true }).click();
 const closed = () => dialog().waitFor({ state: "hidden" });
 async function login(who) {
-  await page.goto(origin + '/login');
-  await field('Email address').waitFor();
-  const cookies=page.getByRole('button',{name:'Accept required cookies',exact:true});
-  if(await cookies.count()) await cookies.click();
+  await page.goto(origin + "/login");
+  await field("Email address").waitFor();
+  const cookies = page.getByRole("button", {
+    name: "Accept required cookies",
+    exact: true,
+  });
+  if (await cookies.count()) await cookies.click();
   await field("Email address").fill(`${who}@phase2.test`);
   await page.getByLabel(/^Password \*$/).fill("Phase-two-browser!");
   await click("Sign in to your workspace");
   await page.locator("nav").waitFor();
+  if (who === "teacher") {
+    await page
+      .getByRole("heading", { name: "Your attendance today" })
+      .waitFor();
+    await click("Close dialog");
+  }
 }
 async function logout() {
   if (await page.getByRole("button", { name: "Open navigation" }).isVisible())
@@ -147,7 +156,24 @@ try {
   await field("Department").fill("Sciences");
   await click("Create subject");
   await closed();
-  await click("Assign subject");
+  await click("Assessments");
+  await click("New assessment");
+  await dialog()
+    .getByText(/No subjects have been assigned to classes/)
+    .waitFor();
+  assert.equal(
+    await dialog()
+      .getByRole("button", { name: "Save assessment", exact: true })
+      .count(),
+    0,
+  );
+  await click("Close dialog");
+  await navigate("Curriculum");
+  await click("Plan topic");
+  await dialog()
+    .getByText(/No subjects have been assigned to classes/)
+    .waitFor();
+  await click("Assign a subject to a class");
   await dialog()
     .getByLabel("Class", { exact: false })
     .selectOption(String(cls.id));
@@ -156,10 +182,15 @@ try {
     .first()
     .selectOption({ index: 1 });
   await field("Teacher").last().selectOption(String(users.teacher.id));
-  await field("Subject credits").fill("1");
-  await click("Save assignment");
+  await click("Save teaching assignment");
+  await field("Class and subject").selectOption({ index: 1 });
+  await field("Topic name").fill("Introduction to fractions");
+  await field("Planned week").fill("1");
+  await field("Sequence order").fill("3");
+  await click("Save topic");
   await closed();
-  await click("Assessments");
+  await page.getByText("Introduction to fractions", { exact: true }).waitFor();
+  await navigate("Academics");
   await createAssessment("Mathematics CA 1", "CA", 20, 40);
   await createAssessment("Mathematics examination", "EXAM", 60, 60);
   await navigate("Curriculum");
@@ -222,7 +253,10 @@ try {
   await click("Save teaching log");
   await closed();
   await click("Coverage");
-  await page.getByRole("cell", { name: "50%", exact: true }).first().waitFor();
+  await page
+    .getByRole("cell", { name: "33.33%", exact: true })
+    .first()
+    .waitFor();
   await page.screenshot({
     path: "test-results/curriculum-desktop.png",
     fullPage: true,

@@ -22,6 +22,7 @@ import {
   human,
 } from "../components";
 import { AcademicExports } from "./academics";
+import { TeachingAssignmentSetup } from "../teaching-assignment-setup";
 
 export function Curriculum({ can, term, config, notify }) {
   const setup = useData("/academics/setup", null),
@@ -33,10 +34,10 @@ export function Curriculum({ can, term, config, notify }) {
     [filter, setFilter] = useState(""),
     [modal, setModal] = useState(null);
   const yearId = config.terms.find(
-      (t) => t.id === Number(term),
+      (t) => Number(t.id) === Number(term),
     )?.academic_year_id,
     assignments = (setup.data?.assignments || []).filter(
-      (a) => a.academic_year_id === yearId,
+      (a) => Number(a.academic_year_id) === Number(yearId),
     ),
     opts = assignments.map((a) => ({
       value: a.id,
@@ -293,7 +294,21 @@ export function Curriculum({ can, term, config, notify }) {
           }
           onClose={() => setModal(null)}
         >
-          {modal.type === "topic" && (
+          {(modal.type === "topic" || modal.type === "import") &&
+            !opts.length &&
+            (setup.loading ? (
+              <Loading />
+            ) : (
+              setup.data && (
+                <TeachingAssignmentSetup
+                  setup={setup.data}
+                  yearId={yearId}
+                  canManage={can("academics.manage")}
+                  onSaved={setup.reload}
+                />
+              )
+            ))}
+          {modal.type === "topic" && opts.length > 0 && (
             <Form
               initial={modal.row || {}}
               fields={[
@@ -331,7 +346,7 @@ export function Curriculum({ can, term, config, notify }) {
               submit="Save topic"
             />
           )}
-          {modal.type === "import" && (
+          {modal.type === "import" && opts.length > 0 && (
             <>
               <div className="notice">
                 CSV headers: <code>topic_name,planned_week,sequence_order</code>
