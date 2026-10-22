@@ -162,6 +162,11 @@ export function platformNotificationRoutes(db) {
     );
     res.json({ data: { ok: true } });
   });
+  r.get("/subscription/notices/unread-count", async (req, res) => {
+    res.json({ data: await one(db,
+      "SELECT count(*)::int AS count FROM platform_notifications WHERE user_id=$1 AND read_at IS NULL",
+      [req.user.id]) });
+  });
   r.get("/subscription/notices", async (req, res) =>
     res.json({
       data: await rows(

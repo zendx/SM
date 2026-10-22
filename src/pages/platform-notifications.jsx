@@ -6,7 +6,7 @@ import { Panel, Form, Button, Table } from "../components";
 import { ContactPreferences } from "./communication-preferences";
 
 export function NotificationBell({ onClick }) {
-  const q = useData("/subscription/notices");
+  const q = useData("/subscription/notices/unread-count", { count: 0 });
   useEffect(() => {
     const update = () => {
       if (document.visibilityState !== "visible") return;
@@ -17,21 +17,24 @@ export function NotificationBell({ onClick }) {
     const timer = setInterval(update, 30000);
     document.addEventListener("visibilitychange", update);
     window.addEventListener("notices-read", update);
+    window.addEventListener("focus", update);
     return () => {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", update);
       window.removeEventListener("notices-read", update);
+      window.removeEventListener("focus", update);
     };
   }, []);
-  const unread = (q.data || []).filter((n) => !n.read_at).length;
+  const unread = Number(q.data?.count || 0);
   return (
     <button
-      className="icon-btn notification-button"
+      className={`icon-btn notification-button${unread > 0 ? " has-unread" : ""}`}
+      title={unread > 0 ? `${unread} unread notifications` : "Notifications"}
       aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
       onClick={onClick}
     >
       <Bell size={20} />
-      {unread > 0 && <span>{unread}</span>}
+      {unread > 0 && <span className="notification-count" aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}
     </button>
   );
 }
