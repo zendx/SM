@@ -225,7 +225,11 @@ test("department delegation and tenant account lifecycle enforce access boundari
         },
       });
     assert.equal((await change("PAUSE", "wrong-password")).status, 422);
-    assert.equal((await change("PAUSE")).status, 200);
+    assert.equal((await change("PAUSE")).status, 422);
+    assert.equal((await one(db, "SELECT status FROM school_subscriptions WHERE school_id=$1", [school.id])).status, initial.status);
+    // Older paused accounts can still resume without losing their original expiry.
+    await db.query("UPDATE school_subscriptions SET tenant_previous_status=status,status='SUSPENDED',suspension_reason='TENANT_PAUSED' WHERE school_id=$1", [school.id]);
+    assert.equal((await change("RESUME", "wrong-password")).status, 422);
     assert.equal(
       (await call("/users", { session: school.session })).status,
       402,

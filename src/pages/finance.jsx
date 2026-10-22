@@ -21,6 +21,8 @@ import {
   Form,
   Metric,
   human,
+  Empty,
+  Loading,
 } from "../components";
 export function Finance({ can, term, config, money, notify }) {
   const gateway = useData("/payments/config", null),
@@ -67,7 +69,23 @@ export function Finance({ can, term, config, money, notify }) {
   const [tab, setTab] = useState("invoices"),
     [modal, setModal] = useState(null),
     [selected, setSelected] = useState(null),
-    [filter, setFilter] = useState("");
+    [filter, setFilter] = useState(""),
+    [feeClassId, setFeeClassId] = useState(""),
+    [feeTermId, setFeeTermId] = useState("");
+  const feeClass = classes.data.find((c) => String(c.id) === feeClassId);
+  const feeTerms = config.terms.filter((t) => t.academic_year_id === feeClass?.academic_year_id);
+  const classFees = fees.data
+    .filter((f) => String(f.class_id) === feeClassId && (!feeTermId || String(f.term_id) === feeTermId))
+    .sort((a, b) => {
+      const termA = config.terms.find((t) => t.id === a.term_id);
+      const termB = config.terms.find((t) => t.id === b.term_id);
+      return String(termA?.start_date || "").localeCompare(String(termB?.start_date || "")) || a.fee_category.localeCompare(b.fee_category);
+    });
+  const classLabel = (c) => `${c.name} / ${config.years.find((y) => y.id === c.academic_year_id)?.name || "Academic year"}`;
+  function openFee(row = null) {
+    const defaultTerm = feeTermId || String(feeTerms.find((t) => String(t.id) === String(term))?.id || feeTerms[0]?.id || term || "");
+    setModal({ type: "fee", row: row || { class_id: feeClassId, term_id: defaultTerm } });
+  }
   const options = students.data.map((s) => ({
     value: s.id,
     label: `${s.first_name} ${s.last_name}${s.student_number ? ` · ${s.student_number}` : ""}`,
@@ -234,7 +252,7 @@ export function Finance({ can, term, config, money, notify }) {
         title={human(tab)}
         action={
           tab === "fee structures" && can("finance.write") ? (
-            <Button small onClick={() => setModal({ type: "fee" })}>
+            <Button small onClick={() => openFee()}>
               <Plus size={15} />
               Set fee
             </Button>
@@ -292,15 +310,47 @@ export function Finance({ can, term, config, money, notify }) {
             }}
           />
         ) : tab === "fee structures" ? (
-          <Table
-            rows={fees.data}
-            columns={[
-              { label: "Class", key: "class_name" },
-              { label: "Term", key: "term_name" },
-              { label: "Category", render: (r) => human(r.fee_category) },
-              { label: "Amount", render: (r) => money(r.amount_cents) },
-            ]}
-          />
+          <>
+            <div className="table-toolbar">
+              <label className="inline-field">
+                Class
+                <select aria-label="Class" value={feeClassId} onChange={(e) => { setFeeClassId(e.target.value); setFeeTermId(""); }}>
+                  <option value="">Select a class</option>
+                  {classes.data.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
+                </select>
+              </label>
+              {feeClass && <label className="inline-field">
+                Term
+                <select aria-label="Term" value={feeTermId} onChange={(e) => setFeeTermId(e.target.value)}>
+                  <option value="">All terms</option>
+                  {feeTerms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </label>}
+            </div>
+            {fees.error || classes.error ? <p className="form-error" role="alert">{fees.error || classes.error}</p> : fees.loading || classes.loading ? <Loading /> : !feeClass ? (
+              <Empty title="Choose a class to view its fees" description="See fee categories, terms and amounts together for one class." />
+            ) : (
+              <>
+                <h3>{feeClass.name}</h3>
+                <p className="muted">{config.years.find((y) => y.id === feeClass.academic_year_id)?.name} / {classFees.length} fee {classFees.length === 1 ? "entry" : "entries"}</p>
+                {classFees.length > 0 && <div className="mini-stats">
+                  {feeTerms.filter((t) => classFees.some((f) => f.term_id === t.id)).map((t) => (
+                    <div key={t.id}><span>{t.name} total</span><strong>{money(classFees.filter((f) => f.term_id === t.id).reduce((sum, f) => sum + Number(f.amount_cents), 0))}</strong></div>
+                  ))}
+                </div>}
+                <Table
+                  rows={classFees}
+                  columns={[
+                    { label: "Category", render: (r) => human(r.fee_category) },
+                    { label: "Term", key: "term_name" },
+                    { label: "Amount", render: (r) => money(r.amount_cents) },
+                    ...(can("finance.write") ? [{ label: "Action", render: (r) => <button className="text-button" onClick={() => openFee(r)}>Edit fee</button> }] : []),
+                  ]}
+                  empty={{ title: "No fees set yet", description: "Use Set fee to add a category and amount for this class and term." }}
+                />
+              </>
+            )}
+          </>
         ) : (
           <>
             <div className="notice">
@@ -444,7 +494,7 @@ export function Finance({ can, term, config, money, notify }) {
             {
               invoice: "Generate student invoice",
               payment: "Record a payment",
-              fee: "Set class fee",
+              fee: modal.row?.id ? "Edit class fee" : "Set class fee",
               concession: "Student concessions",
               plan: "Plan an installment",
               waive: "Waive invoice",
@@ -584,14 +634,20 @@ export function Finance({ can, term, config, money, notify }) {
           )}
           {modal.type === "fee" && (
             <Form
+              initial={{ ...modal.row, amount: modal.row?.amount_cents == null ? "" : Number(modal.row.amount_cents) / 100 }}
               fields={[
                 {
                   name: "class_id",
                   label: "Class",
-                  options: classes.data.map((c) => ({
+                  options: classes.data.filter((c) => !modal.row?.id || c.id === modal.row.class_id).map((c) => ({
                     value: c.id,
-                    label: c.name,
+                    label: classLabel(c),
                   })),
+                },
+                {
+                  name: "term_id",
+                  label: "Term",
+                  options: config.terms.filter((t) => !modal.row?.id || t.id === modal.row.term_id).map((t) => ({ value: t.id, label: `${t.name} / ${config.years.find((y) => y.id === t.academic_year_id)?.name || ""}` })),
                 },
                 {
                   name: "fee_category",
@@ -606,7 +662,7 @@ export function Finance({ can, term, config, money, notify }) {
                     "MEALS",
                     "ACTIVITY",
                     "OTHER",
-                  ],
+                  ].filter((category) => !modal.row?.id || category === modal.row.fee_category),
                 },
                 {
                   name: "amount",
@@ -617,12 +673,14 @@ export function Finance({ can, term, config, money, notify }) {
                   wide: true,
                 },
               ]}
-              onSubmit={(v) =>
-                save("/finance/fee-structures", { ...v, term_id: term })
-              }
+              onSubmit={async (v) => {
+                await save("/finance/fee-structures", v);
+                setFeeClassId(String(v.class_id));
+                setFeeTermId(String(v.term_id));
+              }}
             >
               <p className="muted">
-                Applies to the selected term. Existing invoices keep their
+                Applies to the chosen class and term. Existing invoices keep their
                 original charges.
               </p>
             </Form>

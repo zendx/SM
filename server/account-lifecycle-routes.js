@@ -12,7 +12,7 @@ export function accountLifecycleRoutes(db) {
       fail(403, "A school administrator must request this account change.");
     const b = z
       .object({
-        action: z.enum(["PAUSE", "RESUME", "DELETE"]),
+        action: z.enum(["RESUME", "DELETE"]),
         password: z.string().min(1).max(128),
         reason: text.max(1000),
       })
@@ -33,7 +33,7 @@ export function accountLifecycleRoutes(db) {
           [req.user.school_id],
         )
       )
-        fail(403, "The owner workspace cannot be paused or closed.");
+        fail(403, "The owner workspace cannot be closed.");
       const sub = await one(
         tx,
         "SELECT * FROM school_subscriptions WHERE school_id=$1 FOR UPDATE",
@@ -45,14 +45,7 @@ export function accountLifecycleRoutes(db) {
           409,
           "Deletion has already been requested. Contact SMPIS for reactivation.",
         );
-      if (b.action === "PAUSE") {
-        if (!["TRIAL", "ACTIVE", "PENDING_PAYMENT"].includes(sub.status))
-          fail(409, "Only an active or pending subscription can be paused.");
-        await tx.query(
-          "UPDATE school_subscriptions SET tenant_previous_status=status,status='SUSPENDED',suspension_reason='TENANT_PAUSED',updated_at=now() WHERE school_id=$1",
-          [req.user.school_id],
-        );
-      } else if (b.action === "RESUME") {
+      if (b.action === "RESUME") {
         if (sub.suspension_reason !== "TENANT_PAUSED")
           fail(
             409,

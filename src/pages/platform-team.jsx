@@ -130,7 +130,7 @@ export function TenantAccountControls({ sub, reload }) {
   return (
     <Panel
       title="Manage your SMPIS account"
-      description="Your school records are retained when you pause or request account deletion."
+      description="Your school records are retained when you request account deletion."
     >
       {sub.deletion_requested_at ? (
         <div className="notice">
@@ -143,20 +143,13 @@ export function TenantAccountControls({ sub, reload }) {
       ) : (
         <>
           <p>
-            Pausing stops school operations and keeps your current expiry date.
-            It does not preserve unused subscription time or restart your trial.
+            Contact SMPIS Support if you need help with your subscription.
           </p>
           <div className="toolbar">
-            {sub.suspension_reason === "TENANT_PAUSED" ? (
+            {sub.suspension_reason === "TENANT_PAUSED" && (
               <Button onClick={() => setAction("RESUME")}>
                 Resume subscription
               </Button>
-            ) : (
-              ["TRIAL", "ACTIVE", "PENDING_PAYMENT"].includes(sub.status) && (
-                <Button secondary onClick={() => setAction("PAUSE")}>
-                  Pause subscription
-                </Button>
-              )
             )}
             {sub.status !== "TERMINATED" && (
               <Button secondary onClick={() => setAction("DELETE")}>
@@ -171,9 +164,7 @@ export function TenantAccountControls({ sub, reload }) {
           title={
             action === "DELETE"
               ? "Request account deletion"
-              : action === "PAUSE"
-                ? "Pause subscription"
-                : "Resume subscription"
+              : "Resume subscription"
           }
           onClose={() => setAction(null)}
         >

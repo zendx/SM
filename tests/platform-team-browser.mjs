@@ -186,15 +186,8 @@ try {
     .click();
   await page.getByRole("cell", { name: "Resolved", exact: true }).waitFor();
   await signIn("admin@browser.test", "/support-academy/#subscription");
-  await page
-    .getByRole("button", { name: "Pause subscription", exact: true })
-    .click();
-  await page.getByLabel("Reason").fill("School holiday pause");
-  await page.getByLabel("Confirm your password").fill(password);
-  await page.getByRole("button", { name: "Confirm account change" }).click();
-  await page
-    .getByRole("button", { name: "Resume subscription", exact: true })
-    .waitFor();
+  await page.getByRole("button", { name: "Request account deletion", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Pause subscription", exact: true }).count(), 0);
   await page.getByRole("button", { name: "Support", exact: true }).click();
   await page
     .getByText("Our Sales Department can help with your billing plan.", {
@@ -248,7 +241,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Chrome support, delegated navigation, pause, deletion and owner reactivation checks passed.",
+    "Chrome support, delegated navigation, no tenant pause, deletion and owner reactivation checks passed.",
   );
 } finally {
   await browser?.close();
