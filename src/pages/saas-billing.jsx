@@ -95,7 +95,7 @@ export function Subscription({
 }) {
   const q = useData("/subscription", null),
     [cycle, setCycle] = useState("MONTHLY"),
-    [autoRenew, setAutoRenew] = useState(false),
+    [autoRenew, setAutoRenew] = useState(true),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -257,8 +257,8 @@ export function Subscription({
               </strong>
             </div>
             <p className="muted">
-              Payments cover one billing period. You can authorize automatic
-              card renewal at checkout. Switching period applies to your next
+              Payments cover one billing period. Card renewal authorization is
+              checked by default at checkout; uncheck it to pay once. Switching period applies to your next
               purchase and preserves remaining paid time.
             </p>
           </Panel>
@@ -285,7 +285,7 @@ export function Subscription({
               >
                 <label className="field check-field">
                   <input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenew(e.target.checked)} />
-                  <span>Authorize this card for automatic {cycle === "YEARLY" ? "yearly" : "monthly"} renewal at the amount shown at checkout, with retries every 12 hours during the {config.grace_days}-day grace period. You can turn this off here.</span>
+                  <span>Authorize this card for automatic renewal at the amount shown at checkout.</span>
                 </label>
                 {Object.entries(sub.providers).map(([name, p]) => (
                   <div className="provider-choice" key={name}>

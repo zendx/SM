@@ -14,6 +14,7 @@ process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 const db = await openTestDatabase();
 const originalFetch = globalThis.fetch;
 let server, browser, checkout;
+let checkoutCount = 0;
 try {
   const app = await createApp(db);
   const school = await insert(db, "schools", { name: "Renewal Academy", short_code: "RENEW", portal_slug: "renewal-academy" });
@@ -25,7 +26,7 @@ try {
   globalThis.fetch = async (url, options) => {
     if (String(url).startsWith("https://api.stripe.com/")) {
       checkout = Object.fromEntries(new URLSearchParams(options.body));
-      return new Response(JSON.stringify({ id: "cs_authorized", url: "https://checkout.stripe.com/c/pay/authorized" }), { status: 200 });
+      return new Response(JSON.stringify({ id: `cs_authorized_${++checkoutCount}`, url: "https://checkout.stripe.com/c/pay/authorized" }), { status: 200 });
     }
     return originalFetch(url, options);
   };
@@ -38,18 +39,27 @@ try {
   await context.addCookies([{ name: "smpis_session", value: token, url: origin }]);
   await context.route("https://checkout.stripe.com/**", route => route.fulfill({ contentType: "text/html", body: "<p>Secure checkout</p>" }));
   const page = await context.newPage();
+  page.setDefaultTimeout(15000);
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(origin + "/renewal-academy/#subscription");
   const consent = page.getByRole("checkbox", { name: /Authorize this card/ });
   await consent.waitFor();
-  assert.equal(await consent.isChecked(), false);
-  await consent.check();
+  assert.equal(await consent.isChecked(), true);
+  await page.getByText("Authorize this card for automatic renewal at the amount shown at checkout.", { exact: true }).waitFor();
+  await consent.uncheck();
+  await page.getByRole("button", { name: "Pay by card", exact: false }).click();
+  await page.waitForURL("https://checkout.stripe.com/**");
+  assert.equal(checkout["payment_intent_data[setup_future_usage]"], undefined);
+  assert.equal((await one(db, "SELECT auto_renew_requested FROM subscription_payments WHERE school_id=$1 ORDER BY id DESC LIMIT 1", [school.id])).auto_renew_requested, false);
+  await page.goto(origin + "/renewal-academy/#subscription");
+  await consent.waitFor();
+  assert.equal(await consent.isChecked(), true);
   await page.getByRole("button", { name: "Pay by card", exact: false }).click();
   await page.waitForURL("https://checkout.stripe.com/**");
   assert.equal(checkout["payment_intent_data[setup_future_usage]"], "off_session");
   assert.equal(checkout.customer_creation, "always");
-  const payment = await one(db, "UPDATE subscription_payments SET status='PAID' WHERE school_id=$1 RETURNING *", [school.id]);
+  const payment = await one(db, "UPDATE subscription_payments SET status='PAID' WHERE school_id=$1 AND auto_renew_requested=true RETURNING *", [school.id]);
   assert.equal(payment.auto_renew_requested, true);
   await saveRecurringMethod(db, payment, { customer: "cus_authorized", payment_method: "pm_authorized" }, { brand: "Visa", last4: "4242" });
   await page.goto(origin + "/renewal-academy/#subscription");
@@ -58,7 +68,7 @@ try {
   await page.getByText("Automatic renewal is off. Authorize your card with your next payment to enable it.").waitFor();
   assert.equal((await one(db, "SELECT enabled FROM subscription_auto_renewals WHERE school_id=$1", [school.id])).enabled, false);
   assert.deepEqual(errors, []);
-  console.log("Tenant explicitly authorizes recurring checkout, sees saved card, and can revoke auto-renewal.");
+  console.log("Tenant can opt out of default recurring checkout, sees saved card, and can revoke auto-renewal.");
 } finally {
   globalThis.fetch = originalFetch;
   await browser?.close();

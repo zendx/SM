@@ -745,7 +745,7 @@ export function Landing() {
                 ))}
               </ul>
               <small>
-                Card checkout covers one billing period; renew when due.
+                Card payments enable automatic renewal by default. Uncheck the authorization to pay once, or turn renewal off in Subscription.
               </small>
             </article>
           </div>
@@ -780,6 +780,10 @@ export function Landing() {
               [
                 "How does the yearly discount work?",
                 `Pro costs ${displayPrice(planPrice("MONTHLY", plans.data || {}) / 100)} per month or ${displayPrice(planPrice("YEARLY", plans.data || {}) / 100)} upfront for a full year.`,
+              ],
+              [
+                "Will my card renew my subscription automatically?",
+                "Yes. Card renewal authorization is checked by default. Leave it checked to renew monthly or yearly, matching your selected billing period, at the amount and currency shown at checkout. Uncheck it to pay once. Renewal starts only after a successful verified live payment with a reusable card authorization. You can turn it off in Subscription; a payment already submitted may still complete. Bank transfers do not enable automatic renewal.",
               ],
               [
                 "Can I pay by bank transfer?",

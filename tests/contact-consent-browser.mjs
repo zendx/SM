@@ -65,7 +65,7 @@ try {
       name: "Email, phone numbers and promotional communications",
     })
     .waitFor();
-  await page.getByText(/Last updated: 2026-10-09/).waitFor();
+  await page.getByText(/Last updated: 2026-10-22/).waitFor();
   await page.goto(newsletterUnsubscribeLink(owner));
   await page
     .getByRole("heading", { name: "Promotional email preferences" })

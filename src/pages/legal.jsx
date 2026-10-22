@@ -205,9 +205,10 @@ export function LegalPage({ type }) {
           <h2>School subscriptions</h2>
           <p>
             Schools may create a separate SMPIS portal with a 30-day Free trial.
-            Pro has a USD 100 monthly base price, or USD 1,020 yearly with a 15%
-            discount. Payments cover one selected period; this checkout does not
-            automatically charge a card for future periods. Operational access
+            Pro pricing and the selected monthly or yearly billing period are
+            shown on the pricing and billing screens. The final payable amount
+            and currency are shown before checkout. Payments cover one selected
+            period. Operational access
             pauses when the trial ends or a paid subscription expires after any
             configured grace period. The school administrator can still sign in
             to manage billing. Suspension and termination retain school records.
@@ -218,6 +219,32 @@ export function LegalPage({ type }) {
             checkout or bank payment is in NGN, the billing screen shows the
             owner-configured exchange rate and payable amount. Contact the SMPIS
             owner about subscription payments and billing questions.
+          </p>
+          <h2>Automatic card renewal</h2>
+          <p>
+            Card renewal authorization is checked by default at subscription
+            checkout. Leave it checked to authorize automatic renewal at the
+            amount and currency shown at checkout, monthly or yearly according
+            to your selected billing period. Uncheck it before paying to make
+            a one-time payment. Automatic renewal is enabled only after a
+            successful, server-verified live payment provides a reusable card
+            authorization. Existing payments and bank transfers do not enroll
+            you in automatic renewal.
+          </p>
+          <p>
+            Renewal is attempted when your paid subscription expires. Confirmed
+            failures may be retried every 12 hours during the configured grace
+            period shown in Subscription. Failed or unconfirmed payments prompt
+            service notifications, and your provider may require additional
+            authentication. Only verified payment extends access. The authorized
+            amount and currency remain unchanged by later price or exchange-rate
+            changes until a later authorized checkout replaces them.
+          </p>
+          <p>
+            You can turn off automatic renewal in Subscription without ending
+            your current paid access. A payment already submitted may still
+            complete. Turning renewal off does not refund payments or delete
+            your school account.
           </p>
           <h2>Fees and external providers</h2>
           <p>
@@ -231,8 +258,8 @@ export function LegalPage({ type }) {
           <p>
             Maintenance, outages, and external providers may interrupt access.
             Administrators must arrange appropriate backups and recovery.
-            Database and private document backups must be managed separately in
-            Supabase.
+            Recovery must cover both database records and private documents.
+            The operator manages the platform backup and recovery process.
           </p>
           <h2>Privacy, changes, and contact</h2>
           <p>
@@ -337,10 +364,31 @@ export function LegalPage({ type }) {
             cross-border processing and applicable safeguards with its
             providers.
           </p>
+          <h2>Subscription payments and renewal records</h2>
+          <p>
+            Payment providers process your card details. SMPIS does not store
+            full card numbers or card security codes. When the renewal
+            authorization remains checked at checkout and a verified live
+            payment supplies a reusable method, SMPIS stores encrypted provider
+            tokens or authorization references, the associated customer details
+            and email address, card brand and last four digits where available,
+            authorized amount, currency and billing cycle. We also record the
+            authorizing administrator, authorization and revocation times,
+            payment references, renewal attempts and verification results.
+          </p>
+          <p>
+            These records support recurring charges, billing support, payment
+            reconciliation, security and an audit of your renewal choices.
+            Renewal authorization is checked by default; you can uncheck it
+            before checkout or turn renewal off later in Subscription. Disabling
+            renewal stops future attempts but does not erase payment and audit
+            records or cancel a payment already submitted. Renewal issue notices
+            are service communications and do not depend on promotional consent.
+          </p>
           <h2>Security and access</h2>
           <p>
             Role and school checks restrict access. Passwords are hashed;
-            administrator MFA is supported; integration credentials are
+            MFA is required for privileged accounts and available to other users; integration credentials are
             encrypted using a server-held key. Hosted deployments use HTTPS.
             Other record fields are not separately encrypted by application
             code. Authorized administrators and service providers may access
@@ -348,8 +396,11 @@ export function LegalPage({ type }) {
           </p>
           <h2>Retention and your requests</h2>
           <p>
-            There is no universal automatic deletion schedule implemented in
-            this application. Your school determines retention and must arrange
+            A school account deletion request suspends operations immediately,
+            retains administrator Support access for three calendar months, and
+            then blocks school sign-in. This closure retains school records,
+            payment history, audit records and email addresses; it does not
+            automatically erase them. Your school determines retention and must arrange
             deletion, backups and recovery in line with its obligations. Subject
             to applicable law and recordkeeping requirements, contact your
             school or the privacy contact to request access, correction,

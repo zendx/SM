@@ -4,7 +4,7 @@ import { z } from "./validation.js";
 import { one, audit } from "./db.js";
 import { fail } from "./security.js";
 
-export const PRIVACY_POLICY_VERSION = "2026-10-09";
+export const PRIVACY_POLICY_VERSION = "2026-10-22";
 const preferences = z
   .object({
     marketing_email_consent: z.boolean(),

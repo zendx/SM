@@ -1,7 +1,8 @@
 # Automatic subscription renewals
 
 Only the tenant administrator authorizes or disables automatic renewal. The
-Subscription page has an unchecked authorization checkbox at card checkout.
+Subscription page has an authorization checkbox checked by default at card checkout. Tenants
+can uncheck it to pay once; monthly/yearly renewal follows the selected period.
 After successful server-side verification of a live payment, SMPIS stores the
 provider's reusable authorization/token (encrypted with
 `INTEGRATION_ENCRYPTION_KEY`). It does not store a card number or CVV. Old
