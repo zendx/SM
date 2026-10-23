@@ -150,6 +150,7 @@ export async function deliverNotifications(
               ? "subscription_reminder"
               : "school_notification",
           {
+            school_id: n.school_id,
             title: n.title,
             body: n.body,
             link: process.env.APP_URL

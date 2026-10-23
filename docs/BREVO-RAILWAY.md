@@ -34,3 +34,11 @@ All existing Nodemailer email flows use the HTTPS adapter when selected: tenant/
 The Brevo API does not expose inline attachment Content-ID support. The official email logo therefore uses the public HTTPS image URL; other attachments with buffer content are sent as base64 attachments. Existing unsubscribe links remain in the HTML/text message body.
 
 HTTP errors, malformed API responses and timeouts fail delivery rather than marking a message sent. Error diagnostics include only HTTP/code metadata, not API keys or provider response bodies. SENT confirms provider acceptance, not recipient inbox placement. Existing queue claims prevent overlapping workers from claiming the same active message; network failures after provider acceptance can still cause a retry duplicate, as with SMTP.
+
+## Email branding
+
+The production build emits `/email-logo.png` as a public PNG for the official SMPIS logo. It must return `Content-Type: image/png`, rather than the application HTML. Deploy both the web application and Railway worker after branding changes.
+
+Emails for school accounts include that school's current name and uploaded logo, in addition to SMPIS branding. This covers school notices, fee reminders, onboarding, activation, verification, password reset and platform notices delivered to a school account. Schools without an uploaded logo still display their name. SMTP embeds the logos; Brevo uses public HTTPS image URLs, including `/email-school-logo/{portal_slug}`. This endpoint serves only the school's public branding image, without account or school records.
+
+Previously sent email HTML is not rewritten. Check branding with a newly sent email after deployment. Email clients may require recipients to enable external images.

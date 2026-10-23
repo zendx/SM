@@ -129,15 +129,39 @@ export async function renderEmail(db, key, values, draft = null) {
       ? null
       : template;
   const message = renderTemplate(safeTemplate || emailTemplates[key], values);
+  const school = values.school_id
+    ? await one(
+        db,
+        "SELECT name,portal_slug,logo_data FROM schools WHERE id=$1",
+        [values.school_id],
+      )
+    : null;
+  const schoolLogo = school?.logo_data?.match(
+    /^data:(image\/(?:png|jpeg));base64,(.+)$/,
+  );
+  const attachments = [await emailLogo()];
+  if (schoolLogo)
+    attachments.push({
+      filename:
+        schoolLogo[1] === "image/png" ? "school-logo.png" : "school-logo.jpg",
+      content: Buffer.from(schoolLogo[2], "base64"),
+      contentType: schoolLogo[1],
+      cid: "school-brand",
+      contentDisposition: "inline",
+      publicPath: `/email-school-logo/${encodeURIComponent(school.portal_slug)}`,
+    });
   return {
     ...message,
+    ...(school ? { text: `${school.name}\n\n${message.text}` } : {}),
     html: brandedEmail({
       ...message,
+      schoolName: school?.name,
+      schoolLogo: Boolean(schoolLogo),
       link: values.link,
       key,
       unsubscribeLink: values.unsubscribe_link,
     }),
-    attachments: [await emailLogo()],
+    attachments,
     ...(key === "promotional_newsletter" && values.unsubscribe_link
       ? {
           text: `${message.text}\n\nYou chose to receive SMPIS promotional emails. Unsubscribe: ${values.unsubscribe_link}`,

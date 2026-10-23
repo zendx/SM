@@ -27,6 +27,7 @@ export async function sendAccountCreatedEmail(db, user) {
     const activation = new URL("/login", process.env.APP_URL);
     activation.searchParams.set("reset", raw);
     const message = await renderEmail(db, "account_created", {
+      school_id: user.school_id,
       name: user.name,
       school_name: school.name,
       email: user.email,

@@ -1,4 +1,5 @@
 import { ensureTeacherStaff } from "./teacher-staff.js";
+import { one } from "./db.js";
 import { emailLogo } from "./email-design.js";
 import { emailDeliveryRoutes } from "./email-delivery-routes.js";
 import { schoolBrandingRoutes } from "./school-branding.js";
@@ -75,6 +76,20 @@ export async function createApp(db, options = {}) {
     res.set("Cache-Control", "public, max-age=86400");
     res.set("Cross-Origin-Resource-Policy", "cross-origin");
     res.type("image/png").send((await emailLogo()).content);
+  });
+  app.get("/email-school-logo/:slug", async (req, res) => {
+    const school = await one(
+      db,
+      "SELECT logo_data FROM schools WHERE portal_slug=$1",
+      [req.params.slug],
+    );
+    const image = school?.logo_data?.match(
+      /^data:(image\/(?:png|jpeg));base64,(.+)$/,
+    );
+    if (!image) return res.sendStatus(404);
+    res.set("Cache-Control", "public, max-age=300");
+    res.set("Cross-Origin-Resource-Policy", "cross-origin");
+    res.type(image[1]).send(Buffer.from(image[2], "base64"));
   });
   app.use(
     helmet({

@@ -59,6 +59,8 @@ export function brandedEmail({
   key,
   unsubscribeLink,
   credentialsText,
+  schoolName,
+  schoolLogo,
 }) {
   const [heading, action, note] = actions[key] || actions.notification;
   const href = emailLink(link);
@@ -93,6 +95,7 @@ export function brandedEmail({
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">
 <tr><td style="background:#ffffff;padding:24px 32px;border-bottom:4px solid #d9b46e">
 <img src="cid:smpis-brand" width="340" height="104" alt="SMPIS School Management System" style="display:block;width:100%;max-width:340px;height:auto;border:0">
+${schoolName ? `<div style="margin-top:20px;padding-top:20px;border-top:1px solid #e6ece8">${schoolLogo ? `<img src="cid:school-brand" width="90" alt="${escape(schoolName)} logo" style="display:block;max-width:90px;max-height:90px;width:auto;height:auto;margin-bottom:12px">` : ""}<p style="margin:0;color:#143e35;font-size:20px;font-weight:bold">${escape(schoolName)}</p></div>` : ""}
 </td></tr><tr><td style="padding:34px 32px 12px">
 <p style="margin:0 0 12px;color:#57866c;font-size:11px;letter-spacing:1.8px;font-weight:bold">CLARITY FOR EVERY SCHOOL DAY</p>
 <h1 style="margin:0 0 26px;color:#143e35;font-size:27px;line-height:1.25">${escape(heading)}</h1>${content}

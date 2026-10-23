@@ -242,9 +242,11 @@ export function authRoutes(
     res.json({ data: { school, classes } });
   });
   r.post("/public-admissions/:code", async (req, res) => {
-    const school = await one(db, "SELECT id,transportation_available FROM schools WHERE short_code=$1", [
-      req.params.code,
-    ]);
+    const school = await one(
+      db,
+      "SELECT id,transportation_available FROM schools WHERE short_code=$1",
+      [req.params.code],
+    );
     if (!school) fail(404, "School not found.");
     if (!(await schoolAccessAllowed(db, school.id)))
       fail(
@@ -526,6 +528,7 @@ export function authRoutes(
             from: smtp.from,
             to: u.email,
             ...(await renderEmail(db, "password_reset", {
+              school_id: u.school_id,
               name: u.name,
               link: `${process.env.APP_URL}/?reset=${raw}`,
             })),
@@ -549,7 +552,11 @@ export function authRoutes(
         "DELETE FROM reset_tokens WHERE token_hash=$1 AND expires_at>now() RETURNING *",
         [digest(b.token)],
       );
-      if (!reset) fail(422, "This password reset link has expired or is no longer valid. Request a new link to continue.");
+      if (!reset)
+        fail(
+          422,
+          "This password reset link has expired or is no longer valid. Request a new link to continue.",
+        );
       await tx.query(
         "UPDATE users SET password_hash=$1,activation_pending=false,email_verified=true WHERE id=$2",
         [hashPassword(b.password), reset.user_id],
@@ -574,7 +581,11 @@ export function authenticate(db, { enforcePrivilegedMfa = true } = {}) {
     await checkAccountAccess(db, u);
     u.fixture_mfa_optional = !enforcePrivilegedMfa;
     if (u.activation_pending)
-      fail(403, "Open the activation link in your email before continuing.", "ACTIVATION_REQUIRED");
+      fail(
+        403,
+        "Open the activation link in your email before continuing.",
+        "ACTIVATION_REQUIRED",
+      );
     if (
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
       req.get("x-csrf-token") !== u.csrf
@@ -669,7 +680,11 @@ export function accountRoutes(db) {
           "DELETE FROM mfa_recovery_codes WHERE user_id=$1 AND code_hash=$2 RETURNING user_id",
           [req.user.id, digest(code)],
         );
-        if (!used) fail(422, "This recovery code is incorrect or has already been used. Try another unused code.");
+        if (!used)
+          fail(
+            422,
+            "This recovery code is incorrect or has already been used. Try another unused code.",
+          );
         await tx.query(
           "UPDATE sessions SET mfa_verified=true WHERE token_hash=$1",
           [req.sessionHash],
@@ -807,7 +822,8 @@ export function accountRoutes(db) {
         b.status,
         uid,
       ]);
-      if (b.role === "TEACHER") await ensureTeacherStaff(tx, req.user.school_id);
+      if (b.role === "TEACHER")
+        await ensureTeacherStaff(tx, req.user.school_id);
       await tx.query("DELETE FROM sessions WHERE user_id=$1", [uid]);
       await audit(tx, req.user, "users", uid, "UPDATE", u, b);
     });

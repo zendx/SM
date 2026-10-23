@@ -63,15 +63,23 @@ export function createBrevoTransport(
         let html = data.html,
           attachments = [];
         for (const attachment of data.attachments || []) {
-          if (attachment.cid === "smpis-brand") {
+          if (
+            attachment.cid === "smpis-brand" ||
+            attachment.cid === "school-brand"
+          ) {
             let origin;
             try {
-              origin = new URL("/email-logo.png", process.env.APP_URL);
+              origin = new URL(
+                attachment.cid === "school-brand"
+                  ? attachment.publicPath
+                  : "/email-logo.png",
+                process.env.APP_URL,
+              );
               if (origin.protocol !== "https:") throw Error();
             } catch {
               throw apiError(undefined, "BREVO_PUBLIC_URL_REQUIRED");
             }
-            html = html?.replaceAll("cid:smpis-brand", origin.href);
+            html = html?.replaceAll(`cid:${attachment.cid}`, origin.href);
           } else {
             if (attachment.cid || !attachment.content)
               throw apiError(undefined, "BREVO_UNSUPPORTED_ATTACHMENT");

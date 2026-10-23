@@ -55,7 +55,7 @@ export async function deliverVerifications(db, userId = null) {
     try {
       const user = await one(
         db,
-        "SELECT id,name,email,email_verified,status FROM users WHERE id=$1",
+        "SELECT id,school_id,name,email,email_verified,status FROM users WHERE id=$1",
         [item.user_id],
       );
       if (!user || user.email_verified || user.status !== "ACTIVE") {
@@ -87,6 +87,7 @@ export async function deliverVerifications(db, userId = null) {
         from: smtp.from,
         to: user.email,
         ...(await renderEmail(db, "verification", {
+          school_id: user.school_id,
           name: user.name,
           link: url.href,
         })),

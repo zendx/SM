@@ -74,6 +74,7 @@ function valuesFor(user) {
   if (!process.env.APP_URL)
     fail(503, "Onboarding email links are not configured.");
   return {
+    school_id: user.school_id,
     name: user.name,
     school_name: user.school_name,
     link: new URL(`/${user.portal_slug}/`, process.env.APP_URL).href,
