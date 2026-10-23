@@ -1,4 +1,6 @@
 import { ensureTeacherStaff } from "./teacher-staff.js";
+import { emailLogo } from "./email-design.js";
+import { emailDeliveryRoutes } from "./email-delivery-routes.js";
 import { schoolBrandingRoutes } from "./school-branding.js";
 import {
   referralPublicRoutes,
@@ -69,6 +71,11 @@ export async function createApp(db, options = {}) {
   if (Number.isInteger(proxyHops) && proxyHops > 0 && proxyHops <= 3)
     app.set("trust proxy", proxyHops);
   app.disable("x-powered-by");
+  app.get("/email-logo.png", async (req, res) => {
+    res.set("Cache-Control", "public, max-age=86400");
+    res.set("Cross-Origin-Resource-Policy", "cross-origin");
+    res.type("image/png").send((await emailLogo()).content);
+  });
   app.use(
     helmet({
       contentSecurityPolicy: options.production
@@ -152,6 +159,7 @@ export async function createApp(db, options = {}) {
     contactPreferenceRoutes(db),
     subscriptionGate(db),
     platformNotificationRoutes(db),
+    emailDeliveryRoutes(db),
     onboardingEmailRoutes(db),
     emailTemplateRoutes(db),
     saasRoutes(db),

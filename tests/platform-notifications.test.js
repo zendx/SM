@@ -4,9 +4,12 @@ import { testMailbox } from "./mailbox.js";
 import { createApp } from "./app.js";
 import { insert, one, rows } from "../server/db.js";
 import { hashPassword } from "../server/security.js";
-import { deliverPlatformNotifications } from "../server/platform-notifications.js";
+import {
+  deliverPlatformNotifications,
+  queueNotice,
+} from "../server/platform-notifications.js";
 
-test("tenant phones, contact export, scoped notices and offline support email delivery", async () => {
+test("tenant phones, scoped notices and email delivery even when recipients are online or have read the notice", async () => {
   const verify = testMailbox(),
     db = await openTestDatabase();
   const server = (await createApp(db)).listen(0, "127.0.0.1");
@@ -160,7 +163,7 @@ test("tenant phones, contact export, scoped notices and offline support email de
     };
     await call("/subscription/notices/presence", schools[0].session, {});
     await deliverPlatformNotifications(db, options);
-    assert.equal(deliveries.length, 0);
+    assert.equal(deliveries.length, 1);
     await db.query(
       "UPDATE sessions SET last_seen_at=now()-interval '3 minutes' WHERE user_id=$1",
       [schools[0].session.user.id],
@@ -186,7 +189,7 @@ test("tenant phones, contact export, scoped notices and offline support email de
     await deliverPlatformNotifications(db, options);
     assert.equal(
       deliveries.some((n) => n.id === bulk.id),
-      false,
+      true,
     );
     const ticket = await call("/subscription/support", schools[0].session, {
       department: "TECHNICAL",
@@ -208,7 +211,7 @@ test("tenant phones, contact export, scoped notices and offline support email de
     );
     assert.equal(
       deliveries.some((n) => n.user_id === owner.user.id),
-      false,
+      true,
     );
     await call(
       `/saas/owner/issues/${ticket.data.id}`,
@@ -234,6 +237,12 @@ test("tenant phones, contact export, scoped notices and offline support email de
       deliveries.some((n) => n.id === reply.id),
       true,
     );
+    await queueNotice(db, owner.user, {
+      title: "Retry test",
+      body: "Retry test",
+      link: "/owner#inbox",
+      key: "retry-test",
+    });
     const pending = await one(
       db,
       "SELECT id FROM platform_notifications WHERE user_id=$1 AND email_status='PENDING'",

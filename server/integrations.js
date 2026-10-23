@@ -1,4 +1,5 @@
 import express from "express";
+import { emailConfiguration } from "./email-configuration.js";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { one, audit } from "./db.js";
@@ -186,14 +187,7 @@ export function integrationRoutes(db) {
   });
   r.patch("/admin/integrations/:provider", async (req, res) => {
     const provider = z
-      .enum([
-        "paystack",
-        "flutterwave",
-        "twilio",
-        "manual",
-        "stripe",
-        "paypal",
-      ])
+      .enum(["paystack", "flutterwave", "twilio", "manual", "stripe", "paypal"])
       .parse(req.params.provider);
     const definition = integrationDefinitions[provider];
     const body = definition.schema
@@ -238,7 +232,5 @@ export function integrationRoutes(db) {
 // All email uses the product owner's server configuration. Legacy tenant SMTP
 // records are intentionally ignored, including disabled or undecryptable records.
 export async function smtpConfig() {
-  return process.env.SMTP_URL && process.env.MAIL_FROM
-    ? { transport: process.env.SMTP_URL, from: process.env.MAIL_FROM }
-    : null;
+  return emailConfiguration();
 }

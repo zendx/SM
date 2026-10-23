@@ -1,5 +1,5 @@
 import express from "express";
-import nodemailer from "nodemailer";
+import { sendEmail, emailErrorCode } from "./email-delivery.js";
 import { rows, one, insert, audit } from "./db.js";
 import { z, text } from "./validation.js";
 import { fail, token } from "./security.js";
@@ -90,16 +90,7 @@ export async function deliverOnboardingEmails(
   {
     configuration = smtpConfig,
     send = async (smtp, message, user) =>
-      nodemailer
-        .createTransport({
-          ...(typeof smtp.transport === "string"
-            ? { url: smtp.transport }
-            : smtp.transport),
-          connectionTimeout: 15000,
-          greetingTimeout: 15000,
-          socketTimeout: 45000,
-        })
-        .sendMail({ from: smtp.from, to: user.email, ...message }),
+      sendEmail(smtp, { to: user.email, ...message }),
   } = {},
 ) {
   await db.query(`UPDATE onboarding_email_queue q SET delivery_status='CANCELLED',claim_token=NULL,claimed_until=NULL
@@ -150,16 +141,21 @@ export async function deliverOnboardingEmails(
         user,
       );
       await db.query(
-        "UPDATE onboarding_email_queue SET delivery_status='SENT',sent_at=now(),claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
+        "UPDATE onboarding_email_queue SET delivery_status='SENT',sent_at=now(),last_error='',claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
         [queued.id, claim],
       );
-    } catch {
+    } catch (error) {
+      console.error(
+        "Onboarding email delivery failed:",
+        queued.id,
+        emailErrorCode(error),
+      );
       await db.query(
-        `UPDATE onboarding_email_queue SET attempts=attempts+1,
+        `UPDATE onboarding_email_queue SET attempts=attempts+1,last_error=$3,
         delivery_status=CASE WHEN attempts>=4 THEN 'FAILED' ELSE 'PENDING' END,
         next_attempt_at=now()+interval '5 minutes',claim_token=NULL,claimed_until=NULL
         WHERE id=$1 AND claim_token=$2`,
-        [queued.id, claim],
+        [queued.id, claim, emailErrorCode(error)],
       );
     }
   }

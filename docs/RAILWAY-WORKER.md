@@ -1,5 +1,9 @@
 # Railway background worker
 
+For the existing Brevo account on Railway Free/Trial/Hobby, use [Brevo HTTPS setup](BREVO-RAILWAY.md). Set `EMAIL_PROVIDER=brevo`, `BREVO_API_KEY` and `MAIL_FROM` on the worker. SMTP ports are not needed in this mode.
+
+See [Email delivery diagnosis and recovery](EMAIL-DELIVERY.md) for the latest rollout and troubleshooting steps. `SMTP_URL` and `MAIL_FROM` must be configured on this Railway service separately from Vercel. A completed job log alone does not prove email was attempted. The updated worker logs missing SMTP configuration explicitly and publishes a heartbeat and email queue diagnostics under Owner > Tenant communications. Apply the latest schema before deploying the updated worker.
+
 The web app runs on Vercel. Deploy a second Railway service from the same repository to run `server/jobs.js` continuously. The worker runs jobs immediately after startup and then once per minute. Do not configure a Vercel cron for the same jobs.
 
 ## Create the Railway service

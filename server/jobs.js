@@ -1,8 +1,9 @@
 import { runAutoRenewals } from "./recurring-payments.js";
+import { emailConfigurationStatus } from "./email-configuration.js";
 import { deliverPlatformNotifications } from "./platform-notifications.js";
 import { finalizeClosures } from "./account-lifecycle.js";
 import { smtpConfig } from "./integrations.js";
-import nodemailer from "nodemailer";
+import { sendEmail, emailErrorCode } from "./email-delivery.js";
 import { renderEmail } from "./email-templates.js";
 import { rows, one } from "./db.js";
 import { refreshAlerts } from "./services.js";
@@ -13,19 +14,60 @@ import { queueMfaReminders } from "./mfa-reminders.js";
 import { deliverOnboardingEmails } from "./onboarding-emails.js";
 import { deliverVerifications } from "./verification-delivery.js";
 import { reconcileDocumentUploads } from "./document-cleanup.js";
-export async function runJobs(db) {
-  await db.query(
-    "DELETE FROM email_verification_tokens WHERE expires_at<=now()",
-  );
-  await db.query("DELETE FROM reset_tokens WHERE expires_at<=now()");
-  await db.query("DELETE FROM sessions WHERE expires_at<=now()");
-  await reconcileDocumentUploads(db);
-  await deliverVerifications(db);
-  await finalizeClosures(db);
-  await runAutoRenewals(db);
-  await expireSubscriptions(db);
-  await deliverOnboardingEmails(db);
-  await queueMfaReminders(db);
+export async function runJobs(db, overrides = {}) {
+  const failures = [];
+  try {
+    await db.query(
+      "INSERT INTO background_worker_status(id,last_seen_at,last_started_at,smtp_configured,email_provider) VALUES(1,now(),now(),$1,$2) ON CONFLICT(id) DO UPDATE SET last_seen_at=now(),last_started_at=now(),smtp_configured=$1,email_provider=$2",
+      [
+        emailConfigurationStatus().configured,
+        emailConfigurationStatus().provider,
+      ],
+    );
+  } catch (error) {
+    console.error("Worker status unavailable:", emailErrorCode(error));
+  }
+  const tasks = {
+    cleanup: async () => {
+      await db.query(
+        "DELETE FROM email_verification_tokens WHERE expires_at<=now()",
+      );
+      await db.query("DELETE FROM reset_tokens WHERE expires_at<=now()");
+      await db.query("DELETE FROM sessions WHERE expires_at<=now()");
+      await db.query("DELETE FROM auth_rate_limits WHERE reset_at<now()");
+    },
+    document_cleanup: () => reconcileDocumentUploads(db),
+    verification_email: () => deliverVerifications(db),
+    account_closures: () => finalizeClosures(db),
+    automatic_renewals: () => runAutoRenewals(db),
+    subscription_expiry: () => expireSubscriptions(db),
+    onboarding_email: () => deliverOnboardingEmails(db),
+    mfa_reminders: () => queueMfaReminders(db),
+    school_notices: () => generateSchoolNotifications(db),
+    school_email: () => deliverNotifications(db),
+    platform_email: () => deliverPlatformNotifications(db),
+  };
+  for (const [name, task] of Object.entries(tasks)) {
+    try {
+      await (overrides[name] || task)();
+    } catch (error) {
+      failures.push(`${name}: ${emailErrorCode(error)}`);
+      console.error("Background task failed:", name, emailErrorCode(error));
+    }
+  }
+  try {
+    await db.query(
+      "UPDATE background_worker_status SET last_completed_at=now(),last_error=$1,last_success_at=CASE WHEN $1='' THEN now() ELSE last_success_at END WHERE id=1",
+      [failures.join("; ")],
+    );
+  } catch (error) {
+    console.error("Worker status unavailable:", emailErrorCode(error));
+  }
+  if (failures.length)
+    throw new Error(`Background tasks failed: ${failures.join("; ")}`);
+}
+
+async function generateSchoolNotifications(db) {
   // Database dedupe keys make reminders safe across overlapping job runners.
   await db.query(`INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key)
     SELECT s.school_id,u.id,u.email,
@@ -38,7 +80,6 @@ export async function runJobs(db) {
       AND ((s.status IN ('TRIAL','ACTIVE') AND ceil(extract(epoch FROM (s.period_end-now()))/86400) IN (1,3,7))
       OR (s.status='SUSPENDED' AND s.suspension_reason IN ('TRIAL_EXPIRED','OVERDUE')))
     ON CONFLICT(school_id,dedupe_key) DO NOTHING`);
-  await db.query("DELETE FROM auth_rate_limits WHERE reset_at<now()");
   for (const school of await rows(
     db,
     "SELECT c.* FROM schools c WHERE NOT EXISTS(SELECT 1 FROM school_subscriptions s WHERE s.school_id=c.id AND (s.deletion_requested_at IS NOT NULL OR s.suspension_reason='TENANT_PAUSED'))",
@@ -92,8 +133,6 @@ export async function runJobs(db) {
         );
     }
   }
-  await deliverNotifications(db);
-  await deliverPlatformNotifications(db);
 }
 
 export async function deliverNotifications(
@@ -101,37 +140,27 @@ export async function deliverNotifications(
   {
     configuration = smtpConfig,
     send = async (smtp, n) =>
-      nodemailer
-        .createTransport({
-          ...(typeof smtp.transport === "string"
-            ? { url: smtp.transport }
-            : smtp.transport),
-          connectionTimeout: 15000,
-          greetingTimeout: 15000,
-          socketTimeout: 45000,
-        })
-        .sendMail({
-          from: smtp.from,
-          to: n.email,
-          ...(await renderEmail(
-            db,
-            n.dedupe_key?.startsWith("auto-renewal-issue:")
-              ? "auto_renewal_failed"
-              : n.dedupe_key?.startsWith("saas-reminder:")
-                ? "subscription_reminder"
-                : "school_notification",
-            {
-              title: n.title,
-              body: n.body,
-              link: process.env.APP_URL
-                ? new URL(
-                    `/${(await one(db, "SELECT portal_slug FROM schools WHERE id=$1", [n.school_id])).portal_slug}/#${n.dedupe_key?.startsWith("saas-reminder:") || n.dedupe_key?.startsWith("auto-renewal-issue:") ? "subscription" : "notifications"}`,
-                    process.env.APP_URL,
-                  ).href
-                : "",
-            },
-          )),
-        }),
+      sendEmail(smtp, {
+        to: n.email,
+        ...(await renderEmail(
+          db,
+          n.dedupe_key?.startsWith("auto-renewal-issue:")
+            ? "auto_renewal_failed"
+            : n.dedupe_key?.startsWith("saas-reminder:")
+              ? "subscription_reminder"
+              : "school_notification",
+          {
+            title: n.title,
+            body: n.body,
+            link: process.env.APP_URL
+              ? new URL(
+                  `/${(await one(db, "SELECT portal_slug FROM schools WHERE id=$1", [n.school_id])).portal_slug}/#${n.dedupe_key?.startsWith("saas-reminder:") || n.dedupe_key?.startsWith("auto-renewal-issue:") ? "subscription" : "notifications"}`,
+                  process.env.APP_URL,
+                ).href
+              : "",
+          },
+        )),
+      }),
   } = {},
 ) {
   for (const candidate of await rows(
@@ -139,7 +168,12 @@ export async function deliverNotifications(
     "SELECT * FROM notifications WHERE delivery_status='PENDING' AND attempts<5 AND email<>'' AND (claimed_until IS NULL OR claimed_until<=now()) ORDER BY created_at LIMIT 50",
   )) {
     const smtp = await configuration(db, candidate.school_id);
-    if (!smtp) continue;
+    if (!smtp) {
+      console.error(
+        "School notification email is queued: the selected email provider is not configured.",
+      );
+      continue;
+    }
     const claim = token();
     const n = await one(
       db,
@@ -152,13 +186,18 @@ export async function deliverNotifications(
     try {
       await send(smtp, n);
       await db.query(
-        "UPDATE notifications SET delivery_status='SENT',sent_at=now(),claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
+        "UPDATE notifications SET delivery_status='SENT',sent_at=now(),last_error='',claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
         [n.id, claim],
       );
-    } catch {
+    } catch (error) {
+      console.error(
+        "School notification delivery failed:",
+        n.id,
+        emailErrorCode(error),
+      );
       await db.query(
-        "UPDATE notifications SET attempts=attempts+1,delivery_status=CASE WHEN attempts>=4 THEN 'FAILED' ELSE 'PENDING' END,claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
-        [n.id, claim],
+        "UPDATE notifications SET attempts=attempts+1,last_error=$3,delivery_status=CASE WHEN attempts>=4 THEN 'FAILED' ELSE 'PENDING' END,claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
+        [n.id, claim, emailErrorCode(error)],
       );
     }
   }

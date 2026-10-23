@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { EmailDeliveryStatus } from "./email-delivery";
 import { Bell } from "lucide-react";
 import { useData } from "../hooks";
 import { post } from "../api";
@@ -34,7 +35,11 @@ export function NotificationBell({ onClick }) {
       onClick={onClick}
     >
       <Bell size={20} />
-      {unread > 0 && <span className="notification-count" aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}
+      {unread > 0 && (
+        <span className="notification-count" aria-hidden="true">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
     </button>
   );
 }
@@ -51,7 +56,7 @@ export function PlatformInbox() {
       <ContactPreferences />
       <Panel
         title="SMPIS inbox"
-        description="Announcements and support updates. Unread messages are emailed when you are inactive."
+        description="Announcements and support updates are also queued for email, even when you are online or have read them here."
         action={
           <Button
             small
@@ -133,6 +138,7 @@ export function OwnerCommunications() {
     [message, setMessage] = useState("");
   return (
     <>
+      <EmailDeliveryStatus />
       <Panel
         title="Tenant contacts"
         description="School administrator email addresses and registration phone numbers."
@@ -200,7 +206,7 @@ export function OwnerCommunications() {
       </Panel>
       <Panel
         title="Send tenant notification"
-        description="Service messages reach eligible administrators. Promotional newsletters reach only email opt-ins and include an unsubscribe link. Unread messages are emailed when the recipient is inactive."
+        description="Service messages reach eligible administrators by inbox and email. Promotional newsletters reach only email opt-ins and include an unsubscribe link. Reading a message or being online does not cancel its email."
       >
         <p>{selected.length} school(s) selected.</p>
         {message && <p className="notice">{message}</p>}

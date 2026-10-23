@@ -1,9 +1,20 @@
 import "dotenv/config";
 import { openDatabase } from "../server/db.js";
 import { runJobs } from "../server/jobs.js";
+import { emailConfigurationStatus } from "../server/email-configuration.js";
 
 const intervalMs = 60_000;
 const db = await openDatabase({ initialize: false });
+try {
+  await db.query(
+    "SELECT n.last_error,p.last_error,o.last_error,w.smtp_configured,w.email_provider FROM notifications n,platform_notifications p,onboarding_email_queue o,background_worker_status w LIMIT 0",
+  );
+} catch {
+  await db.close();
+  throw new Error(
+    "Worker email schema is outdated. Run npm run supabase:setup before deploying this worker.",
+  );
+}
 let stopping = false;
 let timer;
 let wakeDelay;
@@ -15,10 +26,30 @@ function stop() {
   wakeDelay?.();
 }
 
-for (const signal of ["SIGINT", "SIGTERM"])
-  process.once(signal, stop);
+for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, stop);
 
 console.log("SMPIS background worker started.");
+const emailStatus = emailConfigurationStatus();
+console.log(
+  `Worker email provider: ${emailStatus.provider}; ${emailStatus.configured ? "configured" : "missing required email variables; messages will remain queued"}.`,
+);
+let heartbeatBusy = false;
+const heartbeat = setInterval(async () => {
+  if (heartbeatBusy || stopping) return;
+  heartbeatBusy = true;
+  try {
+    await db.query(
+      "UPDATE background_worker_status SET last_seen_at=now() WHERE id=1",
+    );
+  } catch {
+    console.error(
+      "Worker heartbeat unavailable. Apply the latest database schema.",
+    );
+  } finally {
+    heartbeatBusy = false;
+  }
+}, 30000);
+heartbeat.unref();
 
 try {
   while (!stopping) {
@@ -38,6 +69,7 @@ try {
       });
   }
 } finally {
+  clearInterval(heartbeat);
   for (const signal of ["SIGINT", "SIGTERM"])
     process.removeListener(signal, stop);
   await db.close();

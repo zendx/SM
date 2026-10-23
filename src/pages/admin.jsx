@@ -410,7 +410,7 @@ export function Administration({
             <div className="notice">
               Email:{" "}
               {config.smtp_configured
-                ? "SMTP configured"
+                ? "Email delivery configured"
                 : "Provider not configured. Messages stay in the notification outbox."}
             </div>
           </div>

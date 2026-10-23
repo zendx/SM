@@ -1,5 +1,5 @@
 import express from "express";
-import nodemailer from "nodemailer";
+import { sendEmail, emailErrorCode } from "./email-delivery.js";
 import { rows, one, insert } from "./db.js";
 import { z, text } from "./validation.js";
 import { fail, token } from "./security.js";
@@ -70,46 +70,36 @@ export async function deliverPlatformNotifications(
   {
     configuration = smtpConfig,
     send = async (smtp, notice) =>
-      nodemailer
-        .createTransport(
-          typeof smtp.transport === "string"
-            ? {
-                url: smtp.transport,
-                connectionTimeout: 15000,
-                socketTimeout: 45000,
-              }
-            : {
-                ...smtp.transport,
-                connectionTimeout: 15000,
-                socketTimeout: 45000,
-              },
-        )
-        .sendMail({
-          from: smtp.from,
-          to: notice.email,
-          ...(await renderEmail(db, notice.template_key, {
-            title: notice.title,
-            body: notice.body,
-            link: process.env.APP_URL
-              ? new URL(notice.link, process.env.APP_URL).href
-              : notice.link,
-            unsubscribe_link:
-              notice.template_key === "promotional_newsletter"
-                ? newsletterUnsubscribeLink({
-                    id: notice.user_id,
-                    email: notice.email,
-                  })
-                : "",
-          })),
-        }),
+      sendEmail(smtp, {
+        to: notice.email,
+        ...(await renderEmail(db, notice.template_key, {
+          title: notice.title,
+          body: notice.body,
+          link: process.env.APP_URL
+            ? new URL(notice.link, process.env.APP_URL).href
+            : notice.link,
+          unsubscribe_link:
+            notice.template_key === "promotional_newsletter"
+              ? newsletterUnsubscribeLink({
+                  id: notice.user_id,
+                  email: notice.email,
+                })
+              : "",
+        })),
+      }),
   } = {},
 ) {
   const smtp = await configuration(db, null);
-  if (!smtp) return;
+  if (!smtp) {
+    console.error(
+      "Platform notification email is queued: required email provider variables are missing.",
+    );
+    return;
+  }
   const candidates = await rows(
     db,
     `SELECT n.id FROM platform_notifications n JOIN users u ON u.id=n.user_id
-    WHERE n.email_status='PENDING' AND n.attempts<5 AND n.read_at IS NULL AND u.status='ACTIVE' AND u.email_verified
+    WHERE n.email_status='PENDING' AND n.attempts<5 AND u.status='ACTIVE' AND u.email_verified
     AND (n.template_key<>'mfa_reminder' OR NOT u.mfa_enabled)
     AND (n.template_key<>'promotional_newsletter' OR u.marketing_email_consent)
     AND (n.template_key<>'mfa_reminder' OR n.school_id IS NULL OR EXISTS(
@@ -118,7 +108,7 @@ export async function deliverPlatformNotifications(
       AND sc.deletion_requested_at IS NULL AND sc.period_end>now()))
     AND (n.claimed_until IS NULL OR n.claimed_until<=now())
     AND NOT EXISTS(SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id AND (sc.closed_at IS NOT NULL OR sc.deletion_effective_at<=now()))
-    AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.user_id=n.user_id AND s.expires_at>now() AND s.mfa_verified AND s.last_seen_at>now()-interval '2 minutes')
+    AND (n.template_key<>'mfa_reminder' OR (n.read_at IS NULL AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.user_id=n.user_id AND s.expires_at>now() AND s.mfa_verified AND s.last_seen_at>now()-interval '2 minutes')))
     ORDER BY n.created_at LIMIT 100`,
   );
   for (const candidate of candidates) {
@@ -126,7 +116,7 @@ export async function deliverPlatformNotifications(
     const notice = await one(
       db,
       `UPDATE platform_notifications n SET claim_token=$2,claimed_until=now()+interval '5 minutes'
-      WHERE n.id=$1 AND n.email_status='PENDING' AND n.read_at IS NULL AND n.attempts<5
+      WHERE n.id=$1 AND n.email_status='PENDING' AND n.attempts<5
       AND (n.claimed_until IS NULL OR n.claimed_until<=now())
       AND EXISTS(SELECT 1 FROM users u WHERE u.id=n.user_id AND u.status='ACTIVE' AND u.email_verified AND (n.template_key<>'mfa_reminder' OR NOT u.mfa_enabled) AND (n.template_key<>'promotional_newsletter' OR u.marketing_email_consent))
       AND (n.template_key<>'mfa_reminder' OR n.school_id IS NULL OR EXISTS(
@@ -134,20 +124,25 @@ export async function deliverPlatformNotifications(
         AND sc.status IN ('TRIAL','ACTIVE') AND sc.closed_at IS NULL
         AND sc.deletion_requested_at IS NULL AND sc.period_end>now()))
       AND NOT EXISTS(SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=n.school_id AND (sc.closed_at IS NOT NULL OR sc.deletion_effective_at<=now()))
-      AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.user_id=n.user_id AND s.expires_at>now() AND s.mfa_verified AND s.last_seen_at>now()-interval '2 minutes') RETURNING n.*`,
+      AND (n.template_key<>'mfa_reminder' OR (n.read_at IS NULL AND NOT EXISTS(SELECT 1 FROM sessions s WHERE s.user_id=n.user_id AND s.expires_at>now() AND s.mfa_verified AND s.last_seen_at>now()-interval '2 minutes'))) RETURNING n.*`,
       [candidate.id, claim],
     );
     if (!notice) continue;
     try {
       await send(smtp, notice);
       await db.query(
-        "UPDATE platform_notifications SET email_status='SENT',sent_at=now(),claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
+        "UPDATE platform_notifications SET email_status='SENT',sent_at=now(),last_error='',claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
         [notice.id, claim],
       );
-    } catch {
+    } catch (error) {
+      console.error(
+        "Platform notification delivery failed:",
+        notice.id,
+        emailErrorCode(error),
+      );
       await db.query(
-        "UPDATE platform_notifications SET attempts=attempts+1,email_status=CASE WHEN attempts>=4 THEN 'FAILED' ELSE 'PENDING' END,claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
-        [notice.id, claim],
+        "UPDATE platform_notifications SET attempts=attempts+1,last_error=$3,email_status=CASE WHEN attempts>=4 THEN 'FAILED' ELSE 'PENDING' END,claim_token=NULL,claimed_until=NULL WHERE id=$1 AND claim_token=$2",
+        [notice.id, claim, emailErrorCode(error)],
       );
     }
   }
@@ -163,9 +158,13 @@ export function platformNotificationRoutes(db) {
     res.json({ data: { ok: true } });
   });
   r.get("/subscription/notices/unread-count", async (req, res) => {
-    res.json({ data: await one(db,
-      "SELECT count(*)::int AS count FROM platform_notifications WHERE user_id=$1 AND read_at IS NULL",
-      [req.user.id]) });
+    res.json({
+      data: await one(
+        db,
+        "SELECT count(*)::int AS count FROM platform_notifications WHERE user_id=$1 AND read_at IS NULL",
+        [req.user.id],
+      ),
+    });
   });
   r.get("/subscription/notices", async (req, res) =>
     res.json({

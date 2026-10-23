@@ -12,6 +12,7 @@ export async function applicationSchema() {
     "hardening-schema.sql",
     "recurring-schema.sql",
     "branding-referrals-schema.sql",
+    "email-delivery-schema.sql",
   ];
   const sql = (
     await Promise.all(

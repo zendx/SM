@@ -1,5 +1,9 @@
 # SMPIS
 
+Railway workers can use the existing Brevo account through HTTPS: see [Brevo Railway setup](docs/BREVO-RAILWAY.md). Set `EMAIL_PROVIDER=brevo` and a private `BREVO_API_KEY`; the default SMTP transport remains available for other deployments.
+
+For current notification delivery behavior, Railway SMTP configuration and owner delivery diagnostics, see [Email delivery diagnosis and recovery](docs/EMAIL-DELIVERY.md). Announcements and support messages are now emailed even when read or while the recipient is online; only MFA reminders retain the unread/offline rules described in older release notes below.
+
 School logos and marketer referrals are documented in [School branding and referrals](docs/SCHOOL-BRANDING-AND-REFERRALS.md), including the required schema rollout, first-payment commission rules and owner payout workflow.
 
 School Management, Performance and Intelligence System built with React, Express, Supabase PostgreSQL, and private Supabase Storage.
