@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useEffect, useId, useRef, useState } from "react";
 import { recaptchaResponse } from "./recaptcha";
 import {
@@ -200,7 +201,7 @@ export function Modal({ title, children, onClose }) {
     focusFirstField(el.querySelector(".modal-body"), { modal: true });
     return () => el.close();
   }, []);
-  return (
+  return createPortal(
     <dialog
       ref={ref}
       className="modal"
@@ -220,7 +221,8 @@ export function Modal({ title, children, onClose }) {
         </button>
       </div>
       <div className="modal-body">{children}</div>
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }
 export function Form({

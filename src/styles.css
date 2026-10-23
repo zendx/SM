@@ -1005,11 +1005,17 @@ td p {
   font-weight: 600;
 }
 .modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: calc(100vw - 24px);
+  max-height: min(90vh, calc(100dvh - 24px));
+  overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--border);
   border-radius: 13px;
   padding: 0;
   width: min(720px, 95vw);
-  max-height: 90vh;
   box-shadow: 0 24px 90px #15372830;
   color: #344e38;
 }

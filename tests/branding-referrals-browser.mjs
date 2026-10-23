@@ -73,6 +73,46 @@ async function checkSpacing(label) {
     `Spacing at ${label}: ${JSON.stringify(issues)}`,
   );
 }
+async function checkDialogLayout(label) {
+  const dialog = page.locator("dialog[open]");
+  await dialog.waitFor();
+  const geometry = await dialog.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const body = el.querySelector(".modal-body").getBoundingClientRect();
+    return {
+      centerX: Math.abs(r.left + r.width / 2 - innerWidth / 2),
+      centerY: Math.abs(r.top + r.height / 2 - innerHeight / 2),
+      inViewport:
+        r.left >= 10 &&
+        r.right <= innerWidth - 10 &&
+        r.top >= 10 &&
+        r.bottom <= innerHeight - 10,
+      overflow: el.scrollWidth > el.clientWidth + 1,
+      portal: el.parentElement === document.body,
+      fieldsInside: [...el.querySelectorAll("input,select,textarea")].every(
+        (field) => {
+          const f = field.getBoundingClientRect();
+          return f.left >= body.left + 12 && f.right <= body.right - 12;
+        },
+      ),
+    };
+  });
+  assert.ok(
+    geometry.centerX <= 2 && geometry.centerY <= 2,
+    `${label}: dialog is not centered: ${JSON.stringify(geometry)}`,
+  );
+  assert.ok(
+    geometry.inViewport &&
+      !geometry.overflow &&
+      geometry.portal &&
+      geometry.fieldsInside,
+    `${label}: ${JSON.stringify(geometry)}`,
+  );
+  await page.screenshot({
+    path: `test-results/branding-referrals/dialog-${label}.png`,
+    fullPage: true,
+  });
+}
 try {
   const owner = await insert(db, "users", {
     school_id: null,
@@ -292,6 +332,39 @@ try {
       });
     }
   }
+  // Exercise real issue dialogs from both portals after the page has been scrolled.
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto(origin + "/browser-school/#support");
+    await page
+      .getByRole("button", { name: "Report an issue", exact: true })
+      .click();
+    await checkDialogLayout(`tenant-${viewport.width}`);
+    assert.equal(
+      await page
+        .getByLabel(/^Issue subject/)
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await page.keyboard.type("Dialog layout check");
+    assert.equal(
+      await page.getByLabel(/^Issue subject/).inputValue(),
+      "Dialog layout check",
+    );
+    await page
+      .getByLabel(/^Describe the problem/)
+      .fill("Checking centered support dialogs.");
+    if (viewport.width === 1440) {
+      await page
+        .getByRole("button", { name: "Submit support request", exact: true })
+        .click();
+      await page.locator("dialog[open]").waitFor({ state: "detached" });
+    } else await page.keyboard.press("Escape");
+  }
   await page.context().clearCookies();
   await page.request.post(origin + "/api/v1/auth/login", {
     data: { email: owner.email, password },
@@ -301,6 +374,18 @@ try {
     { width: 390, height: 844 },
   ]) {
     await page.setViewportSize(viewport);
+    await page.goto(origin + "/owner#issues");
+    await page
+      .getByRole("button", { name: "Reply / manage ticket", exact: true })
+      .first()
+      .click();
+    await checkDialogLayout(`owner-${viewport.width}`);
+    await page
+      .getByLabel(/^Reply to customer/)
+      .fill("The support team is reviewing this.");
+    await page
+      .getByRole("button", { name: "Close dialog", exact: true })
+      .click();
     for (const section of [
       "overview",
       "users",
