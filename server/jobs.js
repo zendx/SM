@@ -150,6 +150,8 @@ export async function deliverNotifications(
               ? "subscription_reminder"
               : "school_notification",
           {
+            recipient_id: n.user_id,
+            recipient_email: n.email,
             school_id: n.school_id,
             title: n.title,
             body: n.body,

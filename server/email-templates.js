@@ -1,3 +1,4 @@
+import { canonicalEmailLinks, emailFooter } from "./email-urls.js";
 import express from "express";
 import { one } from "./db.js";
 import { z } from "./validation.js";
@@ -115,6 +116,12 @@ export function renderTemplate(template, values) {
   };
 }
 export async function renderEmail(db, key, values, draft = null) {
+  values = Object.fromEntries(
+    Object.entries(values).map(([name, value]) => [
+      name,
+      typeof value === "string" ? canonicalEmailLinks(value) : value,
+    ]),
+  );
   if (key === "promotional_newsletter" && !emailLink(values.unsubscribe_link))
     fail(503, "Promotional email requires a working unsubscribe link.");
   const template =
@@ -128,7 +135,20 @@ export async function renderEmail(db, key, values, draft = null) {
     key === "account_created" && /{{\s*password\s*}}/.test(template?.body || "")
       ? null
       : template;
-  const message = renderTemplate(safeTemplate || emailTemplates[key], values);
+  const rendered = renderTemplate(safeTemplate || emailTemplates[key], values);
+  const message = {
+    subject: rendered.subject,
+    text: canonicalEmailLinks(rendered.text),
+  };
+  const recipient = values.recipient_id
+    ? await one(db, "SELECT name FROM users WHERE id=$1", [values.recipient_id])
+    : null;
+  const footer = emailFooter({
+    key,
+    recipientName: recipient?.name || values.name,
+    recipientEmail: values.recipient_email,
+  });
+
   const school = values.school_id
     ? await one(
         db,
@@ -150,11 +170,13 @@ export async function renderEmail(db, key, values, draft = null) {
       contentDisposition: "inline",
       publicPath: `/email-school-logo/${encodeURIComponent(school.portal_slug)}`,
     });
+  const plainText = `${school ? school.name + "\n\n" : ""}${message.text}\n\n${footer.recipient}\n\n${footer.reason}\n\nPlease do not reply to this automated email. For help, contact us.\nContact us: ${footer.contact} | Privacy Policy: ${footer.privacy}`;
   return {
     ...message,
-    ...(school ? { text: `${school.name}\n\n${message.text}` } : {}),
+    text: plainText,
     html: brandedEmail({
       ...message,
+      footer,
       schoolName: school?.name,
       schoolLogo: Boolean(schoolLogo),
       link: values.link,
@@ -164,7 +186,7 @@ export async function renderEmail(db, key, values, draft = null) {
     attachments,
     ...(key === "promotional_newsletter" && values.unsubscribe_link
       ? {
-          text: `${message.text}\n\nYou chose to receive SMPIS promotional emails. Unsubscribe: ${values.unsubscribe_link}`,
+          text: `${plainText}\n\nYou chose to receive SMPIS promotional emails. Unsubscribe: ${values.unsubscribe_link}`,
           headers: { "List-Unsubscribe": `<${values.unsubscribe_link}>` },
         }
       : {}),

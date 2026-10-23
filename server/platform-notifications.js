@@ -73,6 +73,8 @@ export async function deliverPlatformNotifications(
       sendEmail(smtp, {
         to: notice.email,
         ...(await renderEmail(db, notice.template_key, {
+          recipient_id: notice.user_id,
+          recipient_email: notice.email,
           school_id: notice.school_id,
           title: notice.title,
           body: notice.body,

@@ -1,3 +1,4 @@
+import { emailFooter } from "./email-urls.js";
 import { readFile } from "node:fs/promises";
 
 const escape = (value) =>
@@ -61,6 +62,7 @@ export function brandedEmail({
   credentialsText,
   schoolName,
   schoolLogo,
+  footer = emailFooter({ key }),
 }) {
   const [heading, action, note] = actions[key] || actions.notification;
   const href = emailLink(link);
@@ -106,7 +108,7 @@ ${
     : ""
 }
 ${note ? `<p style="background:#edf3e9;padding:16px;border-radius:8px;font-size:13px;line-height:1.6;color:#53685e">${escape(note)}</p>` : ""}
-</td></tr><tr><td style="padding:22px 32px;border-top:1px solid #e6ece8;background:#fafbf8"><p style="margin:0;color:#6b7f69;font-size:12px;line-height:1.6">SMPIS · School Management, Performance &amp; Intelligence System<br>A connected school starts here.</p>${emailLink(unsubscribeLink) ? `<p style="margin:14px 0 0;color:#6b7f69;font-size:12px;line-height:1.6">You chose to receive SMPIS promotional emails. <a href="${escape(emailLink(unsubscribeLink))}" style="color:#226653">Unsubscribe from promotional emails</a>.</p>` : ""}</td></tr>
+</td></tr><tr><td style="padding:22px 32px;border-top:1px solid #e6ece8;background:#fafbf8"><p style="margin:0;color:#6b7f69;font-size:12px;line-height:1.6">SMPIS · School Management, Performance &amp; Intelligence System<br>A connected school starts here.</p><p style="margin:16px 0 8px;color:#53685e;font-size:12px;line-height:1.7">${escape(footer.recipient)}</p><p style="margin:0 0 12px;color:#6b7f69;font-size:12px;line-height:1.7">${escape(footer.reason)}</p><p style="margin:0 0 12px;color:#6b7f69;font-size:12px;line-height:1.7">Please do not reply to this automated email. For help, contact us.</p><p style="margin:0;font-size:12px;line-height:1.7"><a href="${escape(footer.contact)}" style="color:#226653">Contact us</a> <span style="color:#a0ada4">|</span> <a href="${escape(footer.privacy)}" style="color:#226653">Privacy Policy</a></p>${emailLink(unsubscribeLink) ? `<p style="margin:14px 0 0;color:#6b7f69;font-size:12px;line-height:1.6">You chose to receive SMPIS promotional emails. <a href="${escape(emailLink(unsubscribeLink))}" style="color:#226653">Unsubscribe from promotional emails</a>.</p>` : ""}</td></tr>
 </table></td></tr></table></body></html>`;
 }
 

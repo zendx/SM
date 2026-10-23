@@ -8,7 +8,7 @@ Use Brevo's HTTPS API instead of SMTP on Railway Free, Trial or Hobby. Keep the 
 EMAIL_PROVIDER=brevo
 BREVO_API_KEY=YOUR_PRIVATE_BREVO_API_KEY
 MAIL_FROM="SMPIS <do-not-reply@smpis.digital>"
-APP_URL=https://www.smpis.digital
+APP_URL=https://smpis.digital
 ```
 
 In Railway's variable editor, enter actual values without the surrounding dotenv quotes. `BREVO_API_KEY` must be a Brevo API key, not the SMTP key. The existing `SMTP_URL` can remain stored; it is not used when `EMAIL_PROVIDER=brevo`. Keep the existing database, Supabase and encryption variables unchanged. Never put the API key in a `VITE_` variable, commit it, or paste it into chat.
@@ -42,3 +42,9 @@ The production build emits `/email-logo.png` as a public PNG for the official SM
 Emails for school accounts include that school's current name and uploaded logo, in addition to SMPIS branding. This covers school notices, fee reminders, onboarding, activation, verification, password reset and platform notices delivered to a school account. Schools without an uploaded logo still display their name. SMTP embeds the logos; Brevo uses public HTTPS image URLs, including `/email-school-logo/{portal_slug}`. This endpoint serves only the school's public branding image, without account or school records.
 
 Previously sent email HTML is not rewritten. Check branding with a newly sent email after deployment. Email clients may require recipients to enable external images.
+
+## Public links and message footer
+
+Set `APP_URL=https://smpis.digital` on both the web application and Railway worker. The email renderer also replaces the retired `smpis.vercel.app` host and the `www.smpis.digital` alias with `https://smpis.digital`, preserving portal paths, fragments, activation tokens and unsubscribe signatures. This includes links in queued notification bodies and saved templates.
+
+The shared HTML and plain-text footer identifies the account recipient, explains why the message was sent, and links to `info@smpis.digital` and `/privacy`. Messages without an account name use the recipient email when available. Newsletter consent/unsubscribe text remains separate from essential account and school messages.

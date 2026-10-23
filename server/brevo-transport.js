@@ -1,3 +1,4 @@
+import { emailOrigin } from "./email-urls.js";
 function apiError(status, code = `BREVO_HTTP_${status}`) {
   return Object.assign(new Error("Brevo email request failed."), {
     code,
@@ -73,7 +74,7 @@ export function createBrevoTransport(
                 attachment.cid === "school-brand"
                   ? attachment.publicPath
                   : "/email-logo.png",
-                process.env.APP_URL,
+                emailOrigin(),
               );
               if (origin.protocol !== "https:") throw Error();
             } catch {
