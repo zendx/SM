@@ -199,6 +199,7 @@ function ScoreEntry({ assessment, onClose, notify }) {
   );
 }
 function ReportDetail({ id, onClose, user, notify, onChange }) {
+  const branding = useData('/config',null);
   const [revision, setRevision] = useState("");
   const history = useData(
     !["PARENT", "STUDENT"].includes(user.role)
@@ -211,6 +212,7 @@ function ReportDetail({ id, onClose, user, notify, onChange }) {
   );
   return (
     <Modal title="Student report card" onClose={onClose}>
+      {branding.data?.school?.logo_data && <img className="school-logo" src={branding.data.school.logo_data} alt={`${branding.data.school.name} logo`} />}
       {history.data?.length > 0 && (
         <label className="field">
           Report version

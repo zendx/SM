@@ -1,5 +1,7 @@
 # SMPIS
 
+School logos and marketer referrals are documented in [School branding and referrals](docs/SCHOOL-BRANDING-AND-REFERRALS.md), including the required schema rollout, first-payment commission rules and owner payout workflow.
+
 School Management, Performance and Intelligence System built with React, Express, Supabase PostgreSQL, and private Supabase Storage.
 
 **Security deployment update (21 October 2026):** Read [the remediation and deployment notes](docs/SECURITY-HARDENING-2026-10-21.md) before upgrading. They cover mandatory privileged MFA, protected setup, account activation links, schema/key migration, approved SMTP hosts, encrypted backups, and the removed build-configuration loader. Apply the schema before deploying the web app and worker together.

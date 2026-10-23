@@ -1,5 +1,6 @@
 import { TeacherAttendancePrompt } from "./teacher-attendance-prompt";
 import { BrandLogo } from "./brand-logo";
+import { MarketerPortal } from "./pages/referrals";
 import { MfaEnrollment } from "./mfa-enrollment";
 import {
   NotificationBell,
@@ -66,7 +67,7 @@ function PublicApplication({ code }) {
   return (
     <div className="public-application">
       <div className="brand">
-        <BrandLogo />
+        <BrandLogo school={q.data?.school} />
       </div>
       <h1>{q.data?.school.name || "School admissions"}</h1>
       <p>Start your child’s next chapter. Complete the application below.</p>
@@ -109,7 +110,7 @@ function PublicApplication({ code }) {
   );
 }
 
-function Auth({ onLogin, setup }) {
+function Auth({ onLogin, setup, school }) {
   const reset = new URLSearchParams(location.search).get("reset");
   const verification = new URLSearchParams(location.search).get("verify");
   const [mode, setMode] = useState(
@@ -214,7 +215,7 @@ function Auth({ onLogin, setup }) {
     <div className="auth-layout">
       <aside className="auth-story">
         <div className="brand">
-          <BrandLogo />
+          <BrandLogo school={school} />
         </div>
         <div>
           <div className="eyebrow">A CLEARER VIEW OF YOUR SCHOOL</div>
@@ -389,7 +390,12 @@ function App() {
   const can = (p) =>
     session?.user.permissions.includes("*") ||
     session?.user.permissions.includes(p);
-  const canViewSubscription = ["SUPER_ADMIN", "PROPRIETOR", "PRINCIPAL", "VICE_PRINCIPAL"].includes(session?.user.role);
+  const canViewSubscription = [
+    "SUPER_ADMIN",
+    "PROPRIETOR",
+    "PRINCIPAL",
+    "VICE_PRINCIPAL",
+  ].includes(session?.user.role);
   const nav = [
     [
       "teaching",
@@ -518,6 +524,10 @@ function App() {
         if (!s.required) {
           try {
             const me = await get("/me");
+            if (me.user.role === "MARKETER") {
+              location.replace("/marketers");
+              return;
+            }
             if (
               !tenantSlug &&
               me.user.console_access &&
@@ -664,8 +674,13 @@ function App() {
           </div>
         )}
         <Auth
+          school={portal}
           setup={setup && location.pathname.replace(/\/$/, "") === "/owner"}
           onLogin={(s) => {
+            if (s.user.role === "MARKETER") {
+              location.assign("/marketers");
+              return;
+            }
             if (
               !tenantSlug &&
               s.user.console_access &&
@@ -776,7 +791,10 @@ function App() {
         ) : page === "support" && session.user.role === "SUPER_ADMIN" ? (
           <SchoolSupport />
         ) : !canViewSubscription ? (
-          <p role="alert">Your school portal is currently unavailable. Contact your school administrator for help.</p>
+          <p role="alert">
+            Your school portal is currently unavailable. Contact your school
+            administrator for help.
+          </p>
         ) : (
           <Subscription
             user={session.user}
@@ -841,7 +859,7 @@ function App() {
       )}
       <aside className={`sidebar ${mobile ? "open" : ""}`}>
         <a className="brand" href="#dashboard">
-          <BrandLogo />
+          <BrandLogo school={config.school} />
         </a>
         <div className="school-chip">
           <div className="school-icon">
@@ -971,10 +989,14 @@ createRoot(document.getElementById("root")).render(
           location.assign(
             session.user.console_access
               ? "/owner"
-              : `/${session.user.portal_slug}/`,
+              : session.user.role === "MARKETER"
+                ? "/marketers"
+                : `/${session.user.portal_slug}/`,
           )
         }
       />
+    ) : location.pathname.replace(/\/$/, "") === "/marketers" ? (
+      <MarketerPortal />
     ) : location.pathname.replace(/\/$/, "") === "/owner" ? (
       <OwnerPortal />
     ) : applyCode ? (

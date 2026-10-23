@@ -1,4 +1,10 @@
 import { ensureTeacherStaff } from "./teacher-staff.js";
+import { schoolBrandingRoutes } from "./school-branding.js";
+import {
+  referralPublicRoutes,
+  referralAccountRoutes,
+  referralOwnerRoutes,
+} from "./referrals.js";
 import { platformNotificationRoutes } from "./platform-notifications.js";
 import { onboardingEmailRoutes } from "./onboarding-emails.js";
 import {
@@ -137,18 +143,22 @@ export async function createApp(db, options = {}) {
   app.use("/api/v1", legalRoutes(db));
   app.use("/api/v1", publicConsentRoutes(db));
   app.use("/api/v1", saasPublicRoutes(db));
+  app.use("/api/v1", referralPublicRoutes(db));
   app.use("/api/v1/auth", authRoutes(db, options));
   app.use(
     "/api/v1",
     authenticate(db, options),
+    referralAccountRoutes(db),
     contactPreferenceRoutes(db),
     subscriptionGate(db),
     platformNotificationRoutes(db),
     onboardingEmailRoutes(db),
     emailTemplateRoutes(db),
     saasRoutes(db),
+    referralOwnerRoutes(db),
     accountRoutes(db),
     coreRoutes(db, options),
+    schoolBrandingRoutes(db),
     integrationRoutes(db),
     siteSettingsRoutes(db),
     academicRoutes(db),
@@ -198,7 +208,10 @@ export async function createApp(db, options = {}) {
         errors: [
           {
             code: "VALIDATION_ERROR",
-            message: `Document size must not exceed ${DOCUMENT_MAX_MB} MB.`,
+            message:
+              req.path === "/api/v1/school/logo"
+                ? "School logo must not exceed 256 KB."
+                : `Document size must not exceed ${DOCUMENT_MAX_MB} MB.`,
           },
         ],
       });

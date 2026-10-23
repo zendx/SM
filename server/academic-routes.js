@@ -1,4 +1,5 @@
 import express from "express";
+import { drawSchoolLogo } from './school-branding.js';
 import { termRoster, archiveBatch } from "./history-service.js";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
@@ -867,6 +868,7 @@ export function academicRoutes(db) {
         .type("application/pdf");
       doc.pipe(res);
       const s = card.snapshot;
+      drawSchoolLogo(doc, await currentSchool(db,req.user));
       doc
         .fontSize(22)
         .text(s.school_name)
@@ -1347,6 +1349,7 @@ export function academicRoutes(db) {
           });
         res.type("application/pdf");
         doc.pipe(res);
+        drawSchoolLogo(doc,school);
         doc
           .fontSize(18)
           .text(school.name)

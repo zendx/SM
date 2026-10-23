@@ -1,4 +1,5 @@
 import { SiteSettings } from "./site-settings";
+import { SchoolBranding } from './school-branding';
 import React, { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { IntegrationSettings } from "./integrations";
@@ -353,6 +354,7 @@ export function Administration({
           description="Set the preferences and limits your school uses each day."
         >
           <div className="settings-form">
+            <SchoolBranding school={config.school} reloadConfig={reloadConfig} />
             <div className="notice">
               Public application form:{" "}
               <a

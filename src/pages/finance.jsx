@@ -394,6 +394,8 @@ export function Finance({ can, term, config, money, notify }) {
           title={`Invoice ${selected.invoice_number}`}
           onClose={() => setSelected(null)}
         >
+          {config?.school?.logo_data && <img className="school-logo" src={config.school.logo_data} alt={`${config.school.name} logo`} />}
+          <a className="text-button" href={`/api/v1/finance/invoices/${selected.id}/pdf`} target="_blank" rel="noreferrer">Download invoice PDF</a>
           <Table
             rows={selected.items}
             columns={[

@@ -15,6 +15,7 @@ export async function queueMfaReminders(db) {
       'mfa_reminder'
     FROM users u LEFT JOIN schools s ON s.id=u.school_id
     WHERE u.status='ACTIVE' AND u.email_verified AND NOT u.mfa_enabled
+      AND u.role<>'MARKETER'
       AND u.created_at<=now()-interval '7 days'
       AND (u.school_id IS NULL OR EXISTS (
         SELECT 1 FROM school_subscriptions sc WHERE sc.school_id=u.school_id

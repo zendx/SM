@@ -225,7 +225,7 @@ export function authRoutes(
   r.get("/public-admissions/:code", async (req, res) => {
     const school = await one(
       db,
-      "SELECT id,name,short_code,transportation_available FROM schools WHERE short_code=$1",
+      "SELECT id,name,short_code,transportation_available,logo_data FROM schools WHERE short_code=$1",
       [req.params.code],
     );
     if (!school) fail(404, "School not found.");

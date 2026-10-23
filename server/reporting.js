@@ -1,4 +1,5 @@
 import express from "express";
+import { drawSchoolLogo } from "./school-branding.js";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
 import { drawPaymentReceipt } from "./payment-receipt.js";
@@ -18,10 +19,63 @@ import {
   refreshAlerts,
 } from "./services.js";
 import { id, date } from "./validation.js";
-import { refreshOperationAlerts } from './operations-service.js';
+import { refreshOperationAlerts } from "./operations-service.js";
 
 export function reportingRoutes(db) {
   const r = express.Router();
+  r.get("/finance/invoices/:id/pdf", async (req, res) => {
+    if (
+      !permitted(req.user, "finance.read") &&
+      !permitted(req.user, "finance.own")
+    )
+      fail(403, "Invoices are not available for this role.");
+    const invoice = await schoolRecord(
+      db,
+      req.user,
+      "student_invoices",
+      id.parse(req.params.id),
+    );
+    const student = await studentAccess(db, req.user, invoice.student_id);
+    const school = await currentSchool(db, req.user);
+    const items = await rows(
+      db,
+      "SELECT description,amount_cents FROM invoice_items WHERE school_id=$1 AND invoice_id=$2 ORDER BY id",
+      [req.user.school_id, invoice.id],
+    );
+    const money = (value) =>
+      `${school.currency_code} ${new Intl.NumberFormat("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) / 100)}`;
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    res.attachment(`${invoice.invoice_number}.pdf`).type("application/pdf");
+    doc.pipe(res);
+    drawSchoolLogo(doc, school);
+    doc.font("Helvetica-Bold").fontSize(21).text(school.name).moveDown(0.5);
+    doc.fontSize(16).text("SCHOOL FEE INVOICE").moveDown(0.5);
+    doc
+      .font("Helvetica")
+      .fontSize(11)
+      .text(`Invoice: ${invoice.invoice_number}`)
+      .text(`Student: ${student.first_name} ${student.last_name}`)
+      .text(`Student number: ${student.student_number || "Not assigned"}`)
+      .text(`Due date: ${String(invoice.due_date).slice(0, 10)}`)
+      .moveDown();
+    for (const item of items) {
+      if (doc.y > 690) doc.addPage();
+      doc
+        .text(`${item.description} — ${money(item.amount_cents)}`)
+        .moveDown(0.4);
+    }
+    if (doc.y > 650) doc.addPage();
+    doc
+      .moveDown()
+      .font("Helvetica-Bold")
+      .text(`Total: ${money(invoice.total_cents)}`)
+      .text(`Paid: ${money(invoice.paid_cents)}`)
+      .text(
+        `Balance: ${money(invoice.waived ? 0 : Number(invoice.total_cents) - Number(invoice.paid_cents))}`,
+      );
+    if (invoice.waived) doc.text("Invoice waived");
+    doc.end();
+  });
   r.get("/dashboard/executive", async (req, res) => {
     if (
       !permitted(req.user, "dashboard.read") &&
@@ -313,6 +367,7 @@ export function reportingRoutes(db) {
       });
       res.type("application/pdf");
       doc.pipe(res);
+      drawSchoolLogo(doc, school);
       doc
         .fontSize(18)
         .text(school.name)

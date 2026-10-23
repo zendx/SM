@@ -1,4 +1,5 @@
 import { BrandLogo } from "../brand-logo";
+import { OwnerReferrals } from './referrals';
 import { MfaEnrollment } from "../mfa-enrollment";
 import {
   OwnerCommunications,
@@ -206,6 +207,7 @@ export function OwnerPortal() {
     ["tenants", "Schools & subscriptions", Building2],
     ["users", "Customer accounts", Users],
     ["payments", "Payments & revenue", Wallet],
+    ['referrals', 'Marketer referrals', Users],
     ["issues", "Customer support", LifeBuoy],
     ["settings", "Payment settings", Settings],
     ["audit", "Audit history", ShieldCheck],
@@ -486,7 +488,9 @@ export function OwnerPortal() {
           </span>
         </header>
         <main className="owner-content">
-          {active === "security" ? (
+          {active === 'referrals' ? (
+            <OwnerReferrals />
+          ) : active === "security" ? (
             <OwnerSecurity session={session} reload={reload} />
           ) : active === "communications" ? (
             <OwnerCommunications />

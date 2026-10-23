@@ -1,4 +1,5 @@
 import { autoRenewalSummary } from "./recurring-methods.js";
+import { attachReferral, creditReferral } from "./referrals.js";
 import {
   queueVerification,
   verificationMailer,
@@ -26,6 +27,7 @@ const reserved = new Set([
   "src",
   "public",
   "admin",
+  "marketers",
 ]);
 export const portalSlug = z
   .string()
@@ -39,6 +41,13 @@ export const portalSlug = z
   )
   .refine((value) => !reserved.has(value), "This portal name is reserved.");
 export const registrationSchema = z.object({
+  referral_code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .max(32)
+    .regex(/^[A-Z0-9]*$/)
+    .default(""),
   school_name: text.max(200),
   portal_slug: portalSlug,
   name: text.max(200),
@@ -167,6 +176,7 @@ export async function registerSchool(db, values, owner = null) {
       privacy_accepted_at: owner ? null : new Date(),
       privacy_policy_version: owner ? "" : PRIVACY_POLICY_VERSION,
     });
+    await attachReferral(tx, school.id, b.referral_code, b.email);
     if (!owner)
       await audit(
         tx,
@@ -207,7 +217,8 @@ export async function registerSchool(db, values, owner = null) {
     await queueOnboardingEmails(tx, admin);
     return {
       verification_required: true,
-      message: "Check your email and open the verification link. Once your email is verified, you can sign in.",
+      message:
+        "Check your email and open the verification link. Once your email is verified, you can sign in.",
       school: {
         id: school.id,
         name: school.name,
@@ -302,6 +313,10 @@ export async function subscriptionSnapshot(db, schoolId) {
 export function subscriptionGate(db) {
   // Public admissions and authenticated operations share the same expiry rules.
   return async (req, res, next) => {
+    if (req.user.role === "MARKETER") {
+      if (req.path === "/me" || req.path.startsWith("/auth/")) return next();
+      fail(403, "Marketer accounts can access only the referral portal.");
+    }
     if (
       req.user.school_id === null &&
       !["/me", "/admin/legal"].includes(req.path) &&
@@ -423,7 +438,10 @@ export async function settleSubscriptionPayment(
           !["TRIAL_EXPIRED", "OVERDUE"].includes(sub.suspension_reason)))
     )
       status = "REVIEW";
-    if (p.automatic && new Date(sub.period_end).getTime() > new Date(p.renewal_due_at).getTime())
+    if (
+      p.automatic &&
+      new Date(sub.period_end).getTime() > new Date(p.renewal_due_at).getTime()
+    )
       status = "REVIEW";
     const result = await one(
       tx,
@@ -432,6 +450,7 @@ export async function settleSubscriptionPayment(
       [p.id, status, actorId, providerId],
     );
     if (status === "PAID") {
+      await creditReferral(tx, result);
       const now = new Date();
       const start =
         sub.plan === "PRO" && new Date(sub.period_end) > now

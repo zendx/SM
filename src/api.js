@@ -10,6 +10,7 @@ export const tenantSlug =
     "login",
     "owner",
     "features",
+    "marketers",
   ].includes(firstSegment)
     ? firstSegment
     : "";

@@ -297,6 +297,7 @@ export function LegalPage({ type }) {
             does not collect fingerprint or facial templates.
           </p>
           <h2>Why information is used</h2>
+          <p>Referral marketers provide account details and a preferred bank name, account name and account number. SMPIS records referred school signups, earned commissions and payout confirmations so the marketer and product owner can track the referral relationship and payments. Closing a referral account stops new referrals and earnings; existing commission and payment records are retained for accounting and reconciliation.</p>
           <p>
             Information supports authorized school operations, learning and
             reporting, staff administration, fee accounting, notifications,

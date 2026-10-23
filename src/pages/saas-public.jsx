@@ -69,6 +69,7 @@ export function registrationFields(
   const year = new Date().getUTCFullYear();
   return [
     { name: "school_name", label: "School name", wide: true },
+    { name: 'referral_code', label: 'Referral code (optional)', required: false, maxLength: 32, default: publicSignup ? new URLSearchParams(location.search).get('ref') || '' : '', hint: 'If a marketer introduced you to SMPIS, enter their code.' },
     {
       name: "portal_slug",
       label: "School portal name",
@@ -840,6 +841,7 @@ export function Landing() {
           />
         </a>
         <a href="/features">Explore all features</a>
+        <a href="/marketers">Become a referral marketer</a>
         <span>Clarity for every school day.</span>
       </footer>
       <WhatsAppHelp />

@@ -2370,3 +2370,12 @@ input[type="checkbox"], input[type="radio"] { flex: 0 0 auto; }
   .setup-steps .btn { flex: 0 0 auto; }
   .btn.small { min-height: 44px; }
 }
+.school-logo { width: 100%; max-width: 220px; height: 74px; object-fit: contain; object-position: left center; }
+.school-branding { padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid #dce5df; }
+.referral-shell { max-width: 1200px; margin: auto; padding: 28px 24px; }
+.referral-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 32px; }
+.referral-header .brand-logo { width: 190px; height: auto; }
+.referral-totals { display: flex; flex-wrap: wrap; gap: 16px; }
+.referral-shell input[readonly] { display: block; width: 100%; padding: 12px; margin: 8px 0 16px; }
+.referral-shell .panel > p { margin: 16px 22px; }
+.referral-shell .panel > label { display: block; margin: 16px 22px; }

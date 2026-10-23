@@ -1,3 +1,4 @@
+import { logoBuffer } from './school-branding.js';
 // Keep receipt layout independent of HTTP so generated PDFs can be previewed.
 export function drawPaymentReceipt(doc, { school, payment, invoice, student }) {
   const left = 50;
@@ -12,8 +13,10 @@ export function drawPaymentReceipt(doc, { school, payment, invoice, student }) {
   };
 
   doc.rect(0, 0, doc.page.width, 9).fill(ink);
+  const logo = logoBuffer(school);
+  if (logo) doc.image(logo, left + (width-100)/2, 25, {fit:[100,55],align:'center'});
   doc.font("Helvetica-Bold").fontSize(25).fillColor(ink)
-    .text(school.name, left, 45, { width, align: "center" });
+    .text(school.name, left, logo ? 90 : 45, { width, align: "center" });
   const headerBottom = doc.y + 12;
   doc.font("Helvetica").fontSize(9).fillColor(muted)
     .text("SCHOOL FINANCE OFFICE", left, headerBottom, { width, align: "center", characterSpacing: 1.5 });

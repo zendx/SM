@@ -231,7 +231,7 @@ export function saasPublicRoutes(db) {
     const slug = portalSlug.parse(req.params.slug);
     const school = await one(
       db,
-      "SELECT name,portal_slug FROM schools WHERE portal_slug=$1",
+      "SELECT name,portal_slug,logo_data FROM schools WHERE portal_slug=$1",
       [slug],
     );
     if (!school)

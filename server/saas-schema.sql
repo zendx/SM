@@ -141,7 +141,7 @@ END $$;
 -- Delegated console accounts never become platform operators.
 INSERT INTO roles(name,permissions) VALUES('PLATFORM_STAFF','[]') ON CONFLICT DO NOTHING;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS smpis_user_school_or_owner;
-ALTER TABLE users ADD CONSTRAINT smpis_user_school_or_owner CHECK(school_id IS NOT NULL OR role IN ('PLATFORM_OWNER','PLATFORM_STAFF'));
+ALTER TABLE users ADD CONSTRAINT smpis_user_school_or_owner CHECK(school_id IS NOT NULL OR role IN ('PLATFORM_OWNER','PLATFORM_STAFF','MARKETER'));
 CREATE TABLE IF NOT EXISTS platform_staff (
  user_id INT PRIMARY KEY REFERENCES users(id),
  scope TEXT NOT NULL CHECK(scope IN ('SALES','TECHNICAL','SUBSCRIPTIONS')),
