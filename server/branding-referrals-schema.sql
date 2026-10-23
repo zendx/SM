@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS marketers (
  bank_name TEXT NOT NULL DEFAULT '',account_number TEXT NOT NULL DEFAULT '',account_name TEXT NOT NULL DEFAULT '',
  closed_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE marketers ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+ALTER TABLE marketers ADD COLUMN IF NOT EXISTS terms_version TEXT;
 CREATE TABLE IF NOT EXISTS school_referrals (
  school_id INT PRIMARY KEY REFERENCES schools(id),marketer_id INT NOT NULL REFERENCES marketers(user_id),
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()

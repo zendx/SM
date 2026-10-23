@@ -12,6 +12,25 @@ import {
   Badge,
 } from "../components";
 import "../saas.css";
+import {
+  MARKETER_TERMS,
+  MARKETER_TERMS_VERSION,
+} from "../../shared/marketer-terms";
+
+function MarketerTerms({ open = false }) {
+  return (
+    <details className="marketer-terms" open={open}>
+      <summary>Marketer terms and conditions</summary>
+      <p>Version {MARKETER_TERMS_VERSION}</p>
+      {MARKETER_TERMS.map((term) => (
+        <section key={term.title}>
+          <h3>{term.title}</h3>
+          <p>{term.body}</p>
+        </section>
+      ))}
+    </details>
+  );
+}
 
 const bankFields = [
   { name: "bank_name", label: "Bank name" },
@@ -150,7 +169,7 @@ export function OwnerReferrals() {
       </Panel>
       <Panel
         title="Commissions and payout history"
-        description="Target payment time is three working days after approval (Monday to Friday). Amounts are kept in the currency actually paid."
+        description="Commission is normally paid three calendar days after successful payment approval. Payment may be earlier, including immediately, depending on processing volume. Amounts are kept in the currency actually paid."
       >
         <Totals rows={q.data.commissions} />
         <CommissionHistory
@@ -261,11 +280,13 @@ export function MarketerPortal() {
           {program.data && (
             <p>
               Current commission: {program.data.referral_percent}% of the first
-              approved subscription payment. Payment is due within three working
-              days (Monday to Friday). Rates in effect at payment approval
-              apply.
+              approved subscription payment. Payment is normally made three
+              calendar days after approval and may be earlier, including
+              immediately, depending on processing volume. Rates in effect at
+              payment approval apply.
             </p>
           )}
+          {signup && <MarketerTerms open />}
           <Form
             key={signup ? "signup" : "login"}
             recaptcha={signup ? "signup" : "login"}
@@ -297,6 +318,15 @@ export function MarketerPortal() {
                       wide: true,
                     },
                     {
+                      name: "terms_accepted",
+                      label:
+                        "I have read and accept the marketer terms and conditions, including the payment timeline",
+                      type: "checkbox",
+                      default: false,
+                      required: true,
+                      wide: true,
+                    },
+                    {
                       name: "privacy_accepted",
                       label: "I have read and accept the privacy policy",
                       type: "checkbox",
@@ -310,7 +340,14 @@ export function MarketerPortal() {
             submit={signup ? "Create marketer account" : "Sign in"}
             onSubmit={async (v) => {
               if (signup) {
-                setMessage((await post("/referrals/register", v)).message);
+                setMessage(
+                  (
+                    await post("/referrals/register", {
+                      ...v,
+                      terms_version: MARKETER_TERMS_VERSION,
+                    })
+                  ).message,
+                );
                 setSignup(false);
               } else {
                 const s = await post("/auth/login", v);
@@ -414,12 +451,16 @@ export function MarketerPortal() {
                   </div>
                   <p>
                     Current rate: {q.data.program.referral_percent}% · First
-                    approved payment only. Payment is due within three working
-                    days of approval. Renewals, trials and test payments do not
-                    earn commission.
+                    approved payment only. Payment is normally made three
+                    calendar days after approval. It may be earlier, including
+                    immediately, depending on processing volume. Renewals,
+                    trials and test payments do not earn commission.
                   </p>
                 </Panel>
               )}
+              <Panel title="Marketer terms and conditions">
+                <MarketerTerms />
+              </Panel>
               <Panel title={`${q.data.referrals.length} school signup(s)`}>
                 <Table
                   rows={q.data.referrals}

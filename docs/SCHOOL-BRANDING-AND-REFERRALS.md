@@ -36,7 +36,8 @@ Open Owner > Marketer referrals. The commission rate defaults to **0%** until th
 - The rate at settlement is saved with each commission. Later changes do not alter earned amounts. If the rate is zero at the first approval, later renewals do not become eligible.
 - Commission is calculated on the actual charged amount and currency, rounded to the nearest minor unit. Currency balances remain separate; no exchange conversion is performed.
 - A payment can generate at most one commission. Payment/subscription locks and a unique payment constraint protect repeated callbacks and concurrent approvals.
-- The payout due date is three working days after approval, counting Monday through Friday in Africa/Lagos. Public holidays are not excluded.
+- For new payment approvals, commission is normally paid three calendar days after successful payment verification and approval. Depending on processing volume, payment may be earlier, including immediately; immediate payment is not guaranteed. Existing earned commissions retain their recorded due dates.
+- Marketers must explicitly accept the displayed marketer terms before signup, separately from the privacy policy. The server requires acceptance of the current terms version and records the acceptance timestamp and version. Existing accounts are not backfilled with acceptance they did not give.
 - The owner sends funds through their bank outside SMPIS. After transfer, choose Record payment, confirm the actual destination bank details and enter the transfer reference. SMPIS records who confirmed it and when, updates the marketer's history and retains the destination as a permanent payout snapshot. Later bank-profile edits do not rewrite completed transactions.
 
 ## Validation

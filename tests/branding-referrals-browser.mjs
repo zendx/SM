@@ -90,6 +90,23 @@ try {
   await page.getByLabel(/^Password/).fill(password);
   await page.getByLabel(/^Confirm password/).fill(password);
   await page.getByLabel("I have read and accept the privacy policy").check();
+  const termsAcceptance = page.getByLabel(
+    "I have read and accept the marketer terms and conditions, including the payment timeline",
+  );
+  assert.equal(await termsAcceptance.isChecked(), false);
+  assert.ok(
+    await page
+      .getByText(/Commission payments are normally made three calendar days/)
+      .isVisible(),
+  );
+  await page
+    .getByRole("button", { name: "Create marketer account", exact: true })
+    .click();
+  assert.equal(
+    await termsAcceptance.evaluate((el) => el.validity.valueMissing),
+    true,
+  );
+  await termsAcceptance.check();
   await page
     .getByRole("button", { name: "Create marketer account", exact: true })
     .click();

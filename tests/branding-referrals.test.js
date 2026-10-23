@@ -7,7 +7,8 @@ import { createApp } from "./app.js";
 import { one, insert } from "../server/db.js";
 import { initializeSchema } from "../server/schema.js";
 import { settleSubscriptionPayment } from "../server/saas-service.js";
-import { threeWorkingDays } from "../server/referrals.js";
+import { referralPayoutDue } from "../server/referrals.js";
+import { MARKETER_TERMS_VERSION } from "../shared/marketer-terms.js";
 import { hashPassword } from "../server/security.js";
 import PDFDocument from "pdfkit";
 import { drawPaymentReceipt } from "../server/payment-receipt.js";
@@ -92,18 +93,47 @@ after(async () => {
   if (server) await new Promise((r) => server.close(r));
   if (db) await db.close();
 });
-unitTest("commission payout date skips weekends and preserves time", () => {
+unitTest(
+  "commission payout date is three calendar days after approval and preserves time",
+  () => {
+    assert.equal(
+      referralPayoutDue("2026-10-23T12:00:00Z").toISOString(),
+      "2026-10-26T12:00:00.000Z",
+    );
+    assert.equal(
+      referralPayoutDue("2026-10-22T12:00:00Z").toISOString(),
+      "2026-10-25T12:00:00.000Z",
+    );
+    assert.equal(
+      referralPayoutDue("2026-10-25T23:30:00Z").toISOString(),
+      "2026-10-28T23:30:00.000Z",
+    );
+  },
+);
+test("marketer signup rejects absent, unchecked or outdated terms without creating an account", async () => {
+  for (const acceptance of [
+    {},
+    { terms_accepted: false, terms_version: MARKETER_TERMS_VERSION },
+    { terms_accepted: true, terms_version: "outdated" },
+  ]) {
+    const result = await request("/referrals/register", {
+      method: "POST",
+      body: {
+        name: "Unaccepted Marketer",
+        email: "unaccepted@referral.test",
+        password,
+        privacy_accepted: true,
+        ...acceptance,
+      },
+    });
+    assert.equal(result.status, 422, JSON.stringify(result));
+  }
   assert.equal(
-    threeWorkingDays("2026-10-23T12:00:00Z").toISOString(),
-    "2026-10-28T12:00:00.000Z",
-  );
-  assert.equal(
-    threeWorkingDays("2026-10-22T12:00:00Z").toISOString(),
-    "2026-10-27T12:00:00.000Z",
-  );
-  assert.equal(
-    threeWorkingDays("2026-10-25T23:30:00Z").toISOString(),
-    "2026-10-28T23:30:00.000Z",
+    await one(
+      db,
+      "SELECT id FROM users WHERE email='unaccepted@referral.test'",
+    ),
+    undefined,
   );
 });
 test("verified marketer signup is separate from school and owner access", async () => {
@@ -114,6 +144,8 @@ test("verified marketer signup is separate from school and owner access", async 
       email: "marketer@referral.test",
       password,
       privacy_accepted: true,
+      terms_accepted: true,
+      terms_version: MARKETER_TERMS_VERSION,
     },
   });
   assert.equal(result.status, 201, JSON.stringify(result));
@@ -122,6 +154,8 @@ test("verified marketer signup is separate from school and owner access", async 
   assert.equal(marketer.user.school_id, null);
   const account = await request("/referrals/account", { client: marketer });
   assert.equal(account.status, 200);
+  assert.equal(account.data.account.terms_version, MARKETER_TERMS_VERSION);
+  assert.ok(account.data.account.terms_accepted_at);
   code = account.data.account.code;
   assert.equal((await request("/config", { client: marketer })).status, 403);
   assert.equal(
@@ -455,6 +489,8 @@ test("marketer accounts cannot see one another and credential updates require pa
       email: "other@referral.test",
       password,
       privacy_accepted: true,
+      terms_accepted: true,
+      terms_version: MARKETER_TERMS_VERSION,
     },
   });
   assert.equal(result.status, 201);

@@ -13,18 +13,11 @@ import {
   deliverVerifications,
 } from "./verification-delivery.js";
 import { PRIVACY_POLICY_VERSION } from "./contact-consent.js";
+import { MARKETER_TERMS_VERSION } from "../shared/marketer-terms.js";
 
-export function threeWorkingDays(value = new Date()) {
+export function referralPayoutDue(value = new Date()) {
   const result = new Date(value);
-  let count = 0;
-  const weekday = new Intl.DateTimeFormat("en", {
-    timeZone: "Africa/Lagos",
-    weekday: "short",
-  });
-  while (count < 3) {
-    result.setUTCDate(result.getUTCDate() + 1);
-    if (!["Sat", "Sun"].includes(weekday.format(result))) count++;
-  }
+  result.setUTCDate(result.getUTCDate() + 3);
   return result;
 }
 // Called inside the payment settlement transaction, after locking its subscription.
@@ -63,7 +56,7 @@ export async function creditReferral(tx, payment) {
       payment.charge_currency || payment.currency,
       percent,
       amount.toString(),
-      threeWorkingDays(payment.paid_at),
+      referralPayoutDue(payment.paid_at),
     ],
   );
 }
@@ -119,6 +112,14 @@ export function referralPublicRoutes(db) {
           email,
           password,
           privacy_accepted: z.literal(true),
+          terms_accepted: z.literal(true, {
+            error:
+              "Accept the marketer terms and conditions before signing up.",
+          }),
+          terms_version: z.literal(MARKETER_TERMS_VERSION, {
+            error:
+              "Review and accept the current marketer terms. Refresh this page and try again.",
+          }),
         })
         .parse(req.body);
       await screenRegistrationEmail(b.email);
@@ -137,20 +138,23 @@ export function referralPublicRoutes(db) {
         await insert(tx, "marketers", {
           user_id: u.id,
           code: token().slice(0, 16).toUpperCase(),
+          terms_accepted_at: new Date(),
+          terms_version: MARKETER_TERMS_VERSION,
         });
         await queueVerification(tx, u);
-        await audit(tx, u, "users", u.id, "MARKETER_REGISTERED");
+        await audit(tx, u, "users", u.id, "MARKETER_REGISTERED", null, {
+          terms_version: MARKETER_TERMS_VERSION,
+          terms_accepted: true,
+        });
         return u;
       });
       await deliverVerifications(db, user.id);
-      res
-        .status(201)
-        .json({
-          data: {
-            message:
-              "Check your email to verify your account, then sign in to the marketer portal.",
-          },
-        });
+      res.status(201).json({
+        data: {
+          message:
+            "Check your email to verify your account, then sign in to the marketer portal.",
+        },
+      });
     },
   );
   return r;

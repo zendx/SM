@@ -2379,6 +2379,11 @@ input[type="checkbox"], input[type="radio"] { flex: 0 0 auto; }
 .referral-totals { display: flex; flex-wrap: wrap; gap: 16px; }
 .referral-shell input[readonly] { display: block; width: 100%; padding: 12px; margin: 8px 0 16px; }
 /* Every shared panel owns its content spacing, including tables and actions. */
+.marketer-terms { padding: 18px; background: #f5f8f6; border: 1px solid var(--border); border-radius: 8px; }
+.marketer-terms summary { cursor: pointer; font-weight: 600; }
+.marketer-terms section { margin-top: 18px; }
+.marketer-terms h3 { margin: 0 0 6px; font-size: 14px; }
+.marketer-terms p { line-height: 1.65; margin: 8px 0 0; }
 .panel { margin-bottom: var(--section-gap); }
 .panel-head { padding: var(--panel-inset) var(--panel-inset) 18px; gap: var(--content-gap); }
 .panel > .panel-content {
