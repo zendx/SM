@@ -166,11 +166,38 @@ export function Person({ first, last, sub, onClick }) {
     </div>
   );
 }
+// Focus once when a form opens, without interrupting typing in another form.
+function focusFirstField(root, { modal = false } = {}) {
+  if (!root || root.closest("dialog:not([open])")) return;
+  const active = document.activeElement;
+  if (
+    active?.matches("input,textarea,select,[contenteditable='true']") &&
+    !active.matches(":disabled,[readonly]")
+  )
+    return;
+  if (!modal && active?.closest("dialog[open]")) return;
+  const fields = [...root.querySelectorAll("input,textarea,select")].filter(
+    (field) =>
+      !field.matches(":disabled,[readonly],[tabindex='-1']") &&
+      !field.closest("[hidden],[inert],[aria-hidden='true']") &&
+      field.getClientRects().length &&
+      getComputedStyle(field).visibility !== "hidden",
+  );
+  const field =
+    fields.find((field) =>
+      field.matches(
+        "textarea,input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='range']):not([type='color'])",
+      ),
+    ) || fields.find((field) => field.matches("select"));
+  field?.focus({ preventScroll: true });
+}
+
 export function Modal({ title, children, onClose }) {
   const ref = useRef();
   useEffect(() => {
     const el = ref.current;
     el.showModal();
+    focusFirstField(el.querySelector(".modal-body"), { modal: true });
     return () => el.close();
   }, []);
   return (
@@ -206,6 +233,11 @@ export function Form({
   onValuesChange,
 }) {
   const idPrefix = useId();
+  const formRef = useRef();
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => focusFirstField(formRef.current));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const [values, setValues] = useState(() =>
       Object.fromEntries(
         fields.map((f) => [
@@ -246,7 +278,7 @@ export function Form({
     }
   }
   return (
-    <form onSubmit={save}>
+    <form ref={formRef} onSubmit={save}>
       <div className="form-grid">
         {fields.map((f) =>
           f.type === "password" ? (
