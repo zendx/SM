@@ -1,3 +1,5 @@
+export const EMAIL_TEMPLATE_REVISION = "2026-10-23-branding-footer-v1";
+
 // Preserve paths, query strings and tokens when retiring SMPIS deployment domains.
 export function canonicalEmailLinks(value) {
   return String(value ?? "").replace(

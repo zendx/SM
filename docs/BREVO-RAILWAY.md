@@ -48,3 +48,17 @@ Previously sent email HTML is not rewritten. Check branding with a newly sent em
 Set `APP_URL=https://smpis.digital` on both the web application and Railway worker. The email renderer also replaces the retired `smpis.vercel.app` host and the `www.smpis.digital` alias with `https://smpis.digital`, preserving portal paths, fragments, activation tokens and unsubscribe signatures. This includes links in queued notification bodies and saved templates.
 
 The shared HTML and plain-text footer identifies the account recipient, explains why the message was sent, and links to `info@smpis.digital` and `/privacy`. Messages without an account name use the recipient email when available. Newsletter consent/unsubscribe text remains separate from essential account and school messages.
+
+## Support notifications still have old links, footer or logo
+
+Support-ticket notifications are rendered and sent by the Railway worker, not by the browser or Vercel frontend. Deploying Vercel alone does not update them. In Railway, deploy the latest source commit from the same repository/branch as the web app; simply restarting an older deployment keeps the old templates.
+
+Set `APP_URL=https://smpis.digital` in the worker variables. Its updated startup logs must include:
+
+```text
+Worker email templates: 2026-10-23-branding-footer-v1.
+Worker public email origin: https://smpis.digital.
+Worker email provider: brevo; configured.
+```
+
+After confirming those lines, create a new support ticket or reply to an existing ticket and inspect its new email. Do not retry already-sent messages. The retired `https://smpis.vercel.app/email-logo.png` returns 404; the public domain's `/email-logo.png` serves the official PNG. Email clients can still require recipients to enable external images.

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { EMAIL_TEMPLATE_REVISION, emailOrigin } from "../server/email-urls.js";
 import { openDatabase } from "../server/db.js";
 import { runJobs } from "../server/jobs.js";
 import { emailConfigurationStatus } from "../server/email-configuration.js";
@@ -29,6 +30,16 @@ function stop() {
 for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, stop);
 
 console.log("SMPIS background worker started.");
+console.log(`Worker email templates: ${EMAIL_TEMPLATE_REVISION}.`);
+// Log only the public origin, never query strings, credentials or API keys.
+try {
+  const publicUrl = new URL(emailOrigin());
+  console.log(
+    `Worker public email origin: ${publicUrl.protocol}//${publicUrl.host}.`,
+  );
+} catch {
+  console.error("Worker public email origin is invalid. Check APP_URL.");
+}
 const emailStatus = emailConfigurationStatus();
 console.log(
   `Worker email provider: ${emailStatus.provider}; ${emailStatus.configured ? "configured" : "missing required email variables; messages will remain queued"}.`,
