@@ -25,6 +25,54 @@ page.setDefaultTimeout(15000);
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 const password = "Browser-referral-2026!";
+async function checkSpacing(label) {
+  await page.locator(".panel").first().waitFor();
+  await page.waitForLoadState("networkidle");
+  const cookieButton = page.getByRole("button", {
+    name: "Accept required cookies",
+    exact: true,
+  });
+  if (await cookieButton.isVisible()) await cookieButton.click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const issues = await page.evaluate(() => {
+    const errors = [];
+    for (const el of document.querySelectorAll(
+      ".panel .btn, .panel input, .panel select, .panel textarea, .panel .table-wrap",
+    )) {
+      if (el.closest(".table-wrap") && !el.matches(".table-wrap")) continue;
+      const r = el.getBoundingClientRect(),
+        panel = el.closest(".panel").getBoundingClientRect();
+      if (!r.width || !r.height || getComputedStyle(el).visibility === "hidden")
+        continue;
+      if (
+        r.left < panel.left + 12 ||
+        r.right > panel.right - 12 ||
+        r.bottom > panel.bottom - 12
+      )
+        errors.push({
+          element: el.tagName,
+          text: (
+            el.textContent ||
+            el.getAttribute("aria-label") ||
+            el.type
+          ).slice(0, 70),
+          left: Math.round(r.left - panel.left),
+          right: Math.round(panel.right - r.right),
+          bottom: Math.round(panel.bottom - r.bottom),
+        });
+    }
+    if (document.documentElement.scrollWidth > innerWidth + 1)
+      errors.push({
+        overflow: document.documentElement.scrollWidth - innerWidth,
+      });
+    return errors;
+  });
+  assert.deepEqual(
+    issues,
+    [],
+    `Spacing at ${label}: ${JSON.stringify(issues)}`,
+  );
+}
 try {
   const owner = await insert(db, "users", {
     school_id: null,
@@ -67,12 +115,14 @@ try {
     .getByRole("button", { name: "Save profile and bank account" })
     .click();
   await page.getByText("Profile and bank account updated.").waitFor();
+  await checkSpacing("marketer desktop");
   await fs.mkdir("test-results/branding-referrals", { recursive: true });
   await page.screenshot({
     path: "test-results/branding-referrals/marketer-desktop.png",
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await checkSpacing("marketer mobile");
   await page.screenshot({
     path: "test-results/branding-referrals/marketer-mobile.png",
     fullPage: true,
@@ -187,16 +237,14 @@ try {
     data: { email: admin.email, password },
   });
   await page.goto(origin + "/browser-school/#administration");
-  await page
-    .getByLabel("Upload school logo")
-    .setInputFiles({
-      name: "school.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
-        "base64",
-      ),
-    });
+  await page.getByLabel("Upload school logo").setInputFiles({
+    name: "school.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
   await page.getByText("School logo updated.", { exact: true }).waitFor();
   assert.ok(
     (
@@ -205,9 +253,57 @@ try {
   );
   await page.getByRole("button", { name: "Remove logo", exact: true }).click();
   await page.getByText("School logo removed.", { exact: true }).waitFor();
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const section of [
+      "administration",
+      "attendance",
+      "finance",
+      "academics",
+      "reports",
+      "curriculum",
+      "dashboard",
+    ]) {
+      await page.goto(origin + `/browser-school/#${section}`);
+      await checkSpacing(`school ${section} ${viewport.width}`);
+      await page.screenshot({
+        path: `test-results/branding-referrals/spacing-school-${section}-${viewport.width}.png`,
+        fullPage: true,
+      });
+    }
+  }
+  await page.context().clearCookies();
+  await page.request.post(origin + "/api/v1/auth/login", {
+    data: { email: owner.email, password },
+  });
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const section of [
+      "overview",
+      "users",
+      "referrals",
+      "settings",
+      "communications",
+      "email-templates",
+      "security",
+    ]) {
+      await page.goto(origin + `/owner#${section}`);
+      await checkSpacing(`owner ${section} ${viewport.width}`);
+      await page.screenshot({
+        path: `test-results/branding-referrals/spacing-owner-${section}-${viewport.width}.png`,
+        fullPage: true,
+      });
+    }
+  }
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: marketer signup, verification, login, bank profile, referral autofill, mobile layouts, owner commission settings, payout recording and school logo upload/removal.",
+    "Browser checks passed: referral and branding flows plus panel/control spacing and overflow across school, owner and marketer pages at desktop and mobile sizes.",
   );
 } finally {
   await browser.close();

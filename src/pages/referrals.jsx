@@ -384,32 +384,34 @@ export function MarketerPortal() {
                     Share this link
                     <input aria-label="Referral link" readOnly value={link} />
                   </label>
-                  <Button
-                    secondary
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(link);
-                        setMessage("Referral link copied.");
-                      } catch {
-                        setMessage("Select the link above and copy it.");
-                      }
-                    }}
-                  >
-                    Copy referral link
-                  </Button>
-                  <Button
-                    secondary
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(account.code);
-                        setMessage("Referral code copied.");
-                      } catch {
-                        setMessage(`Your referral code is ${account.code}`);
-                      }
-                    }}
-                  >
-                    Copy code
-                  </Button>
+                  <div className="row-actions">
+                    <Button
+                      secondary
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(link);
+                          setMessage("Referral link copied.");
+                        } catch {
+                          setMessage("Select the link above and copy it.");
+                        }
+                      }}
+                    >
+                      Copy referral link
+                    </Button>
+                    <Button
+                      secondary
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(account.code);
+                          setMessage("Referral code copied.");
+                        } catch {
+                          setMessage(`Your referral code is ${account.code}`);
+                        }
+                      }}
+                    >
+                      Copy code
+                    </Button>
+                  </div>
                   <p>
                     Current rate: {q.data.program.referral_percent}% · First
                     approved payment only. Payment is due within three working

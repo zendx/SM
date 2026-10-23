@@ -78,7 +78,6 @@ export function Panel({
   action,
   children,
   className = "",
-  padded = false,
 }) {
   return (
     <section className={`panel ${className}`}>
@@ -91,7 +90,7 @@ export function Panel({
           {action}
         </div>
       )}
-      {padded ? <div className="panel-body">{children}</div> : children}
+      <div className="panel-body panel-content">{children}</div>
     </section>
   );
 }

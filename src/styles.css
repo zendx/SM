@@ -2267,7 +2267,8 @@ textarea:focus-visible {
 
 /* Shared workspace spacing and controls. Keep the same inset on headings and content. */
 :root {
-  --panel-inset: 22px;
+  --panel-inset: 24px;
+  --section-gap: 24px;
   --control-height: 44px;
   --content-gap: 16px;
 }
@@ -2377,5 +2378,47 @@ input[type="checkbox"], input[type="radio"] { flex: 0 0 auto; }
 .referral-header .brand-logo { width: 190px; height: auto; }
 .referral-totals { display: flex; flex-wrap: wrap; gap: 16px; }
 .referral-shell input[readonly] { display: block; width: 100%; padding: 12px; margin: 8px 0 16px; }
-.referral-shell .panel > p { margin: 16px 22px; }
-.referral-shell .panel > label { display: block; margin: 16px 22px; }
+/* Every shared panel owns its content spacing, including tables and actions. */
+.panel { margin-bottom: var(--section-gap); }
+.panel-head { padding: var(--panel-inset) var(--panel-inset) 18px; gap: var(--content-gap); }
+.panel > .panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+  padding: 0 var(--panel-inset) var(--panel-inset);
+  min-width: 0;
+}
+.panel:not(:has(> .panel-head)) > .panel-content { padding-top: var(--panel-inset); }
+.panel-content > * { min-width: 0; max-width: 100%; margin-block: 0; margin-inline: 0; }
+.panel-content > :is(.btn, a:not(.btn)) { align-self: flex-start; }
+.panel-content > :is(.settings-form, .security-panel, .owner-security, .report-card,
+  .provider-actions, .email-template-library, .alerts-list, .summary-alerts,
+  .toolbar, .table-toolbar, .form-grid, .bar-chart, .attendance-summary,
+  .provider-grid, .owner-growth-chart, .owner-chart-controls, .owner-chart-caption,
+  .owner-attention, .owner-account-toolbar) { padding: 0; }
+.panel-content > .owner-attention > :first-child { padding-top: 0; }
+.panel-content > .owner-attention > :last-child { padding-bottom: 0; }
+.panel-content > .table-toolbar { border-bottom: 0; }
+.panel-content > .table-wrap { border: 1px solid var(--border); border-radius: 8px; }
+.panel-content > .pagination { padding: 16px 0 0; }
+.panel-content > :is(ul, ol) { padding-inline-start: 22px; }
+.panel-content > p { line-height: 1.65; }
+.panel-content > .field { width: 100%; }
+.panel-content > .empty { padding: 32px 16px; }
+.panel-content > .referral-totals:empty { display: none; }
+.dashboard-grid, .academic-grid, .owner-overview-grid, .report-grid { gap: var(--section-gap); }
+.dashboard-grid > .panel, .academic-grid > .panel, .owner-overview-grid > .panel,
+.report-grid > .panel { margin-bottom: 0; }
+.referral-shell > .row-actions { margin-bottom: var(--section-gap); }
+.school-branding { display: grid; gap: var(--content-gap); }
+.school-branding > :is(h3, p) { margin: 0; }
+.school-branding > .btn { justify-self: start; }
+.modal-body { display: flex; flex-direction: column; gap: var(--content-gap); min-width: 0; }
+.modal-body > * { min-width: 0; max-width: 100%; margin-block: 0; }
+.modal-body > .btn { align-self: flex-start; }
+.modal-body > .table-wrap { border: 1px solid var(--border); border-radius: 8px; }
+@media (max-width: 700px) {
+  :root { --section-gap: 20px; }
+  .panel-head { padding-bottom: 16px; }
+  .referral-shell { padding: 24px 16px; }
+}
