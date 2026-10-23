@@ -65,7 +65,26 @@ try {
       name: "Email, phone numbers and promotional communications",
     })
     .waitFor();
-  await page.getByText(/Last updated: 2026-10-22/).waitFor();
+  await page.getByText(/Last updated: 2026-10-23/).waitFor();
+  for (const heading of [
+    "Legal bases and sources",
+    "School names, logos and public visibility",
+    "Registration screening and abuse prevention",
+    "Security incidents and disclosures",
+  ]) {
+    await page.getByRole("heading", { name: heading, exact: true }).waitFor();
+  }
+  await page.goto(process.env.APP_URL + "/terms");
+  await page
+    .getByRole("heading", { name: "Referral marketer program", exact: true })
+    .waitFor();
+  await page
+    .getByText(/first successful, verified and approved subscription payment/)
+    .waitFor();
+  await page
+    .getByText(/modify, suspend or discontinue its referral program/)
+    .waitFor();
+
   await page.goto(newsletterUnsubscribeLink(owner));
   await page
     .getByRole("heading", { name: "Promotional email preferences" })

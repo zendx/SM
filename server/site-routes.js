@@ -13,15 +13,15 @@ export function legalRoutes(db) {
     res.json({
       data: {
         organization:
-          settings?.organization || process.env.LEGAL_ORGANIZATION_NAME || "",
+          settings?.organization ||
+          process.env.LEGAL_ORGANIZATION_NAME ||
+          "SMPIS Digital",
         contact:
-          settings?.privacy_email || process.env.PRIVACY_CONTACT_EMAIL || "",
-        updated:
-          settings?.updated_at &&
-          new Date(settings.updated_at).toISOString().slice(0, 10) >
-            PRIVACY_POLICY_VERSION
-            ? new Date(settings.updated_at).toISOString().slice(0, 10)
-            : PRIVACY_POLICY_VERSION,
+          settings?.privacy_email ||
+          process.env.PRIVACY_CONTACT_EMAIL ||
+          "info@smpis.digital",
+        updated: PRIVACY_POLICY_VERSION,
+        operator_updated_at: settings?.updated_at || null,
         privacy_policy_version: PRIVACY_POLICY_VERSION,
       },
     });
