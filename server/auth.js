@@ -58,6 +58,8 @@ export function publicUser(u) {
     portal_slug: u.portal_slug,
     name: u.name,
     email: u.email,
+    phone_number: u.phone_number || "",
+    address: u.address || "",
     role: u.role,
     permissions: u.permissions,
     mfa_enabled: u.mfa_enabled,
@@ -664,6 +666,46 @@ export function accountRoutes(db) {
       },
     }),
   );
+  r.patch("/auth/profile", async (req, res) => {
+    const values = z
+      .object({
+        name: text.max(200),
+        phone_number: z
+          .string()
+          .trim()
+          .pipe(z.union([phoneNumber, z.literal("")])),
+        address: z.string().trim().max(500),
+      })
+      .strict()
+      .parse(req.body);
+    const profile = await db.transaction(async (tx) => {
+      const previous = await one(
+        tx,
+        "SELECT id,school_id,name,email,phone_number,address FROM users WHERE id=$1 FOR UPDATE",
+        [req.user.id],
+      );
+      const updated = await one(
+        tx,
+        "UPDATE users SET name=$2,phone_number=$3,address=$4 WHERE id=$1 RETURNING id,name,email,phone_number,address",
+        [req.user.id, values.name, values.phone_number, values.address],
+      );
+      await audit(
+        tx,
+        { ...req.user, school_id: previous.school_id },
+        "users",
+        req.user.id,
+        "PROFILE_UPDATED",
+        {
+          name: previous.name,
+          phone_number: previous.phone_number,
+          address: previous.address,
+        },
+        values,
+      );
+      return updated;
+    });
+    res.json({ data: profile });
+  });
   r.post("/auth/logout", async (req, res) => {
     await db.query("DELETE FROM sessions WHERE token_hash=$1", [
       req.sessionHash,

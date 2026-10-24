@@ -1,5 +1,6 @@
+import { AccountMenu } from "../account-menu";
 import { BrandLogo } from "../brand-logo";
-import { OwnerReferrals } from './referrals';
+import { OwnerReferrals } from "./referrals";
 import { MfaEnrollment } from "../mfa-enrollment";
 import {
   OwnerCommunications,
@@ -207,7 +208,7 @@ export function OwnerPortal() {
     ["tenants", "Schools & subscriptions", Building2],
     ["users", "Customer accounts", Users],
     ["payments", "Payments & revenue", Wallet],
-    ['referrals', 'Marketer referrals', Users],
+    ["referrals", "Marketer referrals", Users],
     ["issues", "Customer support", LifeBuoy],
     ["settings", "Payment settings", Settings],
     ["audit", "Audit history", ShieldCheck],
@@ -470,7 +471,7 @@ export function OwnerPortal() {
           >
             <Menu />
           </button>
-          <div>
+          <div className="owner-topbar-heading">
             <small>BUSINESS CONSOLE</small>
             <strong>{sections.find(([key]) => key === active)?.[1]}</strong>
           </div>
@@ -486,9 +487,23 @@ export function OwnerPortal() {
               ? "Owner access"
               : "Delegated access"}
           </span>
+          <AccountMenu
+            user={session.user}
+            onSaved={(profile) =>
+              setSession((current) => ({
+                ...current,
+                user: { ...current.user, ...profile },
+              }))
+            }
+            onLogout={logout}
+            onSecurity={() => {
+              location.hash = "security";
+              setSection("security");
+            }}
+          />
         </header>
         <main className="owner-content">
-          {active === 'referrals' ? (
+          {active === "referrals" ? (
             <OwnerReferrals />
           ) : active === "security" ? (
             <OwnerSecurity session={session} reload={reload} />

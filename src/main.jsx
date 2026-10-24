@@ -1,3 +1,4 @@
+import { AccountMenu } from "./account-menu";
 import { ParentMessages } from "./pages/parent-messages";
 import { TeacherAttendancePrompt } from "./teacher-attendance-prompt";
 import { BrandLogo } from "./brand-logo";
@@ -764,18 +765,22 @@ function App() {
       <div className="billing-blocked">
         <div className="billing-blocked-header">
           <PublicBrand />
-          <Button
-            secondary
-            onClick={async () => {
+          <AccountMenu
+            user={session.user}
+            onSaved={(profile) =>
+              setSession((current) => ({
+                ...current,
+                user: { ...current.user, ...profile },
+              }))
+            }
+            onLogout={async () => {
               await post("/auth/logout", {});
               setSession(null);
               setConfig(null);
               setSubscription(null);
               setCsrf("");
             }}
-          >
-            Sign out
-          </Button>
+          />
         </div>
         {session.user.role === "SUPER_ADMIN" && (
           <div className="toolbar">
@@ -944,19 +949,24 @@ function App() {
               ))}
             </select>
             <NotificationBell onClick={() => go("notifications")} />
-            <div className="user-menu">
-              <span className="avatar">
-                {session.user.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .slice(0, 2)
-                  .join("")}
-              </span>
-              <div>
-                <strong>{session.user.name}</strong>
-                <small>{human(session.user.role)}</small>
-              </div>
-            </div>
+            <AccountMenu
+              user={session.user}
+              onSaved={(profile) =>
+                setSession((current) => ({
+                  ...current,
+                  user: { ...current.user, ...profile },
+                }))
+              }
+              onLogout={async () => {
+                await post("/auth/logout", {});
+                setSession(null);
+                setConfig(null);
+                setCsrf("");
+                setPage("dashboard");
+                location.hash = "dashboard";
+                setInitialRoute(true);
+              }}
+            />
           </div>
         </header>
         <main className="main-content">

@@ -195,6 +195,7 @@ function focusFirstField(root, { modal = false } = {}) {
 
 export function Modal({ title, children, onClose }) {
   const ref = useRef();
+  const titleId = useId();
   useEffect(() => {
     const el = ref.current;
     el.showModal();
@@ -205,13 +206,17 @@ export function Modal({ title, children, onClose }) {
     <dialog
       ref={ref}
       className="modal"
-      onCancel={onClose}
+      aria-labelledby={titleId}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
     >
       <div className="modal-head">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           className="icon-btn"
           aria-label="Close dialog"
