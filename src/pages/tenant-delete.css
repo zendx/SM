@@ -1,0 +1,134 @@
+﻿.tenant-delete-form {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding: 3px;
+}
+.tenant-delete-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #eadfdb;
+  border-radius: 12px;
+  background: #fffaf8;
+}
+.tenant-delete-summary > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #faeae4;
+  color: #a44738;
+}
+.tenant-delete-summary > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.tenant-delete-summary strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.tenant-delete-summary small {
+  color: #8c817b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.tenant-delete-impact {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff4eb;
+  border: 1px solid #efddcd;
+  border-radius: 10px;
+  padding: 18px;
+  color: #8b583a;
+}
+.tenant-delete-impact > svg {
+  flex-shrink: 0;
+}
+.tenant-delete-impact strong {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.tenant-delete-impact p {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 10px 0 0;
+}
+.tenant-delete-form fieldset {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.tenant-delete-form label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #52624a;
+}
+.tenant-delete-form label:not(:first-child) {
+  margin-top: 12px;
+}
+.tenant-delete-form input,
+.tenant-delete-form textarea {
+  width: 100%;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px solid #dfe5d9;
+  padding: 12px 14px;
+  border-radius: 9px;
+}
+.tenant-delete-form textarea {
+  resize: vertical;
+}
+.tenant-delete-name {
+  font-size: 12px;
+  color: #8a7464;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.tenant-delete-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 22px;
+  border-top: 1px solid #e5e9e0;
+}
+.tenant-delete-confirm.btn {
+  background: #a94a3c;
+  border-color: #a94a3c;
+  color: #fff;
+}
+.tenant-delete-confirm.btn:hover {
+  background: #913c30;
+}
+.tenant-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 2px;
+}
+.tenant-account-actions .tenant-delete-link {
+  color: #a3493b;
+  border-color: #e5cfc7;
+}
+@media (max-width: 600px) {
+  .tenant-delete-footer {
+    flex-wrap: wrap;
+  }
+  .tenant-delete-footer .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .tenant-delete-form input,
+  .tenant-delete-form textarea {
+    font-size: 16px;
+  }
+}

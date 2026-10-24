@@ -1,3 +1,4 @@
+import { TenantDeleteDialog } from "./tenant-delete-dialog";
 import { TenantAccountControls } from "./platform-team";
 import React, { useState, useEffect } from "react";
 import {
@@ -257,25 +258,78 @@ export function Subscription({
               </strong>
             </div>
             <p className="muted">
-              Choose a month or a year of access. Card renewal is checked by default;
-              uncheck it to pay once. If you switch billing periods, the new
-              period starts with your next purchase. You keep any paid time left.
+              Choose a month or a year of access. Card renewal is checked by
+              default; uncheck it to pay once. If you switch billing periods,
+              the new period starts with your next purchase. You keep any paid
+              time left.
             </p>
           </Panel>
           <Panel title="Automatic renewal">
-            {sub.auto_renewal?.enabled ? <>
-              <p>Your {sub.auto_renewal.card_brand} card {sub.auto_renewal.card_last4 ? `ending ${sub.auto_renewal.card_last4}` : ""} is authorized for {sub.auto_renewal.charge_currency} {(Number(sub.auto_renewal.charge_amount_cents) / 100).toLocaleString()} each {sub.auto_renewal.billing_cycle === "YEARLY" ? "year" : "month"}.</p>
-              <p>We charge when your subscription expires and retry every 12 hours during the {config.grace_days}-day grace period. Failed payments receive an email with a link to pay.</p>
-              <Button secondary disabled={busy} onClick={async () => {
-                setBusy(true);
-                try {
-                  const result = await post("/subscription/auto-renewal/disable", {});
-                  setMessage(result.message); q.reload();
-                } catch (e) { setError(e.message); } finally { setBusy(false); }
-              }}>Turn off automatic renewal</Button>
-            </> : <p>Automatic renewal is off. Authorize your card with your next payment to enable it.</p>}
-            {sub.auto_renewal?.payment_pending && <p role="status">A renewal payment is being confirmed. Please wait before making another payment.</p>}
-            {sub.auto_renewal?.action_url && <a className="btn" href={sub.auto_renewal.action_url} rel="noreferrer">Authorize renewal payment</a>}
+            {sub.auto_renewal?.enabled ? (
+              <>
+                <p>
+                  Your {sub.auto_renewal.card_brand} card{" "}
+                  {sub.auto_renewal.card_last4
+                    ? `ending ${sub.auto_renewal.card_last4}`
+                    : ""}{" "}
+                  is authorized for {sub.auto_renewal.charge_currency}{" "}
+                  {(
+                    Number(sub.auto_renewal.charge_amount_cents) / 100
+                  ).toLocaleString()}{" "}
+                  each{" "}
+                  {sub.auto_renewal.billing_cycle === "YEARLY"
+                    ? "year"
+                    : "month"}
+                  .
+                </p>
+                <p>
+                  We charge when your subscription expires and retry every 12
+                  hours during the {config.grace_days}-day grace period. Failed
+                  payments receive an email with a link to pay.
+                </p>
+                <Button
+                  secondary
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const result = await post(
+                        "/subscription/auto-renewal/disable",
+                        {},
+                      );
+                      setMessage(result.message);
+                      q.reload();
+                    } catch (e) {
+                      setError(e.message);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Turn off automatic renewal
+                </Button>
+              </>
+            ) : (
+              <p>
+                Automatic renewal is off. Authorize your card with your next
+                payment to enable it.
+              </p>
+            )}
+            {sub.auto_renewal?.payment_pending && (
+              <p role="status">
+                A renewal payment is being confirmed. Please wait before making
+                another payment.
+              </p>
+            )}
+            {sub.auto_renewal?.action_url && (
+              <a
+                className="btn"
+                href={sub.auto_renewal.action_url}
+                rel="noreferrer"
+              >
+                Authorize renewal payment
+              </a>
+            )}
           </Panel>
           <div className="billing-methods">
             {Object.keys(sub.providers).length > 0 && (
@@ -284,8 +338,15 @@ export function Subscription({
                 description="Choose how to pay. Your subscription starts once the payment is confirmed."
               >
                 <label className="field check-field">
-                  <input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenew(e.target.checked)} />
-                  <span>Authorize this card for automatic renewal at the amount shown at checkout.</span>
+                  <input
+                    type="checkbox"
+                    checked={autoRenew}
+                    onChange={(e) => setAutoRenew(e.target.checked)}
+                  />
+                  <span>
+                    Authorize this card for automatic renewal at the amount
+                    shown at checkout.
+                  </span>
                 </label>
                 {Object.entries(sub.providers).map(([name, p]) => (
                   <div className="provider-choice" key={name}>
@@ -298,11 +359,12 @@ export function Subscription({
                             : `Live · ${p.currency}`
                           : "Not configured"}
                       </small>
-
                     </div>
                     <Button
                       small
-                      disabled={!p.enabled || busy || sub.auto_renewal?.payment_pending}
+                      disabled={
+                        !p.enabled || busy || sub.auto_renewal?.payment_pending
+                      }
                       onClick={async () => {
                         setBusy(true);
                         setError("");
@@ -423,10 +485,15 @@ export function Subscription({
     </div>
   );
 }
-export function SaasOwner({ notify = () => {}, section }) {
+export function SaasOwner({
+  notify = () => {},
+  section,
+  onTenantChange = () => {},
+}) {
   const q = useData("/saas/owner", null),
     [create, setCreate] = useState(false),
     [action, setAction] = useState(null),
+    [deleteTenant, setDeleteTenant] = useState(null),
     [review, setReview] = useState(null),
     [provider, setProvider] = useState(null),
     [tab, setTab] = useState(section || "overview"),
@@ -645,7 +712,9 @@ export function SaasOwner({ notify = () => {}, section }) {
                 { label: "Registered", render: (t) => when(t.created_at) },
                 {
                   label: "Subscription",
-                  render: (t) => <Badge value={t.status} />,
+                  render: (t) => (
+                    <Badge value={t.closed_at ? "DELETED" : t.status} />
+                  ),
                 },
                 { label: "Received", render: (t) => usd(t.received_cents) },
               ]}
@@ -657,7 +726,7 @@ export function SaasOwner({ notify = () => {}, section }) {
       {tab === "issues" && <OwnerIssues notify={notify} />}
       {tab === "tenants" && (
         <Panel
-          title="School subscriptions"
+          title="Tenant accounts & subscriptions"
           description="A confirmed renewal restores access after expiry. If you suspended a school yourself, you must restore its access here."
         >
           <Table
@@ -698,7 +767,7 @@ export function SaasOwner({ notify = () => {}, section }) {
                     <span>Owner access</span>
                   ) : (
                     <>
-                      <Badge value={t.status} />
+                      <Badge value={t.closed_at ? "DELETED" : t.status} />
                       <small className="table-sub">
                         {t.suspension_reason.replaceAll("_", " ")}
                       </small>
@@ -712,37 +781,34 @@ export function SaasOwner({ notify = () => {}, section }) {
                 render: (t) =>
                   t.deletion_requested_at ? (
                     <span>Use account reactivation below</span>
-                  ) : !t.owner_school && t.status !== "TERMINATED" ? (
-                    <div className="toolbar">
-                      {t.status === "SUSPENDED" ? (
+                  ) : !t.owner_school ? (
+                    <div className="tenant-account-actions">
+                      {t.status !== "TERMINATED" && (
                         <Button
                           small
                           secondary
                           onClick={() =>
-                            setAction({ tenant: t, action: "RESTORE" })
+                            setAction({
+                              tenant: t,
+                              action:
+                                t.status === "SUSPENDED"
+                                  ? "RESTORE"
+                                  : "SUSPEND",
+                            })
                           }
                         >
-                          Restore
-                        </Button>
-                      ) : (
-                        <Button
-                          small
-                          secondary
-                          onClick={() =>
-                            setAction({ tenant: t, action: "SUSPEND" })
-                          }
-                        >
-                          Suspend
+                          {t.status === "SUSPENDED"
+                            ? "Restore access"
+                            : "Suspend account"}
                         </Button>
                       )}
                       <Button
                         small
                         secondary
-                        onClick={() =>
-                          setAction({ tenant: t, action: "TERMINATE" })
-                        }
+                        className="btn secondary small tenant-delete-link"
+                        onClick={() => setDeleteTenant(t)}
                       >
-                        Terminate
+                        Delete account
                       </Button>
                     </div>
                   ) : null,
@@ -931,6 +997,18 @@ export function SaasOwner({ notify = () => {}, section }) {
             }}
           />
         </Modal>
+      )}
+      {deleteTenant && (
+        <TenantDeleteDialog
+          tenant={deleteTenant}
+          onClose={() => setDeleteTenant(null)}
+          onDeleted={(message) => {
+            setDeleteTenant(null);
+            q.reload();
+            onTenantChange();
+            notify(message);
+          }}
+        />
       )}
       {action && (
         <Modal

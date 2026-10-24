@@ -81,6 +81,74 @@ export function accountLifecycleRoutes(db) {
     });
     res.json({ data: result });
   });
+  r.delete("/saas/owner/tenants/:id", requireOwner, async (req, res) => {
+    const schoolId = z.coerce.number().int().positive().parse(req.params.id);
+    const b = z
+      .object({
+        reason: text.max(1000),
+        confirmation: text,
+        password: z.string().min(1).max(128),
+      })
+      .strict()
+      .parse(req.body);
+    await db.transaction(async (tx) => {
+      const owner = await one(
+        tx,
+        "SELECT password_hash FROM users WHERE id=$1",
+        [req.user.id],
+      );
+      if (!verifyPassword(b.password, owner.password_hash))
+        fail(422, "Your password is incorrect.");
+      if (
+        await one(
+          tx,
+          "SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id WHERE u.school_id=$1",
+          [schoolId],
+        )
+      )
+        fail(422, "The owner workspace cannot be deleted.");
+      const sub = await one(
+        tx,
+        "SELECT s.*,c.name FROM school_subscriptions s JOIN schools c ON c.id=s.school_id WHERE s.school_id=$1 FOR UPDATE OF s",
+        [schoolId],
+      );
+      if (!sub) fail(404, "School not found.");
+      if (b.confirmation !== sub.name)
+        fail(422, "Enter the school name exactly to confirm deletion.");
+      if (sub.closed_at) fail(409, "This school account is already closed.");
+      await tx.query(
+        `UPDATE school_subscriptions SET tenant_previous_status=COALESCE(tenant_previous_status,status),
+        status='SUSPENDED',suspension_reason='OWNER_DELETED',deletion_requested_at=COALESCE(deletion_requested_at,now()),
+        deletion_effective_at=now(),closed_at=now(),auto_renew_revoked_at=now(),updated_at=now() WHERE school_id=$1`,
+        [schoolId],
+      );
+      await tx.query(
+        "UPDATE subscription_auto_renewals SET enabled=false,revoked_at=now(),claim_token=NULL,claimed_until=NULL,updated_at=now() WHERE school_id=$1",
+        [schoolId],
+      );
+      await tx.query(
+        "DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE school_id=$1)",
+        [schoolId],
+      );
+      await subscriptionEvent(
+        tx,
+        schoolId,
+        req.user.id,
+        "OWNER_ACCOUNT_DELETED",
+        {
+          reason: b.reason,
+          records_retained: true,
+          auto_renewal_disabled: true,
+        },
+      );
+    });
+    res.json({
+      data: {
+        message:
+          "Tenant account deleted. School access is closed and existing sessions have been ended. Records are retained for owner recovery.",
+      },
+    });
+  });
   r.post(
     "/saas/owner/tenants/:id/reactivate",
     requireOwner,

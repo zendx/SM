@@ -522,10 +522,12 @@ export function OwnerPortal() {
               <>
                 <SaasOwner
                   key={`${active}-${tenantRevision}`}
+                  onTenantChange={() => setTenantRevision((value) => value + 1)}
                   section={active}
                   notify={setMessage}
                 />
                 <ManagedSchools
+                  key={tenantRevision}
                   fullOwner
                   onlyDeletion
                   onChange={() => setTenantRevision((value) => value + 1)}

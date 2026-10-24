@@ -1,3 +1,4 @@
+import { TenantDeleteDialog } from "./tenant-delete-dialog";
 import React, { useState } from "react";
 import { useData } from "../hooks";
 import { post, patch } from "../api";
@@ -138,9 +139,7 @@ export function TenantAccountControls({ sub, reload }) {
         </div>
       ) : (
         <>
-          <p>
-            Contact SMPIS Support if you need help with your subscription.
-          </p>
+          <p>Contact SMPIS Support if you need help with your subscription.</p>
           <div className="toolbar">
             {sub.suspension_reason === "TENANT_PAUSED" && (
               <Button onClick={() => setAction("RESUME")}>
@@ -203,7 +202,8 @@ export function ManagedSchools({
   notify = () => {},
 }) {
   const q = useData("/saas/owner/tenants"),
-    [selected, setSelected] = useState(null);
+    [selected, setSelected] = useState(null),
+    [deleteTenant, setDeleteTenant] = useState(null);
   const tenants = (q.data || []).filter(
     (school) => !onlyDeletion || school.deletion_requested_at,
   );
@@ -211,7 +211,9 @@ export function ManagedSchools({
   return (
     <Panel
       title={
-        onlyDeletion ? "Account closure requests" : "Schools and subscriptions"
+        onlyDeletion
+          ? "Deleted accounts & closure requests"
+          : "Schools and subscriptions"
       }
       description="Manage which schools can use SMPIS. Closing a school account keeps its records and email addresses."
       action={
@@ -233,7 +235,7 @@ export function ManagedSchools({
             label: "Status",
             render: (s) => (
               <>
-                <Badge value={s.status} />
+                <Badge value={s.closed_at ? "DELETED" : s.status} />
                 <small className="table-sub">
                   {s.suspension_reason.replaceAll("_", " ")}
                 </small>
@@ -266,38 +268,76 @@ export function ManagedSchools({
             render: (s) =>
               s.deletion_requested_at ? (
                 fullOwner ? (
-                  <Button
-                    small
-                    secondary
-                    onClick={() => setSelected({ ...s, action: "REACTIVATE" })}
-                  >
-                    Reactivate account
-                  </Button>
+                  <div className="tenant-account-actions">
+                    <Button
+                      small
+                      secondary
+                      onClick={() =>
+                        setSelected({ ...s, action: "REACTIVATE" })
+                      }
+                    >
+                      Reactivate account
+                    </Button>
+                    {!s.closed_at && (
+                      <Button
+                        small
+                        secondary
+                        className="btn secondary small tenant-delete-link"
+                        onClick={() => setDeleteTenant(s)}
+                      >
+                        Delete account now
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   "Owner reactivation required"
                 )
-              ) : s.status === "TERMINATED" ? (
-                "Terminated"
               ) : (
-                <div className="toolbar">
-                  <Button
-                    small
-                    secondary
-                    onClick={() =>
-                      setSelected({
-                        ...s,
-                        action:
-                          s.status === "SUSPENDED" ? "RESTORE" : "SUSPEND",
-                      })
-                    }
-                  >
-                    {s.status === "SUSPENDED" ? "Restore" : "Suspend"}
-                  </Button>
+                <div className="tenant-account-actions">
+                  {s.status !== "TERMINATED" && (
+                    <Button
+                      small
+                      secondary
+                      onClick={() =>
+                        setSelected({
+                          ...s,
+                          action:
+                            s.status === "SUSPENDED" ? "RESTORE" : "SUSPEND",
+                        })
+                      }
+                    >
+                      {s.status === "SUSPENDED"
+                        ? "Restore access"
+                        : "Suspend account"}
+                    </Button>
+                  )}
+                  {fullOwner && (
+                    <Button
+                      small
+                      secondary
+                      className="btn secondary small tenant-delete-link"
+                      onClick={() => setDeleteTenant(s)}
+                    >
+                      Delete account
+                    </Button>
+                  )}
                 </div>
               ),
           },
         ]}
       />
+      {deleteTenant && (
+        <TenantDeleteDialog
+          tenant={deleteTenant}
+          onClose={() => setDeleteTenant(null)}
+          onDeleted={(message) => {
+            setDeleteTenant(null);
+            q.reload();
+            onChange();
+            notify(message);
+          }}
+        />
+      )}
       {selected && (
         <Modal
           title={`${selected.action === "REACTIVATE" ? "Reactivate" : selected.action === "RESTORE" ? "Restore" : "Suspend"} ${selected.name}`}
