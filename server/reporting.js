@@ -1,5 +1,8 @@
 import express from "express";
-import { drawSchoolLogo } from "./school-branding.js";
+import {
+  drawSchoolLogo,
+  drawAdministratorSignature,
+} from "./school-branding.js";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
 import { drawPaymentReceipt } from "./payment-receipt.js";
@@ -74,6 +77,7 @@ export function reportingRoutes(db) {
         `Balance: ${money(invoice.waived ? 0 : Number(invoice.total_cents) - Number(invoice.paid_cents))}`,
       );
     if (invoice.waived) doc.text("Invoice waived");
+    drawAdministratorSignature(doc, school);
     doc.end();
   });
   r.get("/dashboard/executive", async (req, res) => {

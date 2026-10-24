@@ -2331,3 +2331,16 @@
     gap: 8px;
   }
 }
+
+/* Allow the full owner menu, including sign out, to scroll on small screens. */
+.owner-sidebar {
+  max-height: calc(100dvh - 28px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+}
+.owner-sidebar > * { flex-shrink: 0; }
+@media (max-width: 760px) {
+  .owner-sidebar { max-height: calc(100dvh - 24px); }
+}

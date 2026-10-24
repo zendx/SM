@@ -1,3 +1,4 @@
+import { ParentMessages } from "./pages/parent-messages";
 import { TeacherAttendancePrompt } from "./teacher-attendance-prompt";
 import { BrandLogo } from "./brand-logo";
 import { MarketerPortal } from "./pages/referrals";
@@ -459,6 +460,7 @@ function App() {
         "hr.manage",
       ].some(can),
     ],
+    ["messages", "Message parents", Users, can("admin.write")],
     ["administration", "Administration", Settings, true],
     [
       "quality",
@@ -837,6 +839,7 @@ function App() {
       staff: Staff,
       reports: Reports,
       administration: Administration,
+      messages: ParentMessages,
       notifications: Notifications,
       academics: Academics,
       curriculum: Curriculum,

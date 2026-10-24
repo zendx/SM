@@ -199,7 +199,7 @@ function ScoreEntry({ assessment, onClose, notify }) {
   );
 }
 function ReportDetail({ id, onClose, user, notify, onChange }) {
-  const branding = useData('/config',null);
+  const branding = useData("/config", null);
   const [revision, setRevision] = useState("");
   const history = useData(
     !["PARENT", "STUDENT"].includes(user.role)
@@ -212,7 +212,13 @@ function ReportDetail({ id, onClose, user, notify, onChange }) {
   );
   return (
     <Modal title="Student report card" onClose={onClose}>
-      {branding.data?.school?.logo_data && <img className="school-logo" src={branding.data.school.logo_data} alt={`${branding.data.school.name} logo`} />}
+      {branding.data?.school?.logo_data && (
+        <img
+          className="school-logo"
+          src={branding.data.school.logo_data}
+          alt={`${branding.data.school.name} logo`}
+        />
+      )}
       {history.data?.length > 0 && (
         <label className="field">
           Report version
@@ -341,6 +347,16 @@ function ReportDetail({ id, onClose, user, notify, onChange }) {
               <div>
                 <small>Principal comment</small>
                 <strong>{q.data.principal_comment || "—"}</strong>
+                {branding.data?.school?.signature_data && (
+                  <div>
+                    <img
+                      src={branding.data.school.signature_data}
+                      alt="Administrator signature"
+                      style={{ maxWidth: 150, maxHeight: 60 }}
+                    />
+                    <p>Administrator signature</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

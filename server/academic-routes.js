@@ -1,5 +1,8 @@
 import express from "express";
-import { drawSchoolLogo } from './school-branding.js';
+import {
+  drawSchoolLogo,
+  drawAdministratorSignature,
+} from "./school-branding.js";
 import { termRoster, archiveBatch } from "./history-service.js";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
@@ -868,7 +871,7 @@ export function academicRoutes(db) {
         .type("application/pdf");
       doc.pipe(res);
       const s = card.snapshot;
-      drawSchoolLogo(doc, await currentSchool(db,req.user));
+      drawSchoolLogo(doc, await currentSchool(db, req.user));
       doc
         .fontSize(22)
         .text(s.school_name)
@@ -930,6 +933,7 @@ export function academicRoutes(db) {
         .text(
           `Grading scale: ${s.policy.grading_scale.map((g) => `${g.letter} >= ${g.minimum}`).join(" | ")}. Pass mark: ${s.policy.pass_mark}%.`,
         );
+      drawAdministratorSignature(doc, await currentSchool(db, req.user));
       doc.end();
       await audit(db, req.user, "report_cards", card.id, "EXPORT", null, {
         format: "pdf",
@@ -1349,7 +1353,7 @@ export function academicRoutes(db) {
           });
         res.type("application/pdf");
         doc.pipe(res);
-        drawSchoolLogo(doc,school);
+        drawSchoolLogo(doc, school);
         doc
           .fontSize(18)
           .text(school.name)

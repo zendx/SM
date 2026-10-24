@@ -27,3 +27,5 @@ CREATE TABLE IF NOT EXISTS referral_commissions (
  CHECK((status='PENDING' AND paid_at IS NULL) OR (status='PAID' AND paid_at IS NOT NULL AND paid_by IS NOT NULL AND payment_reference<>''))
 );
 CREATE INDEX IF NOT EXISTS referral_commissions_marketer ON referral_commissions(marketer_id,created_at);
+
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS signature_data TEXT NOT NULL DEFAULT '';

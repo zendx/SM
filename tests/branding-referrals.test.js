@@ -524,3 +524,30 @@ test("marketer accounts cannot see one another and credential updates require pa
     200,
   );
 });
+
+test("signature uploads validate images and support removal", async () => {
+  async function upload(buffer) {
+    const body = new FormData(); body.append("signature", new Blob([buffer]), "signature.png");
+    return fetch(base + "/school/signature", {method:"POST", body, headers:{cookie:tenant.cookie,"x-csrf-token":tenant.csrf}});
+  }
+  assert.equal((await upload(Buffer.from("invalid"))).status,422);
+  assert.equal((await upload(png)).status,200);
+  assert.ok((await request("/config",{client:tenant})).data.school.signature_data.startsWith("data:image/png;base64,"));
+  const res = await fetch(base + "/school/signature",{method:"DELETE",headers:{cookie:tenant.cookie,"x-csrf-token":tenant.csrf}});
+  assert.equal(res.status,200);
+  assert.equal((await request("/config",{client:tenant})).data.school.signature_data, "");
+});
+test("parent messages reject foreign recipients and deduplicate selections", async () => {
+  const parent = await insert(db,"users",{school_id:school.id,name:"Message parent",email:"message-parent@referral.test",password_hash:await hashPassword(password),role:"PARENT"});
+  const other = await insert(db,"schools",{name:"Message isolation",short_code:"MSGISO"});
+  const foreign = await insert(db,"users",{school_id:other.id,name:"Foreign parent",email:"foreign-message@referral.test",password_hash:await hashPassword(password),role:"PARENT"});
+  const send = ids => request("/parent-messages",{client:tenant,method:"POST",body:{recipient_ids:ids,title:"School meeting",body:"Please attend on Friday."}});
+  assert.equal((await send([parent.id,foreign.id])).status,422);
+  assert.equal(String((await one(db,"SELECT count(*) AS n FROM notifications WHERE title='School meeting'")).n),"0");
+  const result = await send([parent.id,parent.id]);
+  assert.equal(result.status,200); assert.equal(result.data.count,1);
+  assert.equal((await request("/parent-messages/recipients",{client:marketer})).status,403);
+  const recipients = (await request("/parent-messages/recipients",{client:tenant})).data;
+  assert.ok(recipients.some(p => p.id === parent.id));
+  assert.ok(!recipients.some(p => p.id === foreign.id));
+});

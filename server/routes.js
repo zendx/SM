@@ -337,7 +337,10 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         });
       const b = z.object(shape).partial().strict().parse(req.body);
       if (!Object.keys(b).length) fail(422, "No editable fields supplied.");
-      if (b.transportation_required && !(await currentSchool(db, req.user)).transportation_available)
+      if (
+        b.transportation_required &&
+        !(await currentSchool(db, req.user)).transportation_available
+      )
         fail(422, "This school does not offer school bus transportation.");
       if (b.parent_user_id) {
         const p = await schoolRecord(db, req.user, "users", b.parent_user_id);
@@ -435,7 +438,10 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     requirePermission("admissions.write"),
     async (req, res) => {
       const b = studentSchema.parse(req.body);
-      if (b.transportation_required && !(await currentSchool(db, req.user)).transportation_available)
+      if (
+        b.transportation_required &&
+        !(await currentSchool(db, req.user)).transportation_available
+      )
         fail(422, "This school does not offer school bus transportation.");
       await schoolRecord(db, req.user, "classes", b.applied_class_id);
       const result = await db.transaction(async (tx) => {
@@ -787,15 +793,25 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       );
     },
   );
-  r.get("/hr/staff/accounts", requirePermission("staff.write"), async (req, res) => {
-    await ensureTeacherStaff(db, req.user.school_id);
-    ok(res, await rows(db,
-      `SELECT u.id,u.name,u.email,u.role FROM users u
+  r.get(
+    "/hr/staff/accounts",
+    requirePermission("staff.write"),
+    async (req, res) => {
+      await ensureTeacherStaff(db, req.user.school_id);
+      ok(
+        res,
+        await rows(
+          db,
+          `SELECT u.id,u.name,u.email,u.role FROM users u
        WHERE u.school_id=$1 AND u.status='ACTIVE'
        AND u.role NOT IN ('PARENT','STUDENT','PROPRIETOR')
        AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.user_id=u.id)
-       ORDER BY u.name`, [req.user.school_id]));
-  });
+       ORDER BY u.name`,
+          [req.user.school_id],
+        ),
+      );
+    },
+  );
   r.post("/hr/staff", requirePermission("staff.write"), async (req, res) => {
     const b = z
       .object({
@@ -810,7 +826,10 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       .parse(req.body);
     if (b.user_id) {
       const u = await schoolRecord(db, req.user, "users", b.user_id);
-      if (u.status !== "ACTIVE" || ["PARENT", "STUDENT", "PROPRIETOR"].includes(u.role))
+      if (
+        u.status !== "ACTIVE" ||
+        ["PARENT", "STUDENT", "PROPRIETOR"].includes(u.role)
+      )
         fail(422, "Choose an active staff user account.");
       if (await one(db, "SELECT id FROM staff WHERE user_id=$1", [u.id]))
         fail(409, "This account already has a staff profile.");
@@ -843,18 +862,33 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       );
     },
   );
-  r.get("/attendance/staff/today", requirePermission("staff.self"), async (req, res) => {
-    await ensureTeacherStaff(db, req.user.school_id);
-    const school = await currentSchool(db, req.user);
-    const date = localClock(school.timezone).date;
-    const staff = await one(db,
-      "SELECT id,first_name,last_name,status FROM staff WHERE school_id=$1 AND user_id=$2",
-      [req.user.school_id, req.user.id]);
-    const attendance = staff ? await one(db,
-      "SELECT id,status,check_in_time,check_out_time FROM staff_attendance WHERE school_id=$1 AND staff_id=$2 AND attendance_date=$3",
-      [req.user.school_id, staff.id, date]) : null;
-    ok(res, { date, timezone: school.timezone, staff: staff || null, attendance: attendance || null });
-  });
+  r.get(
+    "/attendance/staff/today",
+    requirePermission("staff.self"),
+    async (req, res) => {
+      await ensureTeacherStaff(db, req.user.school_id);
+      const school = await currentSchool(db, req.user);
+      const date = localClock(school.timezone).date;
+      const staff = await one(
+        db,
+        "SELECT id,first_name,last_name,status FROM staff WHERE school_id=$1 AND user_id=$2",
+        [req.user.school_id, req.user.id],
+      );
+      const attendance = staff
+        ? await one(
+            db,
+            "SELECT id,status,check_in_time,check_out_time FROM staff_attendance WHERE school_id=$1 AND staff_id=$2 AND attendance_date=$3",
+            [req.user.school_id, staff.id, date],
+          )
+        : null;
+      ok(res, {
+        date,
+        timezone: school.timezone,
+        staff: staff || null,
+        attendance: attendance || null,
+      });
+    },
+  );
   for (const action of ["check-in", "check-out"])
     r.post(`/attendance/staff/${action}`, async (req, res) => {
       await ensureTeacherStaff(db, req.user.school_id);
@@ -1210,6 +1244,71 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         message: (await smtpConfig(db, req.user.school_id))
           ? "Reminder queued for email delivery."
           : "Reminder saved in the outbox. Email delivery requires SMTP configuration.",
+      });
+    },
+  );
+
+  r.get(
+    "/parent-messages/recipients",
+    requirePermission("admin.write"),
+    async (req, res) => {
+      ok(
+        res,
+        await rows(
+          db,
+          "SELECT id,name,email FROM users WHERE school_id=$1 AND role='PARENT' AND status='ACTIVE' ORDER BY name,id",
+          [req.user.school_id],
+        ),
+      );
+    },
+  );
+  r.post(
+    "/parent-messages",
+    requirePermission("admin.write"),
+    async (req, res) => {
+      const b = z
+        .object({
+          recipient_ids: z.array(id).min(1).max(5000),
+          title: z.string().trim().min(1).max(150),
+          body: z.string().trim().min(1).max(5000),
+        })
+        .parse(req.body);
+      const ids = [...new Set(b.recipient_ids)];
+      const count = await db.transaction(async (tx) => {
+        const parents = await rows(
+          tx,
+          "SELECT id,email FROM users WHERE school_id=$1 AND role='PARENT' AND status='ACTIVE' AND id=ANY($2::int[])",
+          [req.user.school_id, ids],
+        );
+        if (parents.length !== ids.length)
+          fail(422, "Choose active parents from your school.");
+        const batch = token();
+        for (const parent of parents)
+          await tx.query(
+            "INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key) VALUES($1,$2,$3,$4,$5,$6)",
+            [
+              req.user.school_id,
+              parent.id,
+              parent.email,
+              b.title,
+              b.body,
+              `parent-message:${batch}:${parent.id}`,
+            ],
+          );
+        await audit(
+          tx,
+          req.user,
+          "schools",
+          req.user.school_id,
+          "PARENT_MESSAGE_SENT",
+          null,
+          { recipient_count: parents.length },
+        );
+        return parents.length;
+      });
+      ok(res, {
+        count,
+        message: `Message saved for ${count} parent${count === 1 ? "" : "s"} in Notifications. Email delivery is queued and depends on your school's email configuration.`,
       });
     },
   );

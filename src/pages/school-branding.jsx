@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { api } from "../api";
 import { Button } from "../components";
-export function SchoolBranding({ school, reloadConfig }) {
+function SchoolImage({ school, reloadConfig, signature = false }) {
+  const kind = signature ? "signature" : "logo",
+    label = signature ? "Administrator signature" : "School logo",
+    image = school[`${kind}_data`];
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
@@ -12,11 +15,11 @@ export function SchoolBranding({ school, reloadConfig }) {
     try {
       if (file) {
         const body = new FormData();
-        body.append("logo", file);
-        await api("/school/logo", { method: "POST", body });
-      } else await api("/school/logo", { method: "DELETE" });
+        body.append(kind, file);
+        await api(`/school/${kind}`, { method: "POST", body });
+      } else await api(`/school/${kind}`, { method: "DELETE" });
       await reloadConfig();
-      setMessage(file ? "School logo updated." : "School logo removed.");
+      setMessage(`${label} ${file ? "updated" : "removed"}.`);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -25,20 +28,16 @@ export function SchoolBranding({ school, reloadConfig }) {
   }
   return (
     <div className="school-branding">
-      <h3>School logo</h3>
+      <h3>{label}</h3>
       <p>
-        Your logo appears in your school portal, invoices, payment receipts and
-        report cards. Upload a PNG or JPEG up to 256 KB and 2048 × 2048 pixels.
+        {signature
+          ? "Upload a scanned signature for report cards and official documents."
+          : "Your logo appears in your school portal, invoices, payment receipts and report cards."}{" "}
+        Upload a PNG or JPEG up to 256 KB and 2048 × 2048 pixels.
       </p>
-      {school.logo_data && (
-        <img
-          className="school-logo"
-          src={school.logo_data}
-          alt={`${school.name} logo`}
-        />
-      )}
+      {image && <img className="school-logo" src={image} alt={label} />}
       <label>
-        Upload school logo
+        Upload {label.toLowerCase()}
         <input
           type="file"
           accept="image/png,image/jpeg"
@@ -50,9 +49,9 @@ export function SchoolBranding({ school, reloadConfig }) {
           }}
         />
       </label>
-      {school.logo_data && (
+      {image && (
         <Button secondary disabled={busy} onClick={() => update(null)}>
-          Remove logo
+          Remove {kind}
         </Button>
       )}
       {error && <p className="form-error">{error}</p>}
@@ -62,5 +61,14 @@ export function SchoolBranding({ school, reloadConfig }) {
         </p>
       )}
     </div>
+  );
+}
+
+export function SchoolBranding(props) {
+  return (
+    <>
+      <SchoolImage {...props} />
+      <SchoolImage {...props} signature />
+    </>
   );
 }
