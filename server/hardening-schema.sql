@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS document_upload_intents (
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Teacher removal hides tenant-facing profiles without destroying historical records.
+-- Account removal hides tenant-facing profiles without destroying historical records.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_by INT REFERENCES users(id);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS archive_reason TEXT NOT NULL DEFAULT '';

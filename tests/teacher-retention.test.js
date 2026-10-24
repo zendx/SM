@@ -98,9 +98,9 @@ test("only school administrators can remove their own teacher profiles", async (
   );
   assert.equal(
     (
-      await request(`/users/${f.users.parent.id}`, {
+      await request(`/users/${f.users.tenant.id}`, {
         method: "DELETE",
-        body: { reason: "Not a teacher" },
+        body: { reason: "Self-deletion blocked" },
       })
     ).status,
     422,
@@ -260,7 +260,7 @@ test("the retained snapshot survives later school changes to teaching assignment
   assert.equal(record.data.assignments[0].class_name, "Primary 5");
   const snapshot = await one(
     f.db,
-    "SELECT record FROM teacher_archives WHERE user_id=$1",
+    "SELECT record FROM account_archives WHERE user_id=$1",
     [f.users.teacher.id],
   );
   assert.equal(snapshot.record.user.name, "Mariam Bello");

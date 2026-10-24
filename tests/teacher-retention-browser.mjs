@@ -38,7 +38,7 @@ async function modalInsets(page) {
     const body = el.querySelector(".modal-body").getBoundingClientRect();
     return [
       ...el.querySelectorAll(
-        "input:not([type=checkbox]),textarea,.teacher-removal-footer button,.retained-record-actions button",
+        "input:not([type=checkbox]),textarea,.account-removal-footer button,.retained-record-actions button",
       ),
     ]
       .filter((el) => {
@@ -54,7 +54,10 @@ async function modalInsets(page) {
 try {
   const tenant = await login("tenant", "/greenfield/#administration/users");
   await expect(
-    tenant.getByRole("button", { name: "Delete teacher", exact: true }),
+    tenant
+      .getByRole("row")
+      .filter({ hasText: "Mariam Bello" })
+      .getByRole("button", { name: "Delete account", exact: true }),
   ).toBeVisible();
   await tenant.goto(origin + "/greenfield/#staff");
   const row = tenant.getByRole("row").filter({ hasText: "Mariam Bello" });
@@ -65,7 +68,7 @@ try {
     .getByLabel("Reason for removal", { exact: true })
     .fill("Employment contract ended");
   await tenant
-    .getByRole("checkbox", { name: /I understand this teacher/ })
+    .getByRole("checkbox", { name: /I understand this account/ })
     .check();
   for (const width of [1440, 390, 320]) {
     await tenant.setViewportSize({ width, height: 1000 });
@@ -78,7 +81,7 @@ try {
   }
   await tenant
     .getByRole("dialog")
-    .getByRole("button", { name: "Delete teacher profile", exact: true })
+    .getByRole("button", { name: "Delete account", exact: true })
     .click();
   await expect(row).toHaveCount(0);
   await tenant.goto(origin + "/greenfield/#administration/users");
@@ -122,13 +125,13 @@ try {
       animations: "disabled",
     });
   }
-  await users.getByRole("button", { name: /Retained teachers/ }).click();
+  await users.getByRole("button", { name: /Retained accounts/ }).click();
   await expect(users.locator(".school-user-row")).toHaveCount(1);
   await users
     .getByRole("button", { name: "View retained record", exact: true })
     .click();
   const dialog = owner.getByRole("dialog", {
-    name: "Retained teacher record",
+    name: "Retained account record",
     exact: true,
   });
   await expect(dialog).toContainText("B.Ed Mathematics");

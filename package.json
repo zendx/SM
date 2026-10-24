@@ -12,6 +12,7 @@
     "preflight:vercel": "node scripts/vercel-preflight.mjs --check",
     "test": "node --test tests/*.test.js",
     "test:embedded": "node scripts/test-embedded.mjs",
+    "test:ui:school-accounts": "npm run build && node scripts/test-embedded.mjs tests/school-account-management-browser.mjs",
     "test:ui:teacher-retention": "npm run build && node scripts/test-embedded.mjs tests/teacher-retention-browser.mjs",
     "test:ui:tenant-actions": "npm run build && node scripts/test-embedded.mjs tests/owner-tenant-actions-browser.mjs",
     "test:ui:accounts": "npm run build && node scripts/test-embedded.mjs tests/account-management-browser.mjs",

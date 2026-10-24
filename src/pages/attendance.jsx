@@ -241,7 +241,7 @@ export function Attendance({ config, can, notify, term, go }) {
     </>
   );
 }
-export function Staff({ can, notify, config }) {
+export function Staff({ can, notify, config, user }) {
   const staff = useData("/hr/staff"),
     attendance = useData("/attendance/staff"),
     accounts = useData(can("staff.write") ? "/hr/staff/accounts" : null),
@@ -394,7 +394,8 @@ export function Staff({ can, notify, config }) {
                     {
                       label: "Manage",
                       render: (r) =>
-                        r.user_id && (
+                        r.user_id &&
+                        r.user_id !== user?.id && (
                           <button
                             className="text-button account-remove-link"
                             onClick={() =>

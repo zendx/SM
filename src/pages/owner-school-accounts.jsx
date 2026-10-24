@@ -414,7 +414,9 @@ export function RetainedAccountRecord({ user, onClose }) {
             <div>
               <strong>{d.user.name}</strong>
               <span>{d.user.school_name}</span>
-              <small>{d.user.email}</small>
+              <small>
+                {human(d.user.role)} ? {d.user.email}
+              </small>
             </div>
             <Badge value="ARCHIVED" />
           </div>

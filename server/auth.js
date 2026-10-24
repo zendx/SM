@@ -652,7 +652,7 @@ async function protectSchoolAccount(db, actor, account, next) {
   ) {
     const { count } = await one(
       db,
-      "SELECT count(*)::int AS count FROM users WHERE school_id=$1 AND role='SUPER_ADMIN' AND status='ACTIVE' AND archived_at IS NULL",
+      "SELECT count(*)::int AS count FROM users WHERE school_id=$1 AND role='SUPER_ADMIN' AND status='ACTIVE' AND archived_at IS NULL AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=users.id) AND NOT EXISTS(SELECT 1 FROM platform_staff p WHERE p.user_id=users.id)",
       [actor.school_id],
     );
     if (count <= 1) fail(422, "Keep at least one active school administrator.");
