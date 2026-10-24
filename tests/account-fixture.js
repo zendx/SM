@@ -3,9 +3,9 @@ import { createApp } from "./app.js";
 import { insert } from "../server/db.js";
 import { hashPassword } from "../server/security.js";
 
-export async function accountFixture() {
+export async function accountFixture(options = {}) {
   const db = await openTestDatabase();
-  const app = await createApp(db);
+  const app = await createApp(db, options);
   const password = "Account-profile-browser-2026!";
   const school = await insert(db, "schools", {
     name: "Greenfield Academy",

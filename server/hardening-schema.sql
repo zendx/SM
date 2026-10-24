@@ -17,3 +17,25 @@ CREATE TABLE IF NOT EXISTS document_upload_intents (
  school_id INT NOT NULL REFERENCES schools(id),
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Teacher removal hides tenant-facing profiles without destroying historical records.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_by INT REFERENCES users(id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS archive_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS users_school_archive ON users(school_id,archived_at);
+
+CREATE TABLE IF NOT EXISTS teacher_archives (
+ user_id INT PRIMARY KEY REFERENCES users(id),school_id INT NOT NULL REFERENCES schools(id),
+ record JSONB NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+ FOREIGN KEY(school_id,user_id) REFERENCES users(school_id,id)
+);
+
+-- Retention applies to every school-created account, including former teacher archives.
+CREATE TABLE IF NOT EXISTS account_archives (
+ user_id INT PRIMARY KEY REFERENCES users(id),school_id INT NOT NULL REFERENCES schools(id),
+ record JSONB NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+ FOREIGN KEY(school_id,user_id) REFERENCES users(school_id,id)
+);
+INSERT INTO account_archives(user_id,school_id,record,created_at)
+ SELECT user_id,school_id,record,created_at FROM teacher_archives ON CONFLICT(user_id) DO NOTHING;

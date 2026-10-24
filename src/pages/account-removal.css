@@ -1,0 +1,124 @@
+﻿.account-removal {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+  padding: 3px;
+}
+.account-removal-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: #fff9f7;
+  border: 1px solid #e9dcd5;
+  border-radius: 11px;
+}
+.account-removal-identity > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #f7e8e1;
+  color: #a04a37;
+}
+.account-removal-identity > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.account-removal-identity strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.account-removal-identity small {
+  font-size: 12px;
+  color: #8e8076;
+  overflow-wrap: anywhere;
+}
+.account-removal > p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0;
+  color: #64705b;
+}
+.account-retention-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 17px;
+  background: #f2f7ed;
+  border: 1px solid #dfe9d4;
+  border-radius: 10px;
+  color: #627751;
+}
+.account-retention-note svg {
+  flex-shrink: 0;
+}
+.account-retention-note p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.account-removal-reason {
+  display: grid;
+  gap: 10px;
+}
+.account-removal-reason label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #53634a;
+}
+.account-removal-reason textarea {
+  min-width: 0;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #dce4d4;
+  border-radius: 9px;
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+}
+.account-removal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #6c765f;
+}
+.account-removal-check input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 3px 0 0;
+  accent-color: #6a844d;
+}
+.account-removal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e8dc;
+}
+.account-remove-confirm.btn {
+  background: #a74c3d;
+  border-color: #a74c3d;
+  color: #fff;
+}
+.account-remove-link {
+  color: #a04c3d;
+}
+@media (max-width: 600px) {
+  .account-removal-reason textarea {
+    font-size: 16px;
+  }
+  .account-removal-footer {
+    flex-wrap: wrap;
+  }
+  .account-removal-footer .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

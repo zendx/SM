@@ -112,7 +112,7 @@ export function operationsRoutes(db) {
         staff: permitted(u, "hr.manage")
           ? await rows(
               db,
-              "SELECT s.*,p.supervisor_user_id,p.qualifications,p.certifications,p.employment_history,p.contract_notes,p.training FROM staff s LEFT JOIN staff_profiles p ON p.staff_id=s.id WHERE s.school_id=$1 ORDER BY s.last_name",
+              "SELECT s.*,p.supervisor_user_id,p.qualifications,p.certifications,p.employment_history,p.contract_notes,p.training FROM staff s LEFT JOIN staff_profiles p ON p.staff_id=s.id WHERE s.school_id=$1 AND s.archived_at IS NULL ORDER BY s.last_name",
               [u.school_id],
             )
           : [],
@@ -690,20 +690,20 @@ export function operationsRoutes(db) {
           : [],
         leave: await rows(
           db,
-          `SELECT l.*,s.first_name,s.last_name,s.user_id FROM leave_requests l JOIN staff s ON s.id=l.staff_id WHERE l.school_id=$1${manage ? "" : " AND (s.user_id=$2 OR l.supervisor_user_id=$2)"} ORDER BY l.id DESC`,
+          `SELECT l.*,s.first_name,s.last_name,s.user_id FROM leave_requests l JOIN staff s ON s.id=l.staff_id WHERE l.school_id=$1 AND s.archived_at IS NULL${manage ? "" : " AND (s.user_id=$2 OR l.supervisor_user_id=$2)"} ORDER BY l.id DESC`,
           manage ? [u.school_id] : [u.school_id, u.id],
         ),
         reviews: manage
           ? await rows(
               db,
-              "SELECT r.*,s.first_name,s.last_name,y.name AS year_name FROM performance_reviews r JOIN staff s ON s.id=r.staff_id JOIN academic_years y ON y.id=r.academic_year_id WHERE r.school_id=$1 ORDER BY y.start_date DESC,s.last_name",
+              "SELECT r.*,s.first_name,s.last_name,y.name AS year_name FROM performance_reviews r JOIN staff s ON s.id=r.staff_id JOIN academic_years y ON y.id=r.academic_year_id WHERE r.school_id=$1 AND s.archived_at IS NULL ORDER BY y.start_date DESC,s.last_name",
               [u.school_id],
             )
           : [],
         self:
           (await one(
             db,
-            "SELECT s.id,s.first_name,s.last_name,p.supervisor_user_id FROM staff s LEFT JOIN staff_profiles p ON p.staff_id=s.id WHERE s.school_id=$1 AND s.user_id=$2",
+            "SELECT s.id,s.first_name,s.last_name,p.supervisor_user_id FROM staff s LEFT JOIN staff_profiles p ON p.staff_id=s.id WHERE s.school_id=$1 AND s.archived_at IS NULL AND s.user_id=$2",
             [u.school_id, u.id],
           )) || null,
       });
@@ -983,9 +983,10 @@ export function operationsRoutes(db) {
         if (!l) fail(404, "Leave request not found.");
         const s = await one(
           tx,
-          "SELECT * FROM staff WHERE school_id=$1 AND id=$2 FOR UPDATE",
+          "SELECT * FROM staff WHERE school_id=$1 AND id=$2 AND archived_at IS NULL FOR UPDATE",
           [u.school_id, l.staff_id],
         );
+        if (!s) fail(404, "Staff profile not found.");
         if (s.user_id === u.id)
           fail(403, "You cannot approve or review your own leave.");
         if (

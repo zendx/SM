@@ -1,116 +1,30 @@
-import React, { useEffect, useState } from "react";
-import { Search, LifeBuoy, Users, ArrowUpRight } from "lucide-react";
+import {
+  OwnerSchoolAccounts,
+  RetainedAccountRecord,
+} from "./owner-school-accounts";
+import React, { useState } from "react";
+import { LifeBuoy } from "lucide-react";
 import { useData } from "../hooks";
 import { post, patch } from "../api";
-import {
-  Panel,
-  Table,
-  Form,
-  Modal,
-  Button,
-  Badge,
-  Loading,
-} from "../components";
+import { Panel, Table, Form, Modal, Button, Badge } from "../components";
 
 export function OwnerAccounts({ notify = () => {} }) {
-  const [search, setSearch] = useState(""),
-    [query, setQuery] = useState(""),
-    [page, setPage] = useState(1),
-    [selected, setSelected] = useState(null),
-    [reset, setReset] = useState(null);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setQuery(search);
-      setPage(1);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [search]);
-  const q = useData(
-    `/saas/owner/users?search=${encodeURIComponent(query)}&page=${page}`,
-    null,
-  );
+  const [selected, setSelected] = useState(null),
+    [reset, setReset] = useState(null),
+    [record, setRecord] = useState(null),
+    [revision, setRevision] = useState(0);
   return (
     <Panel
-      title="Customer accounts"
-      description="Find accounts across your customer schools and resolve access issues."
+      title="Customer schools"
+      description="Click a school name to view its administrators, teachers, parents and other users."
     >
-      <div className="owner-account-toolbar">
-        <Search size={18} />
-        <input
-          aria-label="Search customer accounts"
-          placeholder="Search name, email or school…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <span>{q.data?.total ?? "…"} accounts</span>
-      </div>
-      {q.error && <p className="form-error">{q.error}</p>}
-      {q.loading && !q.data ? (
-        <Loading />
-      ) : (
-        q.data && (
-          <>
-            <Table
-              rows={q.data.users}
-              columns={[
-                {
-                  label: "User",
-                  render: (u) => (
-                    <div>
-                      <strong>{u.name}</strong>
-                      <small className="table-sub">{u.email}</small>
-                    </div>
-                  ),
-                },
-                {
-                  label: "School",
-                  render: (u) => (
-                    <a href={`/${u.portal_slug}/`}>
-                      {u.school_name} <ArrowUpRight size={12} />
-                    </a>
-                  ),
-                },
-                { label: "Role", key: "role" },
-                { label: "Status", render: (u) => <Badge value={u.status} /> },
-                {
-                  label: "Security",
-                  render: (u) =>
-                    u.mfa_enabled ? "MFA enabled" : "MFA not enabled",
-                },
-                { label: "Sessions", key: "active_sessions" },
-                {
-                  label: "Support",
-                  render: (u) => (
-                    <Button small secondary onClick={() => setSelected(u)}>
-                      Manage account
-                    </Button>
-                  ),
-                },
-              ]}
-            />
-            <div className="owner-account-toolbar">
-              <Button
-                small
-                secondary
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Previous
-              </Button>
-              <span>
-                Page {page} of {Math.max(1, Math.ceil(q.data.total / 50))}
-              </span>
-              <Button
-                small
-                secondary
-                disabled={page * 50 >= q.data.total}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </>
-        )
+      <OwnerSchoolAccounts
+        revision={revision}
+        onManage={(user, roles) => setSelected({ ...user, roles })}
+        onRetained={setRecord}
+      />
+      {record && (
+        <RetainedAccountRecord user={record} onClose={() => setRecord(null)} />
       )}
       {selected && (
         <Modal
@@ -131,7 +45,7 @@ export function OwnerAccounts({ notify = () => {} }) {
                 type: "email",
                 wide: true,
               },
-              { name: "role", label: "Role", options: q.data.roles },
+              { name: "role", label: "Role", options: selected.roles },
               {
                 name: "status",
                 label: "Account status",
@@ -151,7 +65,7 @@ export function OwnerAccounts({ notify = () => {} }) {
                 action: "UPDATE",
               });
               setSelected(null);
-              q.reload();
+              setRevision((value) => value + 1);
               notify("Customer account updated.");
             }}
           />
@@ -193,7 +107,7 @@ export function OwnerAccounts({ notify = () => {} }) {
                 v,
               );
               setSelected(null);
-              q.reload();
+              setRevision((value) => value + 1);
               if (result.reset_url) setReset(result);
               notify(result.message);
             }}

@@ -1,3 +1,4 @@
+import { retainAccountRecord } from "./account-retention.js";
 import { ensureTeacherStaff } from "./teacher-staff.js";
 import { checkAccountAccess } from "./account-lifecycle.js";
 import { screenRegistrationEmail } from "./stopreg.js";
@@ -399,7 +400,8 @@ export function authRoutes(
     if (
       !u ||
       !verifyPassword(b.password, u.password_hash) ||
-      u.status !== "ACTIVE"
+      u.status !== "ACTIVE" ||
+      u.archived_at
     )
       fail(401, "Email or password is incorrect.", "UNAUTHENTICATED");
     if (req.path === "/owner/login" && !consoleAccess(u))
@@ -575,7 +577,7 @@ export function authenticate(db, { enforcePrivilegedMfa = true } = {}) {
     if (!raw) fail(401, "Sign in to continue.", "UNAUTHENTICATED");
     const u = await one(
       db,
-      "SELECT u.*,c.portal_slug,r.permissions,s.csrf,s.mfa_verified,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator,(SELECT ps.scope FROM platform_staff ps WHERE ps.user_id=u.id) AS platform_scope FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN schools c ON c.id=u.school_id JOIN roles r ON r.name=u.role WHERE s.token_hash=$1 AND s.expires_at>now() AND u.status=$2",
+      "SELECT u.*,c.portal_slug,r.permissions,s.csrf,s.mfa_verified,EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id) AS platform_operator,(SELECT ps.scope FROM platform_staff ps WHERE ps.user_id=u.id) AS platform_scope FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN schools c ON c.id=u.school_id JOIN roles r ON r.name=u.role WHERE s.token_hash=$1 AND s.expires_at>now() AND u.status=$2 AND u.archived_at IS NULL",
       [digest(raw), "ACTIVE"],
     );
     if (!u)
@@ -633,6 +635,28 @@ export function authenticate(db, { enforcePrivilegedMfa = true } = {}) {
     req.sessionHash = digest(raw);
     next();
   };
+}
+async function protectSchoolAccount(db, actor, account, next) {
+  if (
+    await one(
+      db,
+      "SELECT id FROM users WHERE id=$1 AND (EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=users.id) OR EXISTS(SELECT 1 FROM platform_staff p WHERE p.user_id=users.id))",
+      [account.id],
+    )
+  )
+    fail(403, "Platform accounts cannot be managed through a school.");
+  if (
+    account.role === "SUPER_ADMIN" &&
+    account.status === "ACTIVE" &&
+    (next.role !== "SUPER_ADMIN" || next.status !== "ACTIVE")
+  ) {
+    const { count } = await one(
+      db,
+      "SELECT count(*)::int AS count FROM users WHERE school_id=$1 AND role='SUPER_ADMIN' AND status='ACTIVE' AND archived_at IS NULL",
+      [actor.school_id],
+    );
+    if (count <= 1) fail(422, "Keep at least one active school administrator.");
+  }
 }
 export function accountRoutes(db) {
   const r = express.Router();
@@ -799,7 +823,7 @@ export function accountRoutes(db) {
     res.json({
       data: await rows(
         db,
-        "SELECT id,name,email,role,status,mfa_enabled FROM users WHERE school_id=$1 ORDER BY name",
+        "SELECT id,name,email,phone_number,address,role,status,mfa_enabled FROM users WHERE school_id=$1 AND archived_at IS NULL AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=users.id) AND NOT EXISTS(SELECT 1 FROM platform_staff p WHERE p.user_id=users.id) ORDER BY name",
         [req.user.school_id],
       ),
     }),
@@ -842,32 +866,130 @@ export function accountRoutes(db) {
       },
     });
   });
-  r.patch("/users/:id", requirePermission("admin.write"), async (req, res) => {
-    const uid = id.parse(req.params.id),
-      b = z
-        .object({
-          role: z.enum(Object.keys(ROLE_PERMISSIONS)),
-          status: z.enum(["ACTIVE", "SUSPENDED"]),
-        })
-        .parse(req.body);
-    if (uid === req.user.id)
-      fail(422, "You cannot change your own role or status.");
+  r.delete("/users/:id", requirePermission("admin.write"), async (req, res) => {
+    const uid = id.parse(req.params.id);
+    const b = z
+      .object({ reason: text.max(1000) })
+      .strict()
+      .parse(req.body);
+    if (uid === req.user.id) fail(422, "You cannot delete your own account.");
     await db.transaction(async (tx) => {
-      const u = await one(
+      await tx.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [
+        req.user.school_id,
+      ]);
+      const account = await one(
         tx,
-        "SELECT id,role,status FROM users WHERE school_id=$1 AND id=$2",
+        "SELECT id,name,email,role,status,archived_at FROM users WHERE school_id=$1 AND id=$2 FOR UPDATE",
         [req.user.school_id, uid],
       );
-      if (!u) fail(404, "User not found.");
-      await tx.query("UPDATE users SET role=$1,status=$2 WHERE id=$3", [
-        b.role,
-        b.status,
+      if (!account || account.archived_at) fail(404, "Account not found.");
+      await protectSchoolAccount(tx, req.user, account, {
+        role: account.role,
+        status: "SUSPENDED",
+      });
+      if (
+        await one(
+          tx,
+          "SELECT user_id FROM platform_operators WHERE user_id=$1",
+          [uid],
+        )
+      )
+        fail(403, "Owner accounts cannot be deleted here.");
+      await tx.query(
+        "UPDATE users SET status='SUSPENDED',archived_at=now(),archived_by=$2,archive_reason=$3 WHERE id=$1",
+        [uid, req.user.id, b.reason],
+      );
+      await tx.query(
+        "UPDATE staff SET status='INACTIVE',archived_at=now() WHERE school_id=$1 AND user_id=$2",
+        [req.user.school_id, uid],
+      );
+      await retainAccountRecord(tx, req.user.school_id, uid);
+      await tx.query("DELETE FROM sessions WHERE user_id=$1", [uid]);
+      await tx.query("DELETE FROM reset_tokens WHERE user_id=$1", [uid]);
+      await tx.query("DELETE FROM email_verification_tokens WHERE user_id=$1", [
         uid,
       ]);
-      if (b.role === "TEACHER")
+      await audit(
+        tx,
+        req.user,
+        "users",
+        uid,
+        "SCHOOL_ACCOUNT_ARCHIVED",
+        {
+          name: account.name,
+          email: account.email,
+          role: account.role,
+          status: account.status,
+        },
+        { reason: b.reason, records_retained: true },
+      );
+    });
+    res.json({
+      data: {
+        message:
+          "Account deleted from your school. Sign-in access has ended; records are retained by the owner.",
+      },
+    });
+  });
+  r.patch("/users/:id", requirePermission("admin.write"), async (req, res) => {
+    const uid = id.parse(req.params.id);
+    const values = z
+      .object({
+        name: text.max(200).optional(),
+        phone_number: z
+          .string()
+          .trim()
+          .pipe(z.union([phoneNumber, z.literal("")]))
+          .optional(),
+        address: z.string().trim().max(500).optional(),
+        role: z.enum(Object.keys(ROLE_PERMISSIONS)).optional(),
+        status: z.enum(["ACTIVE", "SUSPENDED"]).optional(),
+        reason: text.max(1000).optional(),
+      })
+      .strict()
+      .refine((v) => Object.keys(v).length > 0, "Choose an account change.")
+      .parse(req.body);
+    if (uid === req.user.id)
+      fail(
+        422,
+        "Use Account management to edit your own details. You cannot change your own role or access.",
+      );
+    await db.transaction(async (tx) => {
+      await tx.query("SELECT id FROM schools WHERE id=$1 FOR UPDATE", [
+        req.user.school_id,
+      ]);
+      const account = await one(
+        tx,
+        "SELECT id,name,email,phone_number,address,role,status FROM users WHERE school_id=$1 AND id=$2 AND archived_at IS NULL FOR UPDATE",
+        [req.user.school_id, uid],
+      );
+      if (!account) fail(404, "Account not found.");
+      const next = {
+        name: values.name ?? account.name,
+        phone_number: values.phone_number ?? account.phone_number,
+        address: values.address ?? account.address,
+        role: values.role ?? account.role,
+        status: values.status ?? account.status,
+      };
+      await protectSchoolAccount(tx, req.user, account, next);
+      await tx.query(
+        "UPDATE users SET name=$2,phone_number=$3,address=$4,role=$5,status=$6 WHERE id=$1",
+        [
+          uid,
+          next.name,
+          next.phone_number,
+          next.address,
+          next.role,
+          next.status,
+        ],
+      );
+      if (next.role === "TEACHER")
         await ensureTeacherStaff(tx, req.user.school_id);
       await tx.query("DELETE FROM sessions WHERE user_id=$1", [uid]);
-      await audit(tx, req.user, "users", uid, "UPDATE", u, b);
+      await audit(tx, req.user, "users", uid, "UPDATE", account, {
+        ...next,
+        ...(values.reason ? { reason: values.reason } : {}),
+      });
     });
     res.json({ data: { ok: true } });
   });

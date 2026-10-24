@@ -177,7 +177,7 @@ export async function createApp(db, options = {}) {
     emailDeliveryRoutes(db),
     onboardingEmailRoutes(db),
     emailTemplateRoutes(db),
-    saasRoutes(db),
+    saasRoutes(db, options),
     referralOwnerRoutes(db),
     accountRoutes(db),
     coreRoutes(db, options),

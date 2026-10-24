@@ -784,7 +784,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         res,
         await rows(
           db,
-          `SELECT s.*,u.email FROM staff s LEFT JOIN users u ON u.id=s.user_id WHERE s.school_id=$1${permitted(req.user, "staff.read") || permitted(req.user, "staff.attendance.read") ? "" : " AND s.user_id=$2"} ORDER BY s.last_name`,
+          `SELECT s.*,u.email,u.role AS account_role FROM staff s LEFT JOIN users u ON u.id=s.user_id WHERE s.school_id=$1 AND s.archived_at IS NULL${permitted(req.user, "staff.read") || permitted(req.user, "staff.attendance.read") ? "" : " AND s.user_id=$2"} ORDER BY s.last_name`,
           permitted(req.user, "staff.read") ||
             permitted(req.user, "staff.attendance.read")
             ? [req.user.school_id]
@@ -803,7 +803,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         await rows(
           db,
           `SELECT u.id,u.name,u.email,u.role FROM users u
-       WHERE u.school_id=$1 AND u.status='ACTIVE'
+       WHERE u.school_id=$1 AND u.status='ACTIVE' AND u.archived_at IS NULL
        AND u.role NOT IN ('PARENT','STUDENT','PROPRIETOR')
        AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.user_id=u.id)
        ORDER BY u.name`,
@@ -856,7 +856,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         res,
         await rows(
           db,
-          `SELECT a.*,s.first_name,s.last_name,s.department,round(extract(epoch FROM (a.check_out_time-a.check_in_time))/3600,2) AS hours FROM staff_attendance a JOIN staff s ON s.id=a.staff_id WHERE a.school_id=$1${scope} ORDER BY a.attendance_date DESC,a.id DESC LIMIT 500`,
+          `SELECT a.*,s.first_name,s.last_name,s.department,round(extract(epoch FROM (a.check_out_time-a.check_in_time))/3600,2) AS hours FROM staff_attendance a JOIN staff s ON s.id=a.staff_id WHERE a.school_id=$1 AND s.archived_at IS NULL${scope} ORDER BY a.attendance_date DESC,a.id DESC LIMIT 500`,
           args,
         ),
       );
@@ -871,7 +871,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       const date = localClock(school.timezone).date;
       const staff = await one(
         db,
-        "SELECT id,first_name,last_name,status FROM staff WHERE school_id=$1 AND user_id=$2",
+        "SELECT id,first_name,last_name,status FROM staff WHERE school_id=$1 AND user_id=$2 AND archived_at IS NULL",
         [req.user.school_id, req.user.id],
       );
       const attendance = staff
@@ -899,7 +899,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       else
         staff = await one(
           db,
-          "SELECT * FROM staff WHERE school_id=$1 AND user_id=$2",
+          "SELECT * FROM staff WHERE school_id=$1 AND user_id=$2 AND archived_at IS NULL",
           [req.user.school_id, req.user.id],
         );
       if (!staff || staff.status !== "ACTIVE")
@@ -910,10 +910,12 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       const school = await currentSchool(db, req.user),
         clock = localClock(school.timezone);
       const result = await db.transaction(async (tx) => {
-        await tx.query(
-          "SELECT id FROM staff WHERE school_id=$1 AND id=$2 FOR UPDATE",
+        const currentStaff = await one(
+          tx,
+          "SELECT id FROM staff WHERE school_id=$1 AND id=$2 AND archived_at IS NULL FOR UPDATE",
           [req.user.school_id, staff.id],
         );
+        if (!currentStaff) fail(404, "Staff profile not found.");
         let record;
         if (action === "check-in") {
           if (
@@ -970,10 +972,12 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         .parse(req.body);
       await schoolRecord(db, req.user, "staff", b.staff_id);
       const s = await db.transaction(async (tx) => {
-        await tx.query(
-          "SELECT id FROM staff WHERE school_id=$1 AND id=$2 FOR UPDATE",
+        const currentStaff = await one(
+          tx,
+          "SELECT id FROM staff WHERE school_id=$1 AND id=$2 AND archived_at IS NULL FOR UPDATE",
           [req.user.school_id, b.staff_id],
         );
+        if (!currentStaff) fail(404, "Staff profile not found.");
         const record = await insert(tx, "staff_attendance", {
           school_id: req.user.school_id,
           staff_id: b.staff_id,

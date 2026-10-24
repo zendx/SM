@@ -386,7 +386,7 @@ try {
     path: "test-results/smpis-owner-dashboard.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Suspend", exact: true }).click();
+  await page.getByRole("button", { name: "Suspend account", exact: true }).click();
   await page
     .locator("dialog")
     .getByLabel("Reason", { exact: false })
@@ -396,7 +396,7 @@ try {
     .getByRole("button", { name: "Suspend subscription" })
     .click();
   await page.locator("dialog").waitFor({ state: "hidden" });
-  await page.getByRole("button", { name: "Restore", exact: true }).click();
+  await page.getByRole("button", { name: "Restore access", exact: true }).click();
   await page
     .locator("dialog")
     .getByLabel("Reason", { exact: false })
@@ -418,7 +418,8 @@ try {
   await page
     .getByRole("button", { name: "Customer accounts", exact: true })
     .click();
-  await page.getByLabel("Search customer accounts").fill("Greenfield");
+  await page.getByLabel("Search customer schools").fill("Greenfield");
+  await page.getByRole("button", {name:/Greenfield/}).click();
   await page.getByRole("button", { name: "Manage account" }).click();
   await page
     .locator("dialog")

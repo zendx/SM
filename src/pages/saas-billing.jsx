@@ -519,61 +519,71 @@ export function SaasOwner({
                 audit: "Audit history",
               }[tab] || "SMPIS business"
         }
-        description="Track customers, subscription revenue and the work that keeps your business moving."
+        description={
+          tab === "users"
+            ? "Manage each school's users and access retained account records."
+            : "Track customers, subscription revenue and the work that keeps your business moving."
+        }
       >
-        <a
-          className="btn secondary"
-          href="/api/v1/saas/owner/export?kind=payments"
-        >
-          Export payments
-        </a>
-        <a
-          className="btn secondary"
-          href="/api/v1/saas/owner/export?kind=audit"
-        >
-          Export audit
-        </a>
+        {tab !== "users" && (
+          <>
+            <a
+              className="btn secondary"
+              href="/api/v1/saas/owner/export?kind=payments"
+            >
+              Export payments
+            </a>
+            <a
+              className="btn secondary"
+              href="/api/v1/saas/owner/export?kind=audit"
+            >
+              Export audit
+            </a>
+          </>
+        )}
         <Button onClick={() => setCreate(true)}>Create school portal</Button>
       </PageHead>
       {q.error && <p className="form-error">{q.error}</p>}
-      <div className="metrics">
-        <Metric
-          label="Registered schools"
-          value={d.metrics.registered_schools}
-          detail={`${d.metrics.signups_this_month} signups this month`}
-          icon={Building2}
-        />
-        <Metric
-          label="Customer user accounts"
-          value={d.metrics.user_accounts}
-          detail="Accounts across your customer schools"
-          icon={Users}
-        />
-        <Metric
-          label="Schools that have paid"
-          value={d.metrics.paid_schools}
-          detail={`${d.metrics.active_pro_schools} active Pro subscriptions`}
-          icon={ShieldCheck}
-        />
-        <Metric
-          label="Total received"
-          value={usd(d.revenue.received_cents)}
-          detail="Confirmed live receipts · USD equivalent"
-          icon={Wallet}
-        />
-        <Metric
-          label="Received this month"
-          value={usd(d.revenue.month_cents)}
-          detail="Confirmed payments this calendar month"
-          icon={Wallet}
-        />
-        <Metric
-          label="Transfers awaiting review"
-          value={usd(d.revenue.pending_bank_cents)}
-          detail="Not counted as received revenue"
-          icon={Clock}
-        />
-      </div>
+      {tab !== "users" && (
+        <div className="metrics">
+          <Metric
+            label="Registered schools"
+            value={d.metrics.registered_schools}
+            detail={`${d.metrics.signups_this_month} signups this month`}
+            icon={Building2}
+          />
+          <Metric
+            label="Customer user accounts"
+            value={d.metrics.user_accounts}
+            detail="Accounts across your customer schools"
+            icon={Users}
+          />
+          <Metric
+            label="Schools that have paid"
+            value={d.metrics.paid_schools}
+            detail={`${d.metrics.active_pro_schools} active Pro subscriptions`}
+            icon={ShieldCheck}
+          />
+          <Metric
+            label="Total received"
+            value={usd(d.revenue.received_cents)}
+            detail="Confirmed live receipts · USD equivalent"
+            icon={Wallet}
+          />
+          <Metric
+            label="Received this month"
+            value={usd(d.revenue.month_cents)}
+            detail="Confirmed payments this calendar month"
+            icon={Wallet}
+          />
+          <Metric
+            label="Transfers awaiting review"
+            value={usd(d.revenue.pending_bank_cents)}
+            detail="Not counted as received revenue"
+            icon={Clock}
+          />
+        </div>
+      )}
       {!section && (
         <div
           className="saas-tabs"

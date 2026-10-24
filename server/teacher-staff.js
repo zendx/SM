@@ -8,7 +8,7 @@ export async function ensureTeacherStaff(db, schoolId = null) {
        trim(substr(trim(u.name),length(split_part(trim(u.name),' ',1))+1)),
        'Teaching','Teacher',(u.created_at AT TIME ZONE c.timezone)::date,u.status
      FROM users u JOIN schools c ON c.id=u.school_id
-     WHERE u.role='TEACHER' AND ($1::int IS NULL OR u.school_id=$1)
+     WHERE u.role='TEACHER' AND u.archived_at IS NULL AND ($1::int IS NULL OR u.school_id=$1)
        AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.user_id=u.id)
      ON CONFLICT (user_id) DO NOTHING`,
     [schoolId],

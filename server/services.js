@@ -7,13 +7,30 @@ export async function schoolRecord(db, u, table, id) {
     `SELECT * FROM ${table} WHERE school_id=$1 AND id=$2`,
     [u.school_id, id],
   );
-  if (!row) fail(404, "Record not found.", "NOT_FOUND");
+  if (!row || (["users", "staff"].includes(table) && row.archived_at))
+    fail(404, "Record not found.", "NOT_FOUND");
+  if (
+    row.staff_id &&
+    (await one(
+      db,
+      "SELECT id FROM staff WHERE school_id=$1 AND id=$2 AND archived_at IS NOT NULL",
+      [u.school_id, row.staff_id],
+    ))
+  )
+    fail(404, "Record not found.", "NOT_FOUND");
   return row;
 }
 export async function classAccess(db, u, id) {
   const c = await schoolRecord(db, u, "classes", id);
-  if (u.role === "TEACHER" && c.teacher_user_id !== u.id &&
-      !(await one(db, "SELECT id FROM class_subjects WHERE school_id=$1 AND class_id=$2 AND teacher_user_id=$3", [u.school_id, c.id, u.id])))
+  if (
+    u.role === "TEACHER" &&
+    c.teacher_user_id !== u.id &&
+    !(await one(
+      db,
+      "SELECT id FROM class_subjects WHERE school_id=$1 AND class_id=$2 AND teacher_user_id=$3",
+      [u.school_id, c.id, u.id],
+    ))
+  )
     fail(403, "This class is not assigned to you.", "FORBIDDEN");
   return c;
 }

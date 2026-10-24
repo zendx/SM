@@ -1,3 +1,4 @@
+import { customerAccountRoutes } from "./customer-account-routes.js";
 import { supportNotice } from "./platform-notifications.js";
 import { consoleAccess, supportDepartment } from "./platform-access.js";
 import express from "express";
@@ -41,8 +42,9 @@ export async function ownerActivity(db) {
     ORDER BY m.month`,
   );
 }
-export function ownerSupportRoutes(db) {
+export function ownerSupportRoutes(db, options = {}) {
   const r = express.Router();
+  r.use(customerAccountRoutes(db, options));
   r.get("/subscription/support", async (req, res) => {
     if (req.user.role !== "SUPER_ADMIN")
       fail(403, "School administrator access required.");
@@ -165,14 +167,25 @@ export function ownerSupportRoutes(db) {
         .min(1)
         .max(10000)
         .parse(req.query.page || 1);
-    const where = `u.school_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id)
+    const schoolId = req.query.school_id
+      ? z.coerce.number().int().positive().parse(req.query.school_id)
+      : null;
+    const role = req.query.role
+      ? z.enum(Object.keys(ROLE_PERMISSIONS)).parse(req.query.role)
+      : null;
+    const state = z
+      .enum(["all", "current", "retained"])
+      .parse(req.query.state || "all");
+    const where = `($2::int IS NULL OR u.school_id=$2) AND ($3::text IS NULL OR u.role=$3)
+      AND ($4='all' OR ($4='current' AND u.archived_at IS NULL) OR ($4='retained' AND u.archived_at IS NOT NULL))
+      AND u.school_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=u.id)
       AND (u.name ILIKE $1 OR u.email ILIKE $1 OR s.name ILIKE $1)`;
-    const args = ["%" + search + "%"];
+    const args = ["%" + search + "%", schoolId, role, state];
     const users = await rows(
       db,
-      `SELECT u.id,u.school_id,u.name,u.email,u.role,u.status,u.mfa_enabled,u.created_at,s.name AS school_name,s.portal_slug,
+      `SELECT u.id,u.school_id,u.name,u.email,u.role,u.status,u.mfa_enabled,u.created_at,u.archived_at,u.archive_reason,s.name AS school_name,s.portal_slug,
       (SELECT count(*)::int FROM sessions se WHERE se.user_id=u.id AND se.expires_at>now()) AS active_sessions
-      FROM users u JOIN schools s ON s.id=u.school_id WHERE ${where} ORDER BY u.created_at DESC,u.id DESC LIMIT 50 OFFSET $2`,
+      FROM users u JOIN schools s ON s.id=u.school_id WHERE ${where} ORDER BY u.created_at DESC,u.id DESC LIMIT 50 OFFSET $5`,
       [...args, (page - 1) * 50],
     );
     const { total } = await one(
@@ -214,7 +227,7 @@ export function ownerSupportRoutes(db) {
       ]);
       const u = await one(
         tx,
-        "SELECT id,school_id,name,email,role,status,mfa_enabled FROM users WHERE id=$1 FOR UPDATE",
+        "SELECT id,school_id,name,email,role,status,mfa_enabled,archived_at FROM users WHERE id=$1 FOR UPDATE",
         [uid],
       );
       if (
@@ -225,6 +238,11 @@ export function ownerSupportRoutes(db) {
         )
       )
         fail(403, "Owner accounts cannot be changed through customer support.");
+      if (u.archived_at)
+        fail(
+          409,
+          "This account was deleted by the school. The retained record is read-only.",
+        );
       let response = { message: "Account updated." },
         details = { reason: b.reason, user_id: uid, action: b.action };
       if (b.action === "UPDATE") {

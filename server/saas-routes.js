@@ -256,11 +256,11 @@ export function saasPublicRoutes(db) {
   );
   return r;
 }
-export function saasRoutes(db) {
+export function saasRoutes(db, options = {}) {
   const r = express.Router();
   r.use(platformTeamRoutes(db));
   r.use(accountLifecycleRoutes(db));
-  r.use(ownerSupportRoutes(db));
+  r.use(ownerSupportRoutes(db, options));
   r.get("/subscription/access", async (req, res) => {
     const snapshot = await subscriptionSnapshot(db, req.user.school_id);
     res.json({ data: { access_allowed: snapshot.access_allowed } });

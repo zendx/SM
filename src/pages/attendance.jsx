@@ -1,3 +1,4 @@
+import { AccountRemoval } from "./account-removal";
 import React, { useEffect, useState } from "react";
 import { Plus, CheckCheck, Save, LogIn, LogOut } from "lucide-react";
 import { get, post } from "../api";
@@ -231,7 +232,9 @@ export function Attendance({ config, can, notify, term, go }) {
             title: "No enrolled students in this class",
             description:
               "Complete an admission and class assignment to begin recording attendance.",
-            children: can("admissions.write") ? <Button onClick={() => go("admissions")}>Enroll a student</Button> : null,
+            children: can("admissions.write") ? (
+              <Button onClick={() => go("admissions")}>Enroll a student</Button>
+            ) : null,
           }}
         />
       </Panel>
@@ -244,7 +247,8 @@ export function Staff({ can, notify, config }) {
     accounts = useData(can("staff.write") ? "/hr/staff/accounts" : null),
     [accountId, setAccountId] = useState(""),
     [tab, setTab] = useState("directory"),
-    [modal, setModal] = useState(null);
+    [modal, setModal] = useState(null),
+    [removeAccount, setRemoveAccount] = useState(null);
   async function action(path, body) {
     await post(path, body);
     staff.reload();
@@ -385,6 +389,28 @@ export function Staff({ can, notify, config }) {
                   </div>
                 ),
               },
+              ...(can("admin.write")
+                ? [
+                    {
+                      label: "Manage",
+                      render: (r) =>
+                        r.user_id && (
+                          <button
+                            className="text-button account-remove-link"
+                            onClick={() =>
+                              setRemoveAccount({
+                                id: r.user_id,
+                                name: `${r.first_name} ${r.last_name}`,
+                                email: r.email,
+                              })
+                            }
+                          >
+                            Delete profile
+                          </button>
+                        ),
+                    },
+                  ]
+                : []),
             ]}
             empty={{
               title: "Meet your school team",
@@ -425,6 +451,19 @@ export function Staff({ can, notify, config }) {
           />
         )}
       </Panel>
+      {removeAccount && (
+        <AccountRemoval
+          account={removeAccount}
+          onClose={() => setRemoveAccount(null)}
+          onRemoved={(message) => {
+            setRemoveAccount(null);
+            staff.reload();
+            attendance.reload();
+            accounts.reload();
+            notify(message);
+          }}
+        />
+      )}
       {modal && (
         <Modal
           title={

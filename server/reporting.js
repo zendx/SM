@@ -276,7 +276,7 @@ export function reportingRoutes(db) {
     if (key === "staff-performance")
       data = await rows(
         db,
-        "SELECT s.staff_number,s.first_name,s.last_name,s.department,y.name AS academic_year,r.overall_score,r.development_score,r.created_at FROM performance_reviews r JOIN staff s ON s.id=r.staff_id JOIN academic_years y ON y.id=r.academic_year_id WHERE r.school_id=$1 AND r.created_at::date BETWEEN $2 AND $3 ORDER BY r.created_at DESC",
+        "SELECT s.staff_number,s.first_name,s.last_name,s.department,y.name AS academic_year,r.overall_score,r.development_score,r.created_at FROM performance_reviews r JOIN staff s ON s.id=r.staff_id JOIN academic_years y ON y.id=r.academic_year_id WHERE r.school_id=$1 AND s.archived_at IS NULL AND r.created_at::date BETWEEN $2 AND $3 ORDER BY r.created_at DESC",
         [req.user.school_id, from, to],
       );
     if (key === "students")
@@ -314,7 +314,7 @@ export function reportingRoutes(db) {
     if (key === "staff")
       data = await rows(
         db,
-        "SELECT a.attendance_date,s.staff_number,s.first_name,s.last_name,s.department,a.status,a.check_in_time,a.check_out_time,round(extract(epoch FROM(a.check_out_time-a.check_in_time))/3600,2) AS hours FROM staff_attendance a JOIN staff s ON s.id=a.staff_id WHERE a.school_id=$1 AND a.attendance_date BETWEEN $2 AND $3 ORDER BY a.attendance_date DESC",
+        "SELECT a.attendance_date,s.staff_number,s.first_name,s.last_name,s.department,a.status,a.check_in_time,a.check_out_time,round(extract(epoch FROM(a.check_out_time-a.check_in_time))/3600,2) AS hours FROM staff_attendance a JOIN staff s ON s.id=a.staff_id WHERE a.school_id=$1 AND s.archived_at IS NULL AND a.attendance_date BETWEEN $2 AND $3 ORDER BY a.attendance_date DESC",
         [req.user.school_id, from, to],
       );
     await audit(db, req.user, "reports", 0, "EXPORT", null, {

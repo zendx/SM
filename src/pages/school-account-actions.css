@@ -1,0 +1,56 @@
+﻿.school-account-action-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #dfe7d7;
+  border-radius: 11px;
+  background: #f5f8f0;
+  color: #71895a;
+}
+.school-account-action-summary > svg {
+  flex-shrink: 0;
+}
+.school-account-action-summary > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.school-account-action-summary strong {
+  font-size: 15px;
+  color: #405535;
+  overflow-wrap: anywhere;
+}
+.school-account-action-summary span,
+.school-account-action-summary small {
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.account-field select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #dbe5d7;
+  border-radius: 9px;
+  padding: 12px 13px;
+  font-size: 14px;
+  background: #fff;
+  color: #526847;
+}
+.school-account-status {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding: 3px;
+}
+.school-account-status > p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0;
+  color: #7a876e;
+}
+@media (max-width: 700px) {
+  .account-field select {
+    font-size: 16px;
+  }
+}

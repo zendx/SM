@@ -1,5 +1,10 @@
+import {
+  SchoolAccountEditor,
+  AccountStatusChange,
+} from "./school-account-actions";
+import { AccountRemoval } from "./account-removal";
 import { SiteSettings } from "./site-settings";
-import { SchoolBranding } from './school-branding';
+import { SchoolBranding } from "./school-branding";
 import React, { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { IntegrationSettings } from "./integrations";
@@ -235,6 +240,8 @@ export function Administration({
           : "school",
     ),
     [modal, setModal] = useState(null),
+    [removeAccount, setRemoveAccount] = useState(null),
+    [accountStatus, setAccountStatus] = useState(null),
     [mfa, setMfa] = useState(null),
     [enabled, setEnabled] = useState(user.mfa_enabled),
     [recovery, setRecovery] = useState(null);
@@ -354,7 +361,10 @@ export function Administration({
           description="Set the preferences and limits your school uses each day."
         >
           <div className="settings-form">
-            <SchoolBranding school={config.school} reloadConfig={reloadConfig} />
+            <SchoolBranding
+              school={config.school}
+              reloadConfig={reloadConfig}
+            />
             <div className="notice">
               Public application form:{" "}
               <a
@@ -550,6 +560,40 @@ export function Administration({
           </Panel>
         </>
       )}
+      {accountStatus && (
+        <AccountStatusChange
+          account={accountStatus}
+          onClose={() => setAccountStatus(null)}
+          onChanged={(message) => {
+            setAccountStatus(null);
+            users.reload();
+            notify(message);
+          }}
+        />
+      )}
+      {modal?.type === "edit-user" && (
+        <SchoolAccountEditor
+          account={modal.row}
+          roles={config.roles}
+          onClose={() => setModal(null)}
+          onSaved={() => {
+            setModal(null);
+            users.reload();
+            notify("Account details updated.");
+          }}
+        />
+      )}
+      {removeAccount && (
+        <AccountRemoval
+          account={removeAccount}
+          onClose={() => setRemoveAccount(null)}
+          onRemoved={(message) => {
+            setRemoveAccount(null);
+            users.reload();
+            notify(message);
+          }}
+        />
+      )}
       {tab === "users" && (
         <Panel
           title="User accounts"
@@ -584,12 +628,28 @@ export function Administration({
                 label: "Manage",
                 render: (r) =>
                   r.id !== user.id && (
-                    <button
-                      className="text-button"
-                      onClick={() => setModal({ type: "edit-user", row: r })}
-                    >
-                      Edit access
-                    </button>
+                    <div className="row-actions">
+                      <button
+                        className="text-button"
+                        onClick={() => setModal({ type: "edit-user", row: r })}
+                      >
+                        Edit account
+                      </button>
+                      <button
+                        className="text-button"
+                        onClick={() => setAccountStatus(r)}
+                      >
+                        {r.status === "SUSPENDED"
+                          ? "Restore account"
+                          : "Suspend account"}
+                      </button>
+                      <button
+                        className="text-button account-remove-link"
+                        onClick={() => setRemoveAccount(r)}
+                      >
+                        Delete account
+                      </button>
+                    </div>
                   ),
               },
             ]}
@@ -761,7 +821,7 @@ export function Administration({
           </div>
         </Panel>
       )}
-      {modal && (
+      {modal && modal.type !== "edit-user" && (
         <Modal
           title={
             {
@@ -876,26 +936,6 @@ export function Administration({
                 },
               ]}
               onSubmit={(v) => save("/users", v)}
-            />
-          )}{" "}
-          {modal.type === "edit-user" && (
-            <Form
-              initial={modal.row}
-              fields={[
-                {
-                  name: "role",
-                  label: "Role",
-                  options: config.roles,
-                  wide: true,
-                },
-                {
-                  name: "status",
-                  label: "Status",
-                  options: ["ACTIVE", "SUSPENDED"],
-                  wide: true,
-                },
-              ]}
-              onSubmit={(v) => save(`/users/${modal.row.id}`, v, patch)}
             />
           )}{" "}
           {modal.type === "audit" && (

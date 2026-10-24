@@ -381,9 +381,10 @@ export function refinementRoutes(db, options = {}) {
         if (!l) fail(404, "Leave not found.");
         const s = await one(
           tx,
-          "SELECT * FROM staff WHERE school_id=$1 AND id=$2 FOR UPDATE",
+          "SELECT * FROM staff WHERE school_id=$1 AND id=$2 AND archived_at IS NULL FOR UPDATE",
           [u.school_id, l.staff_id],
         );
+        if (!s) fail(404, "Staff profile not found.");
         if (
           !permitted(u, "hr.manage") &&
           (s.user_id !== u.id || l.status === "APPROVED")
