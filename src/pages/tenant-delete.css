@@ -88,7 +88,7 @@
 .tenant-delete-form textarea {
   resize: vertical;
 }
-.tenant-delete-name {
+.tenant-delete-help {
   font-size: 12px;
   color: #8a7464;
   margin: 0;
@@ -131,4 +131,22 @@
   .tenant-delete-form textarea {
     font-size: 16px;
   }
+}
+
+.tenant-delete-form label > span {
+  font-weight: 400;
+  color: #8a9380;
+  font-size: 10px;
+}
+.tenant-delete-help {
+  line-height: 1.7;
+}
+.tenant-delete-field-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #a44738;
+}
+.tenant-delete-form [aria-invalid="true"] {
+  border-color: #b85b4b;
 }

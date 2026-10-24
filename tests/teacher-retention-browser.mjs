@@ -20,6 +20,12 @@ async function login(who, route) {
     viewport: { width: 1440, height: 1000 },
   });
   page.setDefaultTimeout(15000);
+  page.accountMemberRequests = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/v1/saas/owner/users")
+      page.accountMemberRequests.push(url);
+  });
   page.on("pageerror", (e) => errors.push(e.message));
   const r = await page.request.post(origin + "/api/v1/auth/login", {
     data: { email: f.users[who].email, password: f.password },
@@ -93,6 +99,18 @@ try {
   );
   const owner = await login("owner", "/owner#users");
   await expect(owner.locator(".school-account-card")).toHaveCount(2);
+  await expect(owner.locator(".school-user-row")).toHaveCount(0);
+  await expect(owner.getByText("Ada Okafor", { exact: true })).toHaveCount(0);
+  assert.equal(
+    owner.accountMemberRequests.length,
+    0,
+    "User accounts must not load before a customer is expanded",
+  );
+  await owner.screenshot({
+    path: "test-results/teacher-retention/customer-schools-collapsed.png",
+    fullPage: true,
+    animations: "disabled",
+  });
   await expect(owner.getByText("Mariam Bello", { exact: true })).toHaveCount(0);
   const heading = owner.getByRole("button", { name: /Greenfield Academy/ });
   await heading.click();
@@ -101,6 +119,12 @@ try {
     exact: true,
   });
   await expect(users.locator(".school-user-row")).toHaveCount(3);
+  assert.ok(
+    owner.accountMemberRequests.every(
+      (url) => url.searchParams.get("school_id") === String(f.school.id),
+    ),
+    "Expanded accounts must be scoped to the selected school",
+  );
   await expect(users.getByText("Ada Okafor", { exact: true })).toBeVisible();
   await expect(
     users.getByText("Other Administrator", { exact: true }),
@@ -125,6 +149,10 @@ try {
       animations: "disabled",
     });
   }
+  await heading.click();
+  await expect(owner.locator(".school-user-row")).toHaveCount(0);
+  await heading.click();
+  await expect(users.locator(".school-user-row")).toHaveCount(3);
   await users.getByRole("button", { name: /Retained accounts/ }).click();
   await expect(users.locator(".school-user-row")).toHaveCount(1);
   await users

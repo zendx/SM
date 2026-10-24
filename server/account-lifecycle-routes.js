@@ -85,20 +85,12 @@ export function accountLifecycleRoutes(db) {
     const schoolId = z.coerce.number().int().positive().parse(req.params.id);
     const b = z
       .object({
-        reason: text.max(1000),
+        reason: z.string().trim().max(1000).optional(),
         confirmation: text,
-        password: z.string().min(1).max(128),
       })
       .strict()
       .parse(req.body);
     await db.transaction(async (tx) => {
-      const owner = await one(
-        tx,
-        "SELECT password_hash FROM users WHERE id=$1",
-        [req.user.id],
-      );
-      if (!verifyPassword(b.password, owner.password_hash))
-        fail(422, "Your password is incorrect.");
       if (
         await one(
           tx,
@@ -113,8 +105,8 @@ export function accountLifecycleRoutes(db) {
         [schoolId],
       );
       if (!sub) fail(404, "School not found.");
-      if (b.confirmation !== sub.name)
-        fail(422, "Enter the school name exactly to confirm deletion.");
+      if (b.confirmation !== sub.name.trim())
+        fail(422, "Retype the school's name exactly to confirm deletion.");
       if (sub.closed_at) fail(409, "This school account is already closed.");
       await tx.query(
         `UPDATE school_subscriptions SET tenant_previous_status=COALESCE(tenant_previous_status,status),
@@ -136,7 +128,7 @@ export function accountLifecycleRoutes(db) {
         req.user.id,
         "OWNER_ACCOUNT_DELETED",
         {
-          reason: b.reason,
+          reason: b.reason || "Owner confirmed deletion by school name.",
           records_retained: true,
           auto_renewal_disabled: true,
         },

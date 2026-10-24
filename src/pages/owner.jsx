@@ -8,7 +8,7 @@ import {
   NotificationBell,
 } from "./platform-notifications";
 import { PlatformTeam, ManagedSchools } from "./platform-team";
-import { OwnerIssues } from "./owner-support";
+import { OwnerIssues, OwnerAccounts } from "./owner-support";
 import { EmailTemplates } from "./email-templates";
 import React, { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -26,7 +26,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { get, post, patch, setCsrf } from "../api";
-import { Form, Button, Loading, Panel } from "../components";
+import { Form, Button, Loading, Panel, PageHead } from "../components";
 import { SaasOwner } from "./saas-billing";
 import "../saas.css";
 
@@ -515,6 +515,15 @@ export function OwnerPortal() {
             <PlatformInbox />
           ) : active === "team" ? (
             <PlatformTeam notify={setMessage} />
+          ) : active === "users" ? (
+            <>
+              <PageHead
+                eyebrow="SMPIS OWNER"
+                title="Customer accounts"
+                description="Each school is one customer. Expand a school to view and manage its users."
+              />
+              <OwnerAccounts notify={setMessage} />
+            </>
           ) : active === "issues" ? (
             <OwnerIssues notify={setMessage} />
           ) : active === "tenants" ? (

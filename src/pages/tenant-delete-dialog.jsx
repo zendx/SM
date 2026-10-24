@@ -5,22 +5,32 @@ import { Button, Modal } from "../components";
 import "./tenant-delete.css";
 
 export function TenantDeleteDialog({ tenant, onClose, onDeleted }) {
-  const [confirmation, setConfirmation] = useState(""),
-    [password, setPassword] = useState(""),
-    [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const sending = useRef(false);
   async function remove(e) {
     e.preventDefault();
     if (sending.current) return;
+    const form = e.currentTarget;
+    const confirmation = String(
+      new FormData(form).get("confirmation") || "",
+    ).trim();
+    if (!confirmation || confirmation !== tenant.name.trim()) {
+      setError(
+        !confirmation
+          ? "Retype the school name to confirm deletion."
+          : "The school name does not match. Type the name shown above exactly.",
+      );
+      form.elements.namedItem("confirmation")?.focus();
+      return;
+    }
     sending.current = true;
     setBusy(true);
     setError("");
     try {
       const result = await api(`/saas/owner/tenants/${tenant.school_id}`, {
         method: "DELETE",
-        body: { confirmation, password, reason },
+        body: { confirmation },
       });
       onDeleted(result.data.message);
     } catch (e) {
@@ -37,7 +47,7 @@ export function TenantDeleteDialog({ tenant, onClose, onDeleted }) {
         if (!busy) onClose();
       }}
     >
-      <form className="tenant-delete-form" onSubmit={remove}>
+      <form className="tenant-delete-form" onSubmit={remove} noValidate>
         <div className="tenant-delete-summary">
           <span>
             <Trash2 size={21} />
@@ -61,44 +71,36 @@ export function TenantDeleteDialog({ tenant, onClose, onDeleted }) {
             </p>
           </div>
         </div>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
         <fieldset disabled={busy}>
-          <label htmlFor="tenant-delete-reason">Reason for deletion</label>
-          <textarea
-            id="tenant-delete-reason"
-            required
-            maxLength={1000}
-            rows={3}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Record why you are closing this account"
-          />
           <label htmlFor="tenant-delete-confirmation">
-            Type the school name to confirm
+            Retype the school name
           </label>
-          <p className="tenant-delete-name">{tenant.name}</p>
+          <p id="tenant-delete-help" className="tenant-delete-help">
+            Type <strong>{tenant.name}</strong> to confirm deletion.
+          </p>
           <input
             id="tenant-delete-confirmation"
+            name="confirmation"
+            type="text"
             required
-            autoComplete="off"
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
             maxLength={250}
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            defaultValue=""
+            aria-invalid={!!error}
+            aria-describedby={`tenant-delete-help${error ? " tenant-delete-error" : ""}`}
+            onChange={() => setError("")}
           />
-          <label htmlFor="tenant-delete-password">Your owner password</label>
-          <input
-            id="tenant-delete-password"
-            required
-            type="password"
-            autoComplete="current-password"
-            maxLength={128}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          {error && (
+            <p
+              id="tenant-delete-error"
+              className="tenant-delete-field-error"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
         </fieldset>
         <div className="tenant-delete-footer">
           <Button secondary type="button" disabled={busy} onClick={onClose}>
@@ -107,12 +109,7 @@ export function TenantDeleteDialog({ tenant, onClose, onDeleted }) {
           <Button
             type="submit"
             className="btn tenant-delete-confirm"
-            disabled={
-              busy ||
-              confirmation.trim() !== tenant.name ||
-              !reason.trim() ||
-              !password
-            }
+            disabled={busy}
           >
             <Trash2 size={15} />
             {busy ? "Deleting…" : "Delete account"}

@@ -256,6 +256,7 @@ export function OwnerSchoolAccounts({ revision, onManage, onRetained }) {
                   <button
                     className="school-account-heading"
                     type="button"
+                    aria-label={`${expanded === s.id ? "Hide" : "View"} accounts for ${s.name}`}
                     aria-expanded={expanded === s.id}
                     aria-controls={`school-accounts-${s.id}`}
                     onClick={() =>
@@ -273,24 +274,19 @@ export function OwnerSchoolAccounts({ revision, onManage, onRetained }) {
                       <small>
                         {s.administrator?.email || `/${s.portal_slug}/`}
                       </small>
+                      <small className="school-account-toggle-text">
+                        {expanded === s.id
+                          ? "Hide school accounts"
+                          : "View school accounts"}
+                      </small>
                     </span>
                     <span className="school-account-overview">
                       <span className="school-account-count">
                         <Users size={15} />
-                        {s.user_count} accounts
+                        {s.user_count} school users
                         {s.retained_count > 0 && (
                           <small> · {s.retained_count} retained</small>
                         )}
-                      </span>
-                      <span className="school-account-role-counts">
-                        {Object.entries(s.role_counts)
-                          .sort((a, b) => b[1] - a[1])
-                          .slice(0, 3)
-                          .map(([role, count]) => (
-                            <span key={role}>
-                              {count} {human(role)}
-                            </span>
-                          ))}
                       </span>
                     </span>
                     <Badge

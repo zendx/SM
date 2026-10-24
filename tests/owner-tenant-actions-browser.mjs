@@ -26,14 +26,12 @@ try {
   });
   assert.equal(response.status(), 200);
   await page.goto(origin + "/owner#tenants");
-  const panel = page
-    .locator(".panel")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Tenant accounts & subscriptions",
-        exact: true,
-      }),
-    });
+  const panel = page.locator(".panel").filter({
+    has: page.getByRole("heading", {
+      name: "Tenant accounts & subscriptions",
+      exact: true,
+    }),
+  });
   await expect(panel).toBeVisible();
   const cookies = page.getByRole("button", {
     name: "Accept required cookies",
@@ -65,18 +63,34 @@ try {
     exact: true,
   });
   await expect(dialog).toBeVisible();
-  await page
-    .getByLabel("Reason for deletion", { exact: true })
-    .fill("School requested closure");
-  await page
-    .getByLabel("Your owner password", { exact: true })
-    .fill(f.password);
+  const deleteButton = dialog.getByRole("button", {
+    name: "Delete account",
+    exact: true,
+  });
+  await expect(dialog.locator("input")).toHaveCount(1);
   await expect(
-    dialog.getByRole("button", { name: "Delete account", exact: true }),
-  ).toBeDisabled();
-  await page
-    .getByLabel("Type the school name to confirm", { exact: true })
+    dialog.locator("input[type=email],input[type=password],textarea"),
+  ).toHaveCount(0);
+  await expect(deleteButton).toBeEnabled();
+  await deleteButton.click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Retype the school name to confirm deletion.",
+  );
+  await expect(
+    dialog.getByLabel("Retype the school name", { exact: true }),
+  ).toBeFocused();
+  await dialog
+    .getByLabel("Retype the school name", { exact: true })
+    .fill("Wrong school");
+  await deleteButton.click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "The school name does not match.",
+  );
+  await dialog
+    .getByLabel("Retype the school name", { exact: true })
     .fill(f.school.name);
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await expect(deleteButton).toBeEnabled();
   await mkdir("test-results/owner-tenant-actions", { recursive: true });
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -108,14 +122,12 @@ try {
     .click();
   await expect(dialog).toHaveCount(0);
   await expect(row).toContainText(/deleted/i);
-  const recovery = page
-    .locator(".panel")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Deleted accounts & closure requests",
-        exact: true,
-      }),
-    });
+  const recovery = page.locator(".panel").filter({
+    has: page.getByRole("heading", {
+      name: "Deleted accounts & closure requests",
+      exact: true,
+    }),
+  });
   await expect(
     recovery.getByRole("row").filter({ hasText: "Greenfield Academy" }),
   ).toContainText(/deleted/i);
@@ -136,7 +148,7 @@ try {
   assert.equal(sub.closed_at, null);
   assert.deepEqual(errors, []);
   console.log(
-    "Owner tenant actions passed: suspend, restore, typed deletion confirmation, closure, refreshed recovery list and reactivation; desktop and mobile padding.",
+    "Owner tenant actions passed: suspend, restore, school-name-only deletion confirmation, closure, refreshed recovery list and reactivation; desktop and mobile padding.",
   );
 } finally {
   await browser.close();

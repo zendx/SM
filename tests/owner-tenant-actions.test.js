@@ -67,7 +67,6 @@ after(async () => {
 const deletion = () => ({
   reason: "School requested closure",
   confirmation: f.school.name,
-  password: f.password,
 });
 test("owner suspends and restores tenant operational access without extending its trial", async () => {
   const end = (
@@ -120,7 +119,7 @@ test("owner suspends and restores tenant operational access without extending it
     String(end),
   );
 });
-test("tenant deletion requires full owner access, password and exact school name", async () => {
+test("tenant deletion requires full owner access and the exact school name", async () => {
   for (const key of ["tenant", "delegate"])
     assert.equal(
       (
@@ -136,7 +135,7 @@ test("tenant deletion requires full owner access, password and exact school name
     (
       await request(`/saas/owner/tenants/${f.school.id}`, {
         method: "DELETE",
-        body: { ...deletion(), password: "wrong" },
+        body: { ...deletion(), confirmation: f.users.owner.email },
       })
     ).status,
     422,
@@ -145,7 +144,7 @@ test("tenant deletion requires full owner access, password and exact school name
     (
       await request(`/saas/owner/tenants/${f.school.id}`, {
         method: "DELETE",
-        body: { ...deletion(), confirmation: "wrong school" },
+        body: { ...deletion(), confirmation: "not-the-owner@example.com" },
       })
     ).status,
     422,
@@ -177,7 +176,7 @@ test("deleting a tenant closes sign-in, revokes sessions and renewal, and retain
   });
   const r = await request(`/saas/owner/tenants/${f.school.id}`, {
     method: "DELETE",
-    body: deletion(),
+    body: { confirmation: `  ${f.school.name}  ` },
   });
   assert.equal(r.status, 200, JSON.stringify(r));
   const sub = await one(
