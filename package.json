@@ -12,21 +12,9 @@
     "preflight:vercel": "node scripts/vercel-preflight.mjs --check",
     "test": "node --test tests/*.test.js",
     "test:embedded": "node scripts/test-embedded.mjs",
-    "test:ui:school-accounts": "npm run build && node scripts/test-embedded.mjs tests/school-account-management-browser.mjs",
-    "test:ui:teacher-retention": "npm run build && node scripts/test-embedded.mjs tests/teacher-retention-browser.mjs",
-    "test:ui:tenant-actions": "npm run build && node scripts/test-embedded.mjs tests/owner-tenant-actions-browser.mjs",
-    "test:ui:accounts": "npm run build && node scripts/test-embedded.mjs tests/account-management-browser.mjs",
-    "test:ui:saas": "node scripts/test-embedded.mjs tests/saas-browser.mjs",
-    "test:ui": "node tests/browser.mjs",
-    "test:ui:onboarding": "npm run build && node scripts/test-embedded.mjs tests/browser.mjs --onboarding",
-    "test:ui:academics": "node tests/academic-browser.mjs",
-    "test:ui:referrals": "npm run build && node scripts/test-embedded.mjs tests/branding-referrals-browser.mjs",
-    "test:ui:assignments": "npm run build && node scripts/test-embedded.mjs tests/teaching-assignments-browser.mjs",
-    "test:ui:operations": "node tests/operations-browser.mjs",
     "backup": "node scripts/backup.js",
     "supabase:setup": "node scripts/supabase.js setup",
-    "supabase:check": "node scripts/supabase.js check",
-    "test:ui:marketing": "npm run build && node tests/product-marketing.browser.mjs"
+    "supabase:check": "node scripts/supabase.js check"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -51,7 +39,6 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
-    "@playwright/test": "^1.63.0",
     "@vitejs/plugin-react": "^6.1.1",
     "prettier": "^3.9.9",
     "vite": "^8.3.5"

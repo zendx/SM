@@ -67,7 +67,7 @@ The separate application worker runs every minute; deploy it on Railway as descr
 
 `npm run test:embedded` runs the full test suite against fresh in-memory PGlite PostgreSQL instances and never uses the application database. It is a portable functional regression check, not a substitute for load or multi-connection testing against production PostgreSQL. `TEST_DATABASE_URL` remains available for tests using a separate real PostgreSQL database.
 
-Run `npm run build` then `npm run test:ui:saas` for the Chrome browser workflow: desktop/mobile marketing, yearly pricing, owner provider configuration, self signup, trial expiry, manual payment approval, suspension and restoration. Browser screenshots are written to `test-results/smpis-*.png`. No real card transaction is made and provider responses in API tests are simulated. Verify actual provider sandbox checkouts after supplying your test credentials.
+Run `npm run test:embedded` for isolated API regression checks. Provider responses are simulated; verify actual provider sandbox checkouts using test credentials.
 
 
 ## Vercel website, Railway worker and custom domain

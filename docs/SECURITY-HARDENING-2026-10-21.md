@@ -1,6 +1,6 @@
 # Security remediation and deployment notes
 
-Date: 21 October 2026. Related assessment: [WHITEBOX-ASSESSMENT-2026-10-21.md](WHITEBOX-ASSESSMENT-2026-10-21.md).
+Security configuration, deployment and recovery reference.
 
 ## Critical additional finding: build configuration loader
 
@@ -75,4 +75,4 @@ Final local validation results are recorded in the assessment remediation addend
 
 ## Subsequent publication preparation
 
-The later [Vercel/history handoff](PUBLISH-READINESS-2026-10-21.md) supersedes the earlier statement that no local Git history had been rewritten. It records the historical `.env` and additional remote loader discovery, completed local history cleanup with private encrypted recovery, remaining GitHub/credential work, the clean source upload package, and the live schema blocker. Production rollout is guarded by a read-only Vercel build preflight. After the user confirmed web and worker shutdown, the live schema/MFA migration was applied from a verified encrypted recovery backup; protection, storage, decryption and row-count checks passed. The publication handoff records the current deployment and recovery state.
+Deployment is guarded by the read-only Vercel preflight. Apply required schema migrations before deploying compatible web and worker releases. Preserve encryption keys and verify recovery backups.

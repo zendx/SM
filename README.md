@@ -1,111 +1,53 @@
 # SMPIS
 
-Railway workers can use the existing Brevo account through HTTPS: see [Brevo Railway setup](docs/BREVO-RAILWAY.md). Set `EMAIL_PROVIDER=brevo` and a private `BREVO_API_KEY`; the default SMTP transport remains available for other deployments.
+School Management, Performance and Intelligence System built with React, Express, Supabase PostgreSQL and private Supabase Storage. Requires Node.js 22.12 or later.
 
-For current notification delivery behavior, Railway SMTP configuration and owner delivery diagnostics, see [Email delivery diagnosis and recovery](docs/EMAIL-DELIVERY.md). Announcements and support messages are now emailed even when read or while the recipient is online; only MFA reminders retain the unread/offline rules described in older release notes below.
+## Development
 
-School logos and marketer referrals are documented in [School branding and referrals](docs/SCHOOL-BRANDING-AND-REFERRALS.md), including the required schema rollout, first-payment commission rules and owner payout workflow.
+Keep existing credentials in the private .env file. For a new installation, copy .env.example and configure the database, storage, application URL, encryption keys and email provider.
 
-School Management, Performance and Intelligence System built with React, Express, Supabase PostgreSQL, and private Supabase Storage.
+```powershell
+npm ci
+npm run dev
+```
 
-**Security deployment update (21 October 2026):** Read [the remediation and deployment notes](docs/SECURITY-HARDENING-2026-10-21.md) before upgrading. They cover mandatory privileged MFA, protected setup, account activation links, schema/key migration, approved SMTP hosts, encrypted backups, and the removed build-configuration loader. Apply the schema before deploying the web app and worker together.
+Open http://127.0.0.1:3000. Start background jobs in another terminal with `npm run worker`. Owners sign in at /owner; schools register at /signup.
 
-## Deploy to Vercel
+## Deployment
 
-1. Push this repository to GitHub and import it into Vercel using the **Express** framework preset and the repository root.
-2. Add the environment variables listed in [the deployment guide](docs/VERCEL-DEPLOYMENT.md). Keep the same `INTEGRATION_ENCRYPTION_KEY` as your local `.env`.
-3. Build with `npm run build:vercel`; frontend assets are built into `public`. Vercel searches the project root (`outputDirectory: "."`) for the Express entry point. These settings are already in `vercel.json`.
-4. Deploy, check `/healthz`, and verify login, MFA, and document upload/download.
+Vercel runs the Express web app; Railway runs the background worker. Preserve existing encryption keys across both services and all migrations.
 
-Before deploying schema changes, run locally with your private Supabase configuration:
+Before deploying schema changes, take an encrypted backup and apply the schema from a trusted environment:
 
 ```powershell
 npm run supabase:setup
 npm run supabase:check
+npm run preflight:vercel
+npm run build:vercel
 ```
 
-## Local development
+The Vercel build checks configuration, schema protection, encrypted records and private storage before generating frontend assets in public/. Do not bypass a failed preflight. Verify /healthz, sign-in, MFA and document access after deployment.
 
-Requires Node.js 22.12 or later. Configure `.env` from `.env.example` without replacing existing credentials, then run:
-
-```powershell
-npm install
-npm run dev
-```
-
-Open http://127.0.0.1:3000 for the public SMPIS landing page. On a new installation, `/owner` creates a standalone SMPIS business owner account without a school; no default accounts are supplied. Existing owner accounts retain platform access. Schools register at `/signup` and get portals such as `/greenfield-academy/`. See [SaaS setup and payments](docs/SAAS.md).
-
-For local background jobs, start `npm run worker` in a second terminal. For production, deploy the worker separately on Railway; see [Railway worker setup](docs/RAILWAY-WORKER.md).
-
-## Administration
-
-Super admins manage school-specific Paystack, Flutterwave, and Twilio credentials in **Administration > Integrations**. Secrets are encrypted and hidden after saving. All email uses the product owner?s server-configured SMTP_URL and MAIL_FROM; tenants cannot configure or override email delivery. Legacy tenant SMTP records are ignored. Paystack powers the existing payment workflows. Flutterwave checkout and Twilio SMS delivery are not implemented.
-
+- [Vercel deployment](docs/VERCEL-DEPLOYMENT.md)
+- [Railway worker](docs/RAILWAY-WORKER.md)
+- [Email delivery](docs/EMAIL-DELIVERY.md)
+- [Brevo setup](docs/BREVO-RAILWAY.md)
+- [Subscriptions and payments](docs/SAAS.md)
+- [Automatic renewals](docs/AUTOMATIC-RENEWALS.md)
+- [School branding and referrals](docs/SCHOOL-BRANDING-AND-REFERRALS.md)
+- [Security and recovery](docs/SECURITY-HARDENING-2026-10-21.md)
 
 ## Verification
 
 ```powershell
-npm test
-npm run build:vercel
-npm run test:ui
+npm run test:embedded
+npm run build
 ```
 
-Browser tests use `dist`; run `npm run build` before `npm run test:ui`. Keep `.env`, school data, backups, and the encryption key private. Use the encrypted SQL-plus-referenced-documents backup and restore procedure in the security deployment notes; verify managed Supabase recovery separately.
+The regression suite uses an isolated embedded PostgreSQL database. `npm test` can also use an isolated schema through TEST_DATABASE_URL; database tests skip if it is absent. Tests never use the application DATABASE_URL.
 
-Authentication rate limits are shared through PostgreSQL and apply by IP and account. Production mode (`npm start`, `NODE_ENV=production`, or Vercel) enables Secure session cookies and requires HTTPS for browser login. Run `npm run supabase:setup` before deploying these changes to create the rate-limit table and notification claim columns.
+## Backups
 
-Email workers claim each notification for five minutes before sending; overlapping workers cannot claim the same active message, and expired claims can be retried. SMTP cannot guarantee exactly-once delivery if a worker stops after the provider accepts a message but before its sent status is saved. Password reset requests return the same public response for unknown accounts, missing platform SMTP settings, and delivery failures; delivery failures are logged on the server.
+`npm run backup` creates an encrypted SQL and referenced-document backup. Configure a separate BACKUP_ENCRYPTION_KEY and ensure pg_dump is installed. Preserve the key separately from the backup and verify restoration before relying on it. `scripts/decrypt-backup.js` decrypts into a new file without overwriting existing files.
 
-## Legal pages and cookies
-
-Public HTML includes a meta description, canonical link, Open Graph metadata, JSON-LD and a visible heading before JavaScript loads. Set `APP_URL` to the final public HTTPS site origin before building and deploying so canonical links identify the correct site. SMPIS production uses `https://www.smpis.digital`, matching the hosting redirect from the apex domain. `PUBLIC_SITE_URL` can explicitly override the public canonical origin if the hosting primary domain changes. Vercel can also use `VERCEL_PROJECT_PRODUCTION_URL` when `APP_URL` is unset. Rebuild after changing this URL: the static homepage metadata is generated during the Vite build. Policy pages receive their own metadata from Express. The Vite build also emits `sitemap.xml` and `robots.txt` using the same public origin and public page list as Express; tenant portals, sign-in and signup pages are excluded from the sitemap.
-
-Terms, Privacy, and Cookies are public at `/terms`, `/privacy`, and `/cookies`. Super admins publish the operator name and privacy email in Administration > Site settings. The notice inventories the actual application cookies: `smpis_session` (8-hour, HttpOnly login session) and `smpis_cookie_preferences` (365-day notice preference, created on acceptance). No application analytics or advertising cookies are configured. The notice can be dismissed without saving a preference.
-
-## Local database selection
-
-
-Run `npm run build:vercel` followed by `node tests/site-browser.mjs` to verify public policy pages, cookie preferences, published legal contacts in Chrome against an isolated test database.
-
-Supabase is the only database for development and deployment. Integration and browser tests require a separate PostgreSQL `TEST_DATABASE_URL`; each run creates and removes its own isolated schema. Without this variable, `npm test` runs the standalone checks and explicitly skips database integration tests. Tests never use your application `DATABASE_URL`.
-
-New owner and school registrations require email verification. Set APP_URL, SMTP_URL, and MAIL_FROM on the server before accepting signups. Verification links expire after 24 hours; users can request another link on /login. Existing accounts remain verified. MFA enrollment is required for privileged accounts before workspace access; other accounts may enroll voluntarily. Enrolled accounts verify each new login. Free trials last 30 days, including existing 14-day trials extended by 16 days without resetting their start date. Owners can open any school portal from the Schools list and work with super administrator permissions; audit entries retain the owner user ID.
-
-The school Support menu routes requests to Sales or Technical. The owner console's Customer Support section sees both departments. Console Team creates delegated Sales, Technical, or Schools and Subscriptions accounts; these accounts verify their email and sign in at /owner, and cannot open tenant dashboards or manage team permissions. Schools and Subscriptions lists subscription metadata and supports suspension/restoration without exposing tenant records or payment credentials.
-
-School administrators cannot pause subscriptions. Previously paused schools can still resume access from Subscription, confirming their password, without extending expiry. Account deletion requests immediately suspend operations, retain administrator Support access for three calendar months, and then block all school sign-in. The worker finalizes closure and revokes sessions; login and existing sessions also check the deadline directly, so access closes even if the worker is delayed. School records, audit history and email addresses remain stored. Full owners can reactivate closed or pending-deletion schools under Schools and Subscriptions, without granting a new trial. Run npm run supabase:setup to apply these additions on deployed databases.
-
-Tenant registration requires an administrator phone number (7?15 digits, with optional country-code prefix and common separators). Existing account phone numbers remain blank until collected. Full owners can export administrator emails and phone numbers from Tenant communications and send a message to one, several, or all eligible schools. Each administrator has a private SMPIS inbox. Support submissions alert full owners and staff assigned to the matching department; replies alert the requester. A visible signed-in page sends a presence heartbeat every 30 seconds. The worker emails unread messages when no verified session has been active for two minutes; reading a message prevents pending email delivery. Email delivery uses platform SMTP, retries failures up to five attempts, and claims messages to prevent overlapping workers from sending the same active message. Run npm run worker continuously (or schedule the existing background job) to deliver email notifications; without a worker, inbox messages still appear but email stays queued. Apply the schema additions with npm run supabase:setup before deployment.
-
-Full owners can set Monthly Pro price (USD) and Yearly Pro price (USD) under Payment settings. The global exchange rate converts these base prices into the chosen display and payment currency. New quotes, signup pricing, billing and reminders use the saved prices; previously created payment quotes and recorded revenue retain their original amounts. Yearly savings are calculated from the actual monthly and yearly prices. Pricing changes do not extend or shorten existing subscriptions.
-
-Customer support exposes Reply / manage ticket for full owners and matching departmental staff. Replies retain author and timestamp history and alert the requester in their inbox or through offline email delivery. A status-only update preserves previous replies. Existing responses are migrated into reply history. Mark all as read clears every unread notification for the signed-in owner, delegated staff member or tenant, including messages beyond the 100-item inbox display; queued unread-email delivery stops for those messages.
-
-Full owners edit email subjects and message text under Email templates: verification, password reset, tenant announcements, support replies, inbound support-ticket alerts, subscription reminders, school alerts and MFA reminders. All deliveries wrap this text in branded SMPIS HTML with an embedded graduation-cap logo, green and cream colours, clickable action buttons and a plain-text fallback. Supported placeholders are shown in the editor; required links and notification bodies cannot be removed. Changes are audited and apply to subsequent deliveries, including queued messages. Inbound alerts are emails to the owner and matching support department about portal submissions; this does not provide an external email inbox or ingest replies sent to MAIL_FROM. Apply the notification tables and columns with npm run supabase:setup if not already installed, restart or redeploy the app and worker, and keep npm run worker running for queued email delivery.
-
-School signup asks users to confirm their password and rejects mismatches before submitting registration. Verified active users without MFA receive a reminder after seven days and weekly thereafter until they enable it. Tenant reminders require an active, unexpired trial or subscription. Reminders use the existing inbox and offline email flow, are deduplicated per user and week, and link to Administration for school users or Account security for console users. Deploy the app and Railway worker together with APP_URL, platform SMTP_URL and MAIL_FROM configured; no additional schema change is required for branded emails or MFA reminders on an up-to-date installation.
-
-Signup email screening uses the server-side StopReg API. Set STOPREG_API_TOKEN in .env locally and in the hosting environment to enable it, then restart or redeploy. Without a token, signup retains the existing email-verification flow. See https://stopreg.com/documentation for the API endpoint and response contract. Disposable addresses, blocklisted addresses/domains, and policy actions warn or block are rejected with a clear registration message before records are created or verification mail is sent. Public, school, role-based, relay and alias addresses are accepted when StopReg allows them and they are not disposable or blocklisted. Configured screening fails closed on timeouts, quota exhaustion, invalid credentials or malformed responses, with a temporary retry message. Existing sign-in is unaffected. The API token and raw provider errors are never sent to the browser. No database migration is needed for this integration.
-
-
-Subscription payment methods are controlled by the full owner: Owner > Payment settings. Card providers are offered to tenants only when enabled, configured and in LIVE mode. Sandbox and disabled providers are omitted from tenant subscription responses and checkout rejects them. Manual subscription payments require the explicit "Manual subscription payments available (live)" switch and complete bank details; saved bank details alone do not enable them. Existing payment history is retained.
-
-School fee collection is independent of subscription gateways. Super administrators configure Manual, PayPal, Paystack, Flutterwave and Stripe under Administration > Integrations using their own encrypted credentials. Finance > Make a fee payment offers only school-enabled methods. Manual transfers remain pending until school finance verifies their bank statement and confirms receipt. Card checkout returns to the school Finance page for server-side verification; Finance can also check pending payments later. Successful live payments credit invoices once; test payments never credit invoices, and amounts above the current balance go to review. Stripe/PayPal/Flutterwave use provider API verification on return or Check payment; the existing Paystack webhook also remains supported. An abandoned card checkout is reconciled through Check payment. Live card payment requires HTTPS APP_URL. Provider-supported currencies still apply; PayPal does not support NGN, so use a supported school currency for PayPal. Apply the database additions with npm run supabase:setup before deployment.
-
-
-School signup requires an unchecked privacy-policy acknowledgment and stores the version and server timestamp. Promotional email and phone choices are separate optional checkboxes, both off by default. Existing accounts stay opted out after migration. Owner-created schools do not acquire tenant consent through owner action. Users manage Communication preferences in their SMPIS inbox; promotional email includes a signed unsubscribe link that works without login and requires confirmation. Tenant communications distinguishes service notices from promotional newsletters; newsletter audiences and delivery claims require current email consent. CSV exports show both choices and offer opted-in email or phone lists. Phone consent is recorded, but automated SMS remains unimplemented. Preference changes and signup acknowledgment are audited. Apply these new users columns with npm run supabase:setup before deploying the app and worker, then run npm run supabase:check. Keep the existing INTEGRATION_ENCRYPTION_KEY: unsubscribe signatures use the same server key.
-
-
-New school registrations receive a queued welcome email with account-security guidance and a portal menu tour scheduled 30 minutes after registration. Full owners manage New-user email sequence under Email templates: content, branded HTML previews, enable/pause, delay in minutes, additional steps, delivery queue and failed-email retries. Enabled steps enroll future registrations automatically. The minute-by-minute worker sends due onboarding messages independently of inbox activity; verification is still required to sign in. These are service emails, separate from promotional newsletters. Apply the onboarding schema with npm run supabase:setup before deploying the web app and Railway worker. See docs/RAILWAY-WORKER.md for timing, retry and editing behavior.
-
-Tenant administrators creating role accounts in Administration receive an immediate delivery result. New accounts have an unknown random password and remain activation-pending. The branded account email contains a single-use 30-minute activation link, never an initial password. The recipient chooses their password through the reset screen; consuming the link verifies their mailbox and enables sign-in. SMTP failure leaves the pending account intact; the recipient can request a password reset to activate. Apply the hardening schema before deployment. Privileged users must complete authenticator enrollment before ordinary workspace access; other users may enroll voluntarily.
-
-School administrators can edit School boarding status under Administration > School: Day, Boarding, or Day and boarding. This school-wide setting is separate from each student's boarding status. Existing schools default to Day; apply the new column with npm run supabase:setup before deployment.
-
-School administrators choose whether school buses are available under Administration > School > School bus service available. The option defaults off. Enabling it shows the optional transportation checkbox on public and staff application forms; disabling it hides the checkbox and rejects new transportation requests through the API. Existing student records are preserved. Apply the new schools column with npm run supabase:setup before deployment.
-
-Teachers receive a daily attendance popup after entering their school portal. Present records a check-in for their own active linked staff profile using the server time and school timezone; arrival after the configured staff start time is recorded as Late. Saved attendance suppresses the popup for that school date across reloads and logins. The portal checks again each minute and on returning to the tab. Teacher staff profiles are created automatically; an inactive staff profile shows guidance to contact the school administrator. Check-out remains in Staff & attendance.
-
-Teacher accounts automatically receive staff attendance profiles on creation or promotion to Teacher. Existing teachers are backfilled when the app starts and when staff/attendance is accessed. Existing linked employment records are preserved. No manual linking, second login, or additional schema change is needed for this automation. Automatically created profiles use the account creation date as the initial hire date; employment details can be completed in People & HR.
-
-Automatic tenant card renewals are available after explicit authorization at a verified live checkout. The background worker charges at expiry and retries confirmed failures every 12 hours through the configured grace period, with gentle owner-editable branded HTML notices. Existing payments do not enroll tenants automatically. See [Automatic renewals](docs/AUTOMATIC-RENEWALS.md) for deployment, provider requirements and verification.
+Keep .env, data/ and backups/ private. Build output, test results, caches and local environments are ignored by Git and excluded from deployment. Finished school guides and promotional deliverables remain in docs/.

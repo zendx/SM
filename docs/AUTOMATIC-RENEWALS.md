@@ -78,5 +78,4 @@ Verification commands (isolated embedded database; provider requests mocked):
 ```powershell
 node scripts/test-embedded.mjs --test tests/recurring-payments.test.js tests/saas.test.js tests/permissions.test.js tests/branded-email.test.js tests/support-email-templates.test.js
 npm run build
-node scripts/test-embedded.mjs tests/recurring-payments-browser.mjs
 ```

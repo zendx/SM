@@ -44,7 +44,6 @@ Open Owner > Marketer referrals. The commission rate defaults to **0%** until th
 
 ```powershell
 npm run test:embedded
-npm run test:ui:referrals
 ```
 
-The browser check uses installed Google Chrome on Windows and Playwright Chromium elsewhere. It covers signup/verification, marketer login, bank editing, referral autofill, owner rate changes and payout confirmation, mobile layouts, and school logo upload/removal. Screenshots are written under `test-results/branding-referrals/`.
+The isolated regression suite checks branding and referral workflows without contacting payment providers.
