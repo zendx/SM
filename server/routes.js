@@ -1256,7 +1256,11 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         res,
         await rows(
           db,
-          "SELECT id,name,email FROM users WHERE school_id=$1 AND role='PARENT' AND status='ACTIVE' ORDER BY name,id",
+          `SELECT u.id,u.name,u.email,
+          COALESCE((SELECT json_agg(json_build_object('name',s.first_name || ' ' || s.last_name,'class_id',s.class_id,'class_name',c.name) ORDER BY s.first_name,s.id)
+            FROM students s LEFT JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
+            WHERE s.school_id=u.school_id AND s.parent_user_id=u.id AND s.status='ENROLLED'), '[]'::json) AS children
+          FROM users u WHERE u.school_id=$1 AND u.role='PARENT' AND u.status='ACTIVE' ORDER BY u.name,u.id`,
           [req.user.school_id],
         ),
       );
