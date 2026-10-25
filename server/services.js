@@ -64,8 +64,14 @@ export async function generateInvoice(
   { student_id, term_id, due_date },
 ) {
   return db.transaction(async (tx) => {
-    const student = await schoolRecord(tx, u, "students", student_id),
-      term = await schoolRecord(tx, u, "terms", term_id);
+    // Serialize invoices across terms for this student, including one-time charges.
+    const student = await one(
+      tx,
+      "SELECT * FROM students WHERE school_id=$1 AND id=$2 FOR UPDATE",
+      [u.school_id, student_id],
+    );
+    if (!student) fail(404, "Student not found.");
+    const term = await schoolRecord(tx, u, "terms", term_id);
     const existing = await one(
       tx,
       "SELECT * FROM student_invoices WHERE school_id=$1 AND student_id=$2 AND term_id=$3",
@@ -83,6 +89,31 @@ export async function generateInvoice(
     const cls = await schoolRecord(tx, u, "classes", classId);
     if (cls.academic_year_id !== term.academic_year_id)
       fail(422, "The class and term must belong to the same academic year.");
+    const history = await one(
+      tx,
+      `SELECT
+      EXISTS(SELECT 1 FROM student_enrollment WHERE school_id=$1 AND student_id=$2) AS enrolled,
+      EXISTS(SELECT 1 FROM student_invoices WHERE school_id=$1 AND student_id=$2) AS billed,
+      EXISTS(SELECT 1 FROM invoice_items ii JOIN student_invoices i ON i.id=ii.invoice_id AND i.school_id=ii.school_id WHERE i.school_id=$1 AND i.student_id=$2 AND ii.description='ADMISSION') AS admission_billed`,
+      [u.school_id, student_id],
+    );
+    // Legacy enrolled students are returning; never infer new intake from a new class.
+    if (
+      !student.school_entry_term_id &&
+      student.status === "PROSPECTIVE" &&
+      !student.student_number &&
+      app &&
+      app.stage !== "ENROLLED" &&
+      !history.enrolled &&
+      !history.billed
+    ) {
+      student.school_entry_term_id = term_id;
+      await tx.query(
+        "UPDATE students SET school_entry_term_id=$1 WHERE school_id=$2 AND id=$3",
+        [term_id, u.school_id, student_id],
+      );
+    }
+    const newIntake = Number(student.school_entry_term_id) === Number(term_id);
     const fees = await rows(
       tx,
       "SELECT * FROM fee_structures WHERE school_id=$1 AND class_id=$2 AND term_id=$3 ORDER BY id",
@@ -91,6 +122,11 @@ export async function generateInvoice(
     const items = fees
       .filter(
         (f) =>
+          (f.applies_to === "ALL" ||
+            (f.applies_to === "NEW_INTAKES" && newIntake) ||
+            (f.applies_to === "RETURNING" && !newIntake)) &&
+          (f.fee_category !== "ADMISSION" ||
+            (newIntake && !history.admission_billed)) &&
           (f.fee_category !== "BOARDING" ||
             student.boarding_status === "BOARDING") &&
           (f.fee_category !== "TRANSPORT" || student.transportation_required),
@@ -310,8 +346,8 @@ export async function enroll(db, u, id, termId) {
         student.student_number ||
         `${school.short_code}-${String(student.id).padStart(5, "0")}`;
     await tx.query(
-      "UPDATE students SET student_number=$1,class_id=$2,status='ENROLLED',updated_at=now() WHERE id=$3",
-      [number, cls.id, student.id],
+      "UPDATE students SET student_number=$1,class_id=$2,status='ENROLLED',school_entry_term_id=COALESCE(school_entry_term_id,$4),updated_at=now() WHERE id=$3",
+      [number, cls.id, student.id, termId],
     );
     await tx.query(
       "UPDATE admission_applications SET stage='ENROLLED' WHERE id=$1",

@@ -13,6 +13,7 @@ export async function applicationSchema() {
     "recurring-schema.sql",
     "branding-referrals-schema.sql",
     "email-delivery-schema.sql",
+    "fee-eligibility-schema.sql",
   ];
   const sql = (
     await Promise.all(

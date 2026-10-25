@@ -542,6 +542,15 @@ export function Finance({ can, term, config, money, notify }) {
 
                   columns={[
                     { label: "Category", render: (r) => human(r.fee_category) },
+                    {
+                      label: "Applies to",
+                      render: (r) =>
+                        r.applies_to === "NEW_INTAKES"
+                          ? "New intakes only"
+                          : r.applies_to === "RETURNING"
+                            ? "Returning students only"
+                            : "All students",
+                    },
 
                     { label: "Term", key: "term_name" },
 
@@ -1085,6 +1094,7 @@ export function Finance({ can, term, config, money, notify }) {
 
 function FeeSetup({ initial, classes, terms, currency, existing, onSubmit }) {
   const categories = [
+    "ADMISSION",
     "TUITION",
     "BOARDING",
     "TRANSPORT",
@@ -1116,7 +1126,16 @@ function FeeSetup({ initial, classes, terms, currency, existing, onSubmit }) {
             (f) =>
               String(f.class_id) === classId && String(f.term_id) === termId,
           )
-          .map((f) => [f.fee_category, String(Number(f.amount_cents) / 100)]),
+          .map((f) => [
+            f.fee_category,
+            {
+              amount: String(Number(f.amount_cents) / 100),
+              applies_to:
+                f.fee_category === "ADMISSION"
+                  ? "NEW_INTAKES"
+                  : f.applies_to || "ALL",
+            },
+          ]),
       ),
     );
   }, [classId, termId]);
@@ -1131,9 +1150,10 @@ function FeeSetup({ initial, classes, terms, currency, existing, onSubmit }) {
           await onSubmit({
             class_id: classId,
             term_id: termId,
-            fees: Object.entries(values).map(([fee_category, amount]) => ({
+            replace: true,
+            fees: Object.entries(values).map(([fee_category, value]) => ({
               fee_category,
-              amount,
+              ...value,
             })),
           });
         } catch (e) {
@@ -1187,13 +1207,20 @@ function FeeSetup({ initial, classes, terms, currency, existing, onSubmit }) {
               onChange={(e) =>
                 setValues((v) => {
                   const next = { ...v };
-                  if (e.target.checked) next[category] = "";
+                  if (e.target.checked)
+                    next[category] = {
+                      amount: "",
+                      applies_to:
+                        category === "ADMISSION" ? "NEW_INTAKES" : "ALL",
+                    };
                   else delete next[category];
                   return next;
                 })
               }
             />
-            {human(category)}
+            {category === "ADMISSION"
+              ? "Admission / registration"
+              : human(category)}
           </label>
           <input
             aria-label={`${human(category)} amount (${currency})`}
@@ -1202,21 +1229,45 @@ function FeeSetup({ initial, classes, terms, currency, existing, onSubmit }) {
             step="0.01"
             required={category in values}
             disabled={!(category in values)}
-            value={values[category] ?? ""}
+            value={values[category]?.amount ?? ""}
             onChange={(e) =>
-              setValues({ ...values, [category]: e.target.value })
+              setValues({
+                ...values,
+                [category]: { ...values[category], amount: e.target.value },
+              })
             }
           />
+          <select
+            aria-label={`${human(category)} applies to`}
+            disabled={!(category in values) || category === "ADMISSION"}
+            value={
+              values[category]?.applies_to ||
+              (category === "ADMISSION" ? "NEW_INTAKES" : "ALL")
+            }
+            onChange={(e) =>
+              setValues({
+                ...values,
+                [category]: { ...values[category], applies_to: e.target.value },
+              })
+            }
+          >
+            <option value="ALL">All students</option>
+            <option value="NEW_INTAKES">New intakes only</option>
+            <option value="RETURNING">Returning students only</option>
+          </select>
         </div>
       ))}
 
       <p className="muted">
-        Selected categories are saved together. Existing invoices keep their
-        original charges. Unselected categories are left unchanged.
+        New intakes are students in their first school entry term. Moving
+        classes does not make a student a new intake. Admission is charged only
+        when joining the school. Select who pays each fee; unchecked categories
+        are removed from this class and term. Existing invoices keep their
+        original charges.
       </p>
       {error && <p className="form-error">{error}</p>}
-      <Button disabled={busy || !Object.keys(values).length}>
-        {busy ? "Saving?" : "Save fees"}
+      <Button disabled={busy || !classId || !termId}>
+        {busy ? "Saving..." : "Save fees"}
       </Button>
     </form>
   );

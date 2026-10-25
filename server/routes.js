@@ -1048,10 +1048,12 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         .object({
           class_id: id,
           term_id: id,
+          replace: z.boolean().default(false),
           fees: z
             .array(
               z.object({
                 fee_category: z.enum([
+                  "ADMISSION",
                   "TUITION",
                   "BOARDING",
                   "TRANSPORT",
@@ -1063,18 +1065,24 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
                   "OTHER",
                 ]),
                 amount: z.union([z.string(), z.number()]),
+                applies_to: z
+                  .enum(["ALL", "NEW_INTAKES", "RETURNING"])
+                  .default("ALL"),
               }),
             )
-            .min(1)
-            .max(9),
+            .min(0)
+            .max(10),
         })
         .parse(req.body);
       const cls = await schoolRecord(db, req.user, "classes", b.class_id),
         term = await schoolRecord(db, req.user, "terms", b.term_id);
       if (cls.academic_year_id !== term.academic_year_id)
         fail(422, "Class and term must belong to the same academic year.");
+      if (!b.replace && !b.fees.length) fail(422, "Select at least one fee.");
       const entries = b.fees.map((f) => ({
         ...f,
+        applies_to:
+          f.fee_category === "ADMISSION" ? "NEW_INTAKES" : f.applies_to,
         amount_cents: cents(f.amount),
       }));
       if (entries.some((f) => !f.amount_cents))
@@ -1083,16 +1091,39 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         fail(422, "Select each category once.");
       const saved = await db.transaction(async (tx) => {
         const result = [];
+        if (b.replace) {
+          const removed = await rows(
+            tx,
+            "DELETE FROM fee_structures WHERE school_id=$1 AND class_id=$2 AND term_id=$3 AND NOT(fee_category=ANY($4::text[])) RETURNING *",
+            [
+              req.user.school_id,
+              b.class_id,
+              b.term_id,
+              entries.map((f) => f.fee_category),
+            ],
+          );
+          for (const old of removed)
+            await audit(
+              tx,
+              req.user,
+              "fee_structures",
+              old.id,
+              "DELETE",
+              old,
+              null,
+            );
+        }
         for (const f of entries) {
           const row = await one(
             tx,
-            "INSERT INTO fee_structures(school_id,class_id,term_id,fee_category,amount_cents) VALUES($1,$2,$3,$4,$5) ON CONFLICT(class_id,term_id,fee_category) DO UPDATE SET amount_cents=EXCLUDED.amount_cents RETURNING *",
+            "INSERT INTO fee_structures(school_id,class_id,term_id,fee_category,amount_cents,applies_to) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(class_id,term_id,fee_category) DO UPDATE SET amount_cents=EXCLUDED.amount_cents,applies_to=EXCLUDED.applies_to RETURNING *",
             [
               req.user.school_id,
               b.class_id,
               b.term_id,
               f.fee_category,
               f.amount_cents,
+              f.applies_to,
             ],
           );
           await audit(
@@ -1120,6 +1151,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
           class_id: id,
           term_id: id,
           fee_category: z.enum([
+            "ADMISSION",
             "TUITION",
             "BOARDING",
             "TRANSPORT",
@@ -1131,6 +1163,9 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
             "OTHER",
           ]),
           amount: z.union([z.string(), z.number()]),
+          applies_to: z
+            .enum(["ALL", "NEW_INTAKES", "RETURNING"])
+            .default("ALL"),
         })
         .parse(req.body);
       const cls = await schoolRecord(db, req.user, "classes", b.class_id),
@@ -1141,8 +1176,15 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       if (!amount) fail(422, "Fee must be greater than zero.");
       const f = await one(
         db,
-        "INSERT INTO fee_structures(school_id,class_id,term_id,fee_category,amount_cents) VALUES($1,$2,$3,$4,$5) ON CONFLICT(class_id,term_id,fee_category) DO UPDATE SET amount_cents=EXCLUDED.amount_cents RETURNING *",
-        [req.user.school_id, b.class_id, b.term_id, b.fee_category, amount],
+        "INSERT INTO fee_structures(school_id,class_id,term_id,fee_category,amount_cents,applies_to) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(class_id,term_id,fee_category) DO UPDATE SET amount_cents=EXCLUDED.amount_cents,applies_to=EXCLUDED.applies_to RETURNING *",
+        [
+          req.user.school_id,
+          b.class_id,
+          b.term_id,
+          b.fee_category,
+          amount,
+          b.fee_category === "ADMISSION" ? "NEW_INTAKES" : b.applies_to,
+        ],
       );
       await audit(db, req.user, "fee_structures", f.id, "UPSERT", null, f);
       ok(res, f);

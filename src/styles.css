@@ -2993,3 +2993,18 @@ input[type="radio"] {
 .fee-category-row input[type="checkbox"] {
   width: auto;
 }
+
+.fee-category-row {
+  grid-template-columns: minmax(130px, 1fr) minmax(100px, 1fr) minmax(
+      150px,
+      1fr
+    );
+}
+@media (max-width: 600px) {
+  .fee-category-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fee-category-row select {
+    grid-column: 1/-1;
+  }
+}
