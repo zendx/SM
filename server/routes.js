@@ -204,6 +204,20 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         ),
       ),
   );
+  r.get(
+    "/classes/teachers",
+    allow("admin.write", "classes.write"),
+    async (req, res) => {
+      ok(
+        res,
+        await rows(
+          db,
+          "SELECT id,name FROM users WHERE school_id=$1 AND role='TEACHER' AND status='ACTIVE' AND archived_at IS NULL ORDER BY name",
+          [req.user.school_id],
+        ),
+      );
+    },
+  );
   r.post(
     "/classes",
     allow("admin.write", "classes.write"),
@@ -1024,6 +1038,77 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
           [req.user.school_id],
         ),
       ),
+  );
+  r.post(
+    "/finance/fee-structures/bulk",
+    requirePermission("finance.write"),
+    async (req, res) => {
+      const b = z
+        .object({
+          class_id: id,
+          term_id: id,
+          fees: z
+            .array(
+              z.object({
+                fee_category: z.enum([
+                  "TUITION",
+                  "BOARDING",
+                  "TRANSPORT",
+                  "EXAM",
+                  "BOOKS",
+                  "UNIFORM",
+                  "MEALS",
+                  "ACTIVITY",
+                  "OTHER",
+                ]),
+                amount: z.union([z.string(), z.number()]),
+              }),
+            )
+            .min(1)
+            .max(9),
+        })
+        .parse(req.body);
+      const cls = await schoolRecord(db, req.user, "classes", b.class_id),
+        term = await schoolRecord(db, req.user, "terms", b.term_id);
+      if (cls.academic_year_id !== term.academic_year_id)
+        fail(422, "Class and term must belong to the same academic year.");
+      const entries = b.fees.map((f) => ({
+        ...f,
+        amount_cents: cents(f.amount),
+      }));
+      if (entries.some((f) => !f.amount_cents))
+        fail(422, "Every selected fee must be greater than zero.");
+      if (new Set(entries.map((f) => f.fee_category)).size !== entries.length)
+        fail(422, "Select each category once.");
+      const saved = await db.transaction(async (tx) => {
+        const result = [];
+        for (const f of entries) {
+          const row = await one(
+            tx,
+            "INSERT INTO fee_structures(school_id,class_id,term_id,fee_category,amount_cents) VALUES($1,$2,$3,$4,$5) ON CONFLICT(class_id,term_id,fee_category) DO UPDATE SET amount_cents=EXCLUDED.amount_cents RETURNING *",
+            [
+              req.user.school_id,
+              b.class_id,
+              b.term_id,
+              f.fee_category,
+              f.amount_cents,
+            ],
+          );
+          await audit(
+            tx,
+            req.user,
+            "fee_structures",
+            row.id,
+            "UPSERT",
+            null,
+            row,
+          );
+          result.push(row);
+        }
+        return result;
+      });
+      ok(res, saved);
+    },
   );
   r.post(
     "/finance/fee-structures",

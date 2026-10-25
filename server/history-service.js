@@ -23,6 +23,15 @@ export async function ensureRoster(db, u, classId, termId) {
 }
 export async function termRoster(db, u, classId, termId) {
   await ensureRoster(db, u, classId, termId);
+  // Keep the live term in sync without rewriting historical or finalized rosters.
+  await db.query(
+    `INSERT INTO academic_rosters(school_id,class_id,term_id,student_id,source)
+    SELECT $1,$2,$3,s.id,'CURRENT_ENROLLMENT' FROM students s JOIN terms t ON t.id=$3 AND t.school_id=s.school_id
+    WHERE s.school_id=$1 AND s.class_id=$2 AND s.status='ENROLLED' AND t.is_current
+    AND NOT EXISTS(SELECT 1 FROM report_batches b WHERE b.school_id=$1 AND b.class_id=$2 AND b.term_id=$3 AND b.status<>'DRAFT')
+    ON CONFLICT DO NOTHING`,
+    [u.school_id, classId, termId],
+  );
   return rows(
     db,
     "SELECT s.id,s.first_name,s.last_name,s.student_number,r.subject_ids,r.source FROM academic_rosters r JOIN students s ON s.id=r.student_id WHERE r.school_id=$1 AND r.class_id=$2 AND r.term_id=$3 AND NOT r.excluded ORDER BY s.last_name,s.first_name",

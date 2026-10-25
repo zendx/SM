@@ -250,12 +250,61 @@ export function academicRoutes(db) {
           department: text.default("General"),
         })
         .parse(req.body);
-      const s = await insert(db, "subjects", {
-        school_id: req.user.school_id,
-        ...b,
-        code: b.code.toUpperCase(),
+      const assignment =
+        req.body.class_id || req.body.teacher_user_id
+          ? z.object({ class_id: id, teacher_user_id: id }).parse(req.body)
+          : null;
+      const s = await db.transaction(async (tx) => {
+        if (assignment) {
+          await academicClass(tx, req.user, assignment.class_id, {
+            lock: true,
+          });
+          const teacher = await schoolRecord(
+            tx,
+            req.user,
+            "users",
+            assignment.teacher_user_id,
+          );
+          if (
+            teacher.role !== "TEACHER" ||
+            teacher.status !== "ACTIVE" ||
+            teacher.archived_at
+          )
+            fail(422, "Choose an active teacher account.");
+        }
+        const subject = await insert(tx, "subjects", {
+          school_id: req.user.school_id,
+          ...b,
+          code: b.code.toUpperCase(),
+        });
+        await audit(
+          tx,
+          req.user,
+          "subjects",
+          subject.id,
+          "CREATE",
+          null,
+          subject,
+        );
+        if (assignment) {
+          const linked = await insert(tx, "class_subjects", {
+            school_id: req.user.school_id,
+            ...assignment,
+            subject_id: subject.id,
+            credits: 1,
+          });
+          await audit(
+            tx,
+            req.user,
+            "class_subjects",
+            linked.id,
+            "CREATE",
+            null,
+            linked,
+          );
+        }
+        return subject;
       });
-      await audit(db, req.user, "subjects", s.id, "CREATE", null, s);
       ok(res, s);
     },
   );

@@ -52,7 +52,7 @@ const classOptions = (classes) =>
 const assessmentFields = (assignments, today) => [
   {
     name: "class_subject_id",
-    label: "Class and subject",
+    label: "Subject",
     options: assignmentOptions(assignments),
     wide: true,
   },
@@ -901,18 +901,38 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
             </Button>
           }
         >
-          <Table
-            rows={setup.subjects}
-            columns={[
-              { label: "Subject", key: "name" },
-              { label: "Code", key: "code" },
-              { label: "Department", key: "department" },
-            ]}
-          />
+          <div className="subject-class-cards">
+            {setup.classes.map((c) => (
+              <details className="details-box" key={c.id}>
+                <summary>
+                  <strong>{c.name}</strong> ?{" "}
+                  {setup.assignments.filter((a) => a.class_id === c.id).length}{" "}
+                  subjects
+                </summary>
+                <Table
+                  rows={setup.assignments.filter((a) => a.class_id === c.id)}
+                  columns={[
+                    { label: "Subject", key: "subject_name" },
+                    { label: "Teacher", key: "teacher_name" },
+                  ]}
+                />
+              </details>
+            ))}
+          </div>
+          <details className="details-box">
+            <summary>Subject catalogue ({setup.subjects.length})</summary>
+            <Table
+              rows={setup.subjects}
+              columns={[
+                { label: "Subject", key: "name" },
+                { label: "Code", key: "code" },
+              ]}
+            />
+          </details>
         </Panel>
         <Panel
           title="Teaching assignments"
-          description="Assign every subject a teacher will teach in each class. Creating subjects does not create teaching assignments."
+          description="Assign every subject a teacher will teach in each class. Choose a subject teacher for each class, independently of its class teacher."
           action={
             <Button small onClick={() => setModal("assignment")}>
               <Plus size={14} />
@@ -1065,27 +1085,6 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
               Finalized report batches must also be reopened before editing
               scores.
             </p>
-            <details className="details-box">
-              <summary>Link a student portal account</summary>
-              <Form
-                fields={[
-                  {
-                    name: "student_id",
-                    label: "Student record ID",
-                    type: "number",
-                    min: 1,
-                  },
-                  {
-                    name: "user_id",
-                    label: "Student user account ID",
-                    type: "number",
-                    min: 1,
-                  },
-                ]}
-                onSubmit={(v) => save("/academics/student-account", v)}
-                submit="Link student account"
-              />
-            </details>
           </div>
         </Panel>
       )}
@@ -1117,6 +1116,22 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
                 { name: "name", label: "Subject name" },
                 { name: "code", label: "Subject code" },
                 {
+                  name: "class_id",
+                  label: "Class",
+                  options: setup.classes.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  })),
+                },
+                {
+                  name: "teacher_user_id",
+                  label: "Subject teacher",
+                  options: setup.teachers.map((t) => ({
+                    value: t.id,
+                    label: t.name,
+                  })),
+                },
+                {
                   name: "department",
                   label: "Department",
                   wide: true,
@@ -1127,8 +1142,7 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
               submit="Create subject"
             >
               <p className="muted">
-                After creating a subject, use Assign subject to choose its
-                classes and teacher.
+                Create the subject and assign its class and teacher in one step.
               </p>
             </Form>
           )}
@@ -1144,12 +1158,12 @@ export function Academics({ user, can, term, config, notify }) {
       can("academics.read") ? `/assessments?term_id=${term}` : null,
     );
   const tabs = [
+    ["setup", can("academics.manage")],
     ["assessments", can("academics.read")],
+    ["records", can("academics.manage")],
     ["gradebook", can("academics.read")],
     ["report cards", can("reports.academic.read") || own],
     ["analytics", can("analytics.read") || can("analytics.summary")],
-    ["setup", can("academics.manage")],
-    ["records", can("academics.manage")],
   ]
     .filter(([, show]) => show)
     .map(([name]) => name);
@@ -1159,7 +1173,8 @@ export function Academics({ user, can, term, config, notify }) {
     }),
     [modal, setModal] = useState(null),
     [selectedClass, setSelectedClass] = useState(""),
-    [assignment, setAssignment] = useState("");
+    [assignment, setAssignment] = useState(""),
+    [assessmentClass, setAssessmentClass] = useState("");
   const yearId = config.terms.find(
       (t) => Number(t.id) === Number(term),
     )?.academic_year_id,
@@ -1180,6 +1195,14 @@ export function Academics({ user, can, term, config, notify }) {
     null,
   );
   async function saveAssessment(v) {
+    if (
+      !assignments.some(
+        (a) =>
+          String(a.id) === String(v.class_subject_id) &&
+          String(a.class_id) === String(v.class_id),
+      )
+    )
+      throw new Error("Choose a subject in the selected class.");
     await (modal.row
       ? patch(`/assessments/${modal.row.id}`, { ...v, term_id: term })
       : post("/assessments", { ...v, term_id: term }));
@@ -1227,18 +1250,36 @@ export function Academics({ user, can, term, config, notify }) {
               title="Assessments & examinations"
               description="For each subject, the assessment weights must add up to 100% before you can create reports."
               action={
-                <select
-                  aria-label="Filter assessments by subject"
-                  value={assignment}
-                  onChange={(e) => setAssignment(e.target.value)}
-                >
-                  <option value="">All class subjects</option>
-                  {assignments.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.class_name} · {a.subject_name}
-                    </option>
-                  ))}
-                </select>
+                <div className="row-actions">
+                  <select
+                    aria-label="Filter assessments by class"
+                    value={selectedClass}
+                    onChange={(e) => {
+                      setSelectedClass(e.target.value);
+                      setAssignment("");
+                    }}
+                  >
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Filter assessments by subject"
+                    value={assignment}
+                    onChange={(e) => setAssignment(e.target.value)}
+                  >
+                    <option value="">All subjects</option>
+                    {assignments
+                      .filter((a) => String(a.class_id) === selectedClass)
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.class_name} · {a.subject_name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               }
             >
               {assessments.error && (
@@ -1247,7 +1288,8 @@ export function Academics({ user, can, term, config, notify }) {
               <Table
                 rows={assessments.data.filter(
                   (a) =>
-                    !assignment || a.class_subject_id === Number(assignment),
+                    String(a.class_id) === selectedClass &&
+                    (!assignment || a.class_subject_id === Number(assignment)),
                 )}
                 columns={[
                   {
@@ -1422,7 +1464,25 @@ export function Academics({ user, can, term, config, notify }) {
           {assignments.length ? (
             <Form
               initial={modal.row || {}}
-              fields={assessmentFields(assignments, config.today)}
+              onValuesChange={(v) => setAssessmentClass(v.class_id)}
+              fields={[
+                {
+                  name: "class_id",
+                  label: "Class",
+                  options: classOptions(classes),
+                  default: modal.row?.class_id || selectedClass,
+                },
+                ...assessmentFields(
+                  assignments.filter(
+                    (a) =>
+                      String(a.class_id) ===
+                      String(
+                        assessmentClass || modal.row?.class_id || selectedClass,
+                      ),
+                  ),
+                  config.today,
+                ),
+              ]}
               onSubmit={saveAssessment}
               submit="Save assessment"
             />

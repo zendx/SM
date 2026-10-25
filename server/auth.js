@@ -823,7 +823,7 @@ export function accountRoutes(db) {
     res.json({
       data: await rows(
         db,
-        "SELECT id,name,email,phone_number,address,role,status,mfa_enabled FROM users WHERE school_id=$1 AND archived_at IS NULL AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=users.id) AND NOT EXISTS(SELECT 1 FROM platform_staff p WHERE p.user_id=users.id) ORDER BY name",
+        "SELECT id,name,email,COALESCE(to_jsonb(users)->>'phone_number','') AS phone_number,COALESCE(to_jsonb(users)->>'address','') AS address,role,status,mfa_enabled FROM users WHERE school_id=$1 AND archived_at IS NULL AND NOT EXISTS(SELECT 1 FROM platform_operators p WHERE p.user_id=users.id) AND NOT EXISTS(SELECT 1 FROM platform_staff p WHERE p.user_id=users.id) ORDER BY name",
         [req.user.school_id],
       ),
     }),
