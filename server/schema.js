@@ -51,3 +51,32 @@ export async function initializeSchema(
   // Apply protection in one round trip rather than hundreds of remote requests.
   await db.exec(protection.join(";\n") + ";");
 }
+
+export async function checkFeeEligibilitySchema(db) {
+  const required = [
+    "students.school_entry_term_id",
+    "fee_structures.applies_to",
+  ];
+  const installed = (
+    await db.query(
+      "SELECT table_name || '.' || column_name AS name FROM information_schema.columns WHERE table_schema=current_schema() AND (table_name,column_name) IN (('students','school_entry_term_id'),('fee_structures','applies_to'))",
+    )
+  ).rows.map((row) => row.name);
+  // Embedded and isolated test databases use a separate current schema.
+  const constraints = (
+    await db.query(
+      "SELECT conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='fee_structures'::regclass AND conname IN ('fee_structures_fee_category_check','admission_new_intakes_only') AND convalidated",
+    )
+  ).rows;
+  if (
+    required.some((name) => !installed.includes(name)) ||
+    constraints.length !== 2 ||
+    !constraints
+      .find((c) => c.conname === "fee_structures_fee_category_check")
+      ?.definition.includes("ADMISSION")
+  ) {
+    throw new Error(
+      "Fee eligibility schema migration is incomplete. Apply supabase:setup before deploying.",
+    );
+  }
+}

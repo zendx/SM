@@ -4,7 +4,10 @@ import { accountFixture } from "./account-fixture.js";
 import { insert, one, rows } from "../server/db.js";
 import { digest } from "../server/security.js";
 import { generateInvoice } from "../server/services.js";
-import { initializeSchema } from "../server/schema.js";
+import {
+  initializeSchema,
+  checkFeeEligibilitySchema,
+} from "../server/schema.js";
 
 test("fee eligibility preserves school membership across terms and promotions and never rebills admission", async () => {
   const f = await accountFixture();
@@ -423,6 +426,27 @@ test("tenant fee setup validates audiences, removes unchecked fees atomically an
     );
   } finally {
     if (server) await new Promise((r) => server.close(r));
+    await f.db.close();
+  }
+});
+
+test("deployment guard rejects databases missing fee eligibility migration", async () => {
+  const f = await accountFixture();
+  try {
+    await checkFeeEligibilitySchema(f.db);
+    await f.db.query(
+      "ALTER TABLE fee_structures DROP COLUMN applies_to CASCADE",
+    );
+    await f.db.query(
+      "ALTER TABLE students DROP COLUMN school_entry_term_id CASCADE",
+    );
+    await assert.rejects(
+      () => checkFeeEligibilitySchema(f.db),
+      /Fee eligibility schema migration is incomplete/,
+    );
+    await initializeSchema(f.db);
+    await checkFeeEligibilitySchema(f.db);
+  } finally {
     await f.db.close();
   }
 });

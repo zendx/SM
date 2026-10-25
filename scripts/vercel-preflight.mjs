@@ -5,7 +5,10 @@ import {
   supabaseConfiguration,
   prepareDocumentBucket,
 } from "../server/supabase.js";
-import { applicationSchema } from "../server/schema.js";
+import {
+  applicationSchema,
+  checkFeeEligibilitySchema,
+} from "../server/schema.js";
 import { decryptConfig } from "../server/integrations.js";
 import { unseal } from "../server/security-vault.js";
 import { smtpDestination } from "../server/smtp-policy.js";
@@ -54,6 +57,7 @@ export async function checkDeployment() {
     ).rows;
     if (columns.length !== 2)
       throw new Error("Account security schema migration is incomplete.");
+    await checkFeeEligibilitySchema(client);
     for (const role of ["anon", "authenticated"]) {
       const grants = (
         await client.query(
