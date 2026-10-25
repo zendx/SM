@@ -89,7 +89,7 @@ const assessmentFields = (assignments, today) => [
   },
 ];
 
-function ScoreEntry({ assessment, onClose, notify }) {
+function ScoreEntry({ assessment, onClose, notify, canManage }) {
   const q = useData(`/assessments/${assessment.id}/scores`, null),
     [values, setValues] = useState({}),
     [busy, setBusy] = useState(false),
@@ -100,15 +100,46 @@ function ScoreEntry({ assessment, onClose, notify }) {
         Object.fromEntries(q.data.students.map((s) => [s.id, s.score ?? ""])),
       );
   }, [q.data]);
+  const dirty =
+    !!q.data &&
+    q.data.students.some(
+      (s) => String(values[s.id] ?? "") !== String(s.score ?? ""),
+    );
+  const invalid = q.data?.students.find((s) => {
+    const value = values[s.id];
+    return (
+      value !== "" &&
+      value !== undefined &&
+      (!Number.isFinite(Number(value)) ||
+        Number(value) < 0 ||
+        Number(value) > Number(q.data.assessment.max_score))
+    );
+  });
+  function close() {
+    if (!busy && (!dirty || window.confirm("Discard unsaved scores?")))
+      onClose();
+  }
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   async function save() {
+    if (busy || q.data.locked || invalid) return;
     setError("");
     setBusy(true);
     try {
       await post(`/assessments/${assessment.id}/scores`, {
-        scores: q.data.students.map((s) => ({
-          student_id: s.id,
-          score: values[s.id] === "" ? null : Number(values[s.id]),
-        })),
+        scores: q.data.students
+          .filter((s) => String(values[s.id] ?? "") !== String(s.score ?? ""))
+          .map((s) => ({
+            student_id: s.id,
+            score: values[s.id] === "" ? null : Number(values[s.id]),
+          })),
       });
       notify("Scores saved.");
       onClose();
@@ -119,7 +150,7 @@ function ScoreEntry({ assessment, onClose, notify }) {
     }
   }
   return (
-    <Modal title={`Score entry · ${assessment.name}`} onClose={onClose}>
+    <Modal title={`Score entry · ${assessment.name}`} onClose={close}>
       {q.loading ? (
         <Loading />
       ) : q.error ? (
@@ -131,7 +162,14 @@ function ScoreEntry({ assessment, onClose, notify }) {
             {q.data.assessment.weight_percent}%. Blank scores remain unrecorded.
           </div>
           {q.data.locked && (
-            <div className="form-error">{q.data.lock_reason}</div>
+            <div className="form-error">
+              {q.data.lock_reason}
+              <p>
+                {canManage
+                  ? "For a closed term, open Setup and Term entry controls. For finalized results, open Report cards and reopen the batch."
+                  : "Ask your school administrator to reopen score entry or the finalized report batch."}
+              </p>
+            </div>
           )}
           <Table
             rows={q.data.students}
@@ -156,7 +194,7 @@ function ScoreEntry({ assessment, onClose, notify }) {
                     min={0}
                     max={q.data.assessment.max_score}
                     step="0.01"
-                    disabled={q.data.locked}
+                    disabled={q.data.locked || busy}
                     value={values[s.id] ?? ""}
                     onChange={(e) =>
                       setValues({ ...values, [s.id]: e.target.value })
@@ -183,10 +221,37 @@ function ScoreEntry({ assessment, onClose, notify }) {
               },
             ]}
           />
+          {!q.data.students.length && (
+            <p className="notice">
+              No students are enrolled for this subject in the term roster. Ask
+              an academic administrator to check Academics / Records.
+            </p>
+          )}
+          <p className="muted">
+            {
+              q.data.students.filter(
+                (s) => values[s.id] !== "" && values[s.id] !== undefined,
+              ).length
+            }{" "}
+            of {q.data.students.length} scores entered. Use 0 for a zero mark;
+            leave unmarked students blank.
+          </p>
+          {invalid && (
+            <p className="form-error">
+              Score for {invalid.first_name} {invalid.last_name} must be between
+              0 and {q.data.assessment.max_score}.
+            </p>
+          )}
           {error && <div className="form-error">{error}</div>}
           <div className="form-footer">
             <Button
-              disabled={q.data.locked || busy || !q.data.students.length}
+              disabled={
+                q.data.locked ||
+                busy ||
+                !!invalid ||
+                !dirty ||
+                !q.data.students.length
+              }
               onClick={save}
             >
               <Save size={16} />
@@ -1045,7 +1110,7 @@ function SetupTab({ setup, term, config, can, notify, reload }) {
       {can("admin.write") && (
         <Panel
           title="Term entry controls"
-          description="Score entry closes after the term ends. Unlock it temporarily if a teacher needs to make a correction."
+          description="Score entry stays open after the term ends. Close it when marking is complete, or temporarily unlock a closed term."
         >
           <div className="settings-form">
             <Form
@@ -1169,7 +1234,11 @@ export function Academics({ user, can, term, config, notify }) {
     .map(([name]) => name);
   const [tab, setTab] = useState(() => {
       const requested = location.hash.slice(1).split("/")[1];
-      return tabs.includes(requested) ? requested : tabs[0];
+      return tabs.includes(requested)
+        ? requested
+        : can("scores.write")
+          ? "assessments"
+          : tabs[0];
     }),
     [modal, setModal] = useState(null),
     [selectedClass, setSelectedClass] = useState(""),
@@ -1248,7 +1317,7 @@ export function Academics({ user, can, term, config, notify }) {
           {tab === "assessments" && (
             <Panel
               title="Assessments & examinations"
-              description="For each subject, the assessment weights must add up to 100% before you can create reports."
+              description="Choose a class and exam, then enter scores. Save marks as you go. Weights only need to total 100% when generating reports."
               action={
                 <div className="row-actions">
                   <select
@@ -1311,22 +1380,26 @@ export function Academics({ user, can, term, config, notify }) {
                     label: "Actions",
                     render: (a) => (
                       <div className="row-actions">
-                        <Button
-                          small
-                          secondary
-                          onClick={() => setModal({ type: "scores", row: a })}
-                        >
-                          Enter scores
-                        </Button>
-                        <button
-                          className="text-button"
-                          onClick={() =>
-                            setModal({ type: "assessment", row: a })
-                          }
-                        >
-                          Edit
-                        </button>
-                        {a.entered === 0 && (
+                        {can("scores.write") && (
+                          <Button
+                            small
+                            secondary
+                            onClick={() => setModal({ type: "scores", row: a })}
+                          >
+                            Grade / enter scores
+                          </Button>
+                        )}
+                        {can("assessments.write") && (
+                          <button
+                            className="text-button"
+                            onClick={() =>
+                              setModal({ type: "assessment", row: a })
+                            }
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {can("assessments.write") && a.entered === 0 && (
                           <button
                             className="text-button muted"
                             onClick={() => setModal({ type: "delete", row: a })}
@@ -1365,6 +1438,31 @@ export function Academics({ user, can, term, config, notify }) {
                 </select>
               }
             >
+              {can("scores.write") && (
+                <div className="row-actions">
+                  {assessments.data
+                    .filter((a) => String(a.class_id) === selectedClass)
+                    .map((a) => (
+                      <Button
+                        key={a.id}
+                        small
+                        secondary
+                        onClick={() => setModal({ type: "scores", row: a })}
+                      >
+                        Grade {a.subject_name}: {a.name}
+                      </Button>
+                    ))}
+                  {!assessments.loading &&
+                    !assessments.data.some(
+                      (a) => String(a.class_id) === selectedClass,
+                    ) && (
+                      <p className="notice">
+                        No assessments in this class and term. Open Assessments
+                        to create an exam for an assigned subject.
+                      </p>
+                    )}
+                </div>
+              )}
               {gradebook.error && (
                 <p className="form-error">{gradebook.error}</p>
               )}
@@ -1448,6 +1546,7 @@ export function Academics({ user, can, term, config, notify }) {
       {modal?.type === "scores" && (
         <ScoreEntry
           assessment={modal.row}
+          canManage={can("admin.write")}
           notify={notify}
           onClose={() => {
             setModal(null);

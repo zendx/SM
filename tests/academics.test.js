@@ -601,6 +601,47 @@ test("term closing and expiring administrator unlocks apply to all teachers", as
     weight_percent: 100,
     assessment_date: day(-150),
   };
+  // The term end date alone must not prevent teachers from finishing marking.
+  const historicalDraft = await request(
+    "teacher",
+    "/assessments",
+    "POST",
+    historical,
+  );
+  assert.equal(
+    (await request("teacher", `/assessments/${historicalDraft.id}/scores`))
+      .locked,
+    false,
+  );
+  await request(
+    "teacher",
+    `/assessments/${historicalDraft.id}/scores`,
+    "POST",
+    {
+      scores: [{ student_id: student.id, score: 0 }],
+    },
+  );
+  assert.equal(
+    Number(
+      (
+        await request("teacher", `/assessments/${historicalDraft.id}/scores`)
+      ).students.find((s) => s.id === student.id).score,
+    ),
+    0,
+  );
+  await request(
+    "teacher",
+    `/assessments/${historicalDraft.id}/scores`,
+    "POST",
+    {
+      scores: [{ student_id: student.id, score: null }],
+    },
+  );
+  await request("teacher", `/assessments/${historicalDraft.id}`, "DELETE");
+  await request("admin", `/academics/terms/${oldTerm.id}/control`, "PATCH", {
+    closed: true,
+    reason: "Historical marking complete",
+  });
   await request("teacher", "/assessments", "POST", historical, 423);
   await request("admin", `/academics/terms/${oldTerm.id}/control`, "PATCH", {
     closed: false,

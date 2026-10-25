@@ -65,7 +65,7 @@ export async function assertEditable(db, u, classId, termId) {
     [u.school_id, termId],
   );
   const unlocked = control?.unlock_until && control.unlock_until >= today;
-  if ((term.end_date < today || control?.closed) && !unlocked)
+  if (control?.closed && !unlocked)
     fail(
       423,
       "This term is closed for score entry. An administrator must unlock it.",
