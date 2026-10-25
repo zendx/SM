@@ -1,3 +1,4 @@
+import { schoolSetupSteps } from "./school-setup-guide.js";
 import { canonicalEmailLinks, emailFooter } from "./email-urls.js";
 import express from "express";
 import { one } from "./db.js";
@@ -26,14 +27,19 @@ export const emailTemplates = {
     name: "Welcome to your school portal",
     direction: "Onboarding",
     subject: "Welcome to SMPIS, {{name}}",
-    body: "Hello {{name}},\n\nWelcome to SMPIS! Your {{school_name}} portal is ready, and we’re glad to have you here. Bring your school’s records, people and daily work together in one place.\n\nStart with Administration to review your school details and academic calendar, then add your team and students at your own pace.\n\nOpen your portal: {{link}}\n\nWhen you have a moment, enable two-factor authentication in Administration > Security. It adds a little extra protection to your account and your school’s records. Save your recovery codes somewhere safe.\n\nAccount security: {{security_link}}\n\nIf you haven’t verified your email yet, use the link in your separate verification email before signing in. Need a hand? The Support menu connects you with our team.",
+    body:
+      "Hello {{name}},\n\nWelcome to SMPIS! Your {{school_name}} portal is ready. Follow the setup order below to prepare your school, exams, reports and fees.\n\nOpen your portal: {{link}}\n\nEnable two-factor authentication and save your recovery codes: {{security_link}}\n\nIf you have not verified your email, use your separate verification email first.\n\n" +
+      schoolSetupSteps,
     variables: ["name", "school_name", "link", "security_link"],
   },
   onboarding_tour: {
     name: "Your SMPIS menu tour",
     direction: "Onboarding",
     subject: "A quick tour of your SMPIS school portal",
-    body: "Hello {{name}},\n\nHere’s a quick guide to finding your way around {{school_name}} on SMPIS. Verify your email, sign in, and choose the academic term at the top of your workspace.\n\n{{guide}}\n\nA good first session: review Administration, add classes and staff, enter your students, then explore attendance and finance. You can come back to this guide whenever you need it.\n\nOpen your portal: {{link}}\n\nFor a little extra peace of mind, enable two-factor authentication: {{security_link}}\n\nMenu access depends on each person’s role. Your team members may see fewer menus than the school administrator.",
+    body:
+      "Hello {{name}},\n\nHere is your practical guide to {{school_name}} on SMPIS. Begin with Admissions and school setup, continue to Academics, then Finance. School configuration is under Administration.\n\nOpen your portal: {{link}}\n\n" +
+      schoolSetupSteps +
+      "\n\nOther menus and their purpose\n\n{{guide}}\n\nAccount security: {{security_link}}",
     variables: ["name", "school_name", "guide", "link", "security_link"],
   },
   auto_renewal_failed: {
@@ -136,6 +142,15 @@ export async function renderEmail(db, key, values, draft = null) {
       ? null
       : template;
   const rendered = renderTemplate(safeTemplate || emailTemplates[key], values);
+  // Saved templates can predate the workflow update. Keep their content while
+  // ensuring both existing and new registrations receive the current steps.
+  if (
+    ["onboarding_welcome", "onboarding_tour"].includes(key) &&
+    !rendered.text.includes(schoolSetupSteps)
+  ) {
+    rendered.text += `\n\n${schoolSetupSteps}`;
+  }
+
   const message = {
     subject: rendered.subject,
     text: canonicalEmailLinks(rendered.text),
