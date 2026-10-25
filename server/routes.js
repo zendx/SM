@@ -1,3 +1,4 @@
+import { SCHOOL_ROLES } from "../shared/school-roles.js";
 import { ensureTeacherStaff } from "./teacher-staff.js";
 import { smtpConfig } from "./integrations.js";
 import express from "express";
@@ -69,7 +70,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       years,
       terms,
       today: localClock(school.timezone).date,
-      roles: Object.keys(ROLE_PERMISSIONS),
+      roles: SCHOOL_ROLES,
       role_permissions: permitted(req.user, "admin.write")
         ? ROLE_PERMISSIONS
         : undefined,

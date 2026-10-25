@@ -3,7 +3,12 @@ import nodemailer from "nodemailer";
 import { test, openTestDatabase } from "./database.js";
 import { createApp } from "./app.js";
 import { one, insert } from "../server/db.js";
-import { hashPassword, verifyPassword, digest } from "../server/security.js";
+import {
+  hashPassword,
+  verifyPassword,
+  digest,
+  ROLE_PERMISSIONS,
+} from "../server/security.js";
 
 test("tenant role creation emails activation links without reusable passwords; failures preserve pending accounts", async () => {
   const db = await openTestDatabase();
@@ -45,7 +50,14 @@ test("tenant role creation emails activation links without reusable passwords; f
   const base = `http://127.0.0.1:${server.address().port}/api/v1`;
   const password = "New-<pass>&2026!";
   try {
-    for (const role of ["TEACHER", "FINANCE_OFFICER", "PARENT"]) {
+    const configuration = await fetch(base + "/config", {
+      headers: { Cookie: "smpis_session=role-session" },
+    });
+    assert.equal(configuration.status, 200);
+    const { data: config } = await configuration.json();
+    assert.deepEqual(config.roles.sort(), Object.keys(ROLE_PERMISSIONS).sort());
+    assert.ok(!config.roles.includes("PLATFORM_OWNER"));
+    for (const role of config.roles) {
       const response = await fetch(base + "/users", {
         method: "POST",
         headers: {
@@ -70,8 +82,13 @@ test("tenant role creation emails activation links without reusable passwords; f
       assert.equal(verifyPassword(password, stored.password_hash), false);
       assert.equal(stored.activation_pending, true);
       if (role === "TEACHER") {
-        const staff = await one(db, "SELECT * FROM staff WHERE user_id=$1", [stored.id]);
-        assert.ok(staff, "Teacher account creation automatically creates attendance profile");
+        const staff = await one(db, "SELECT * FROM staff WHERE user_id=$1", [
+          stored.id,
+        ]);
+        assert.ok(
+          staff,
+          "Teacher account creation automatically creates attendance profile",
+        );
         assert.equal(staff.school_id, school.id);
         assert.equal(staff.position, "Teacher");
       }

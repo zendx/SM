@@ -1,4 +1,8 @@
 import {
+  SCHOOL_ROLES,
+  SCHOOL_ROLE_OPTIONS,
+} from "../../shared/school-roles.js";
+import {
   SchoolAccountEditor,
   AccountStatusChange,
 } from "./school-account-actions";
@@ -803,7 +807,7 @@ export function Administration({
         <SchoolAccountEditor
           account={modal.row}
 
-          roles={config.roles}
+          roles={SCHOOL_ROLES}
 
           onClose={() => setModal(null)}
 
@@ -1288,7 +1292,7 @@ export function Administration({
 
                   label: "Role",
 
-                  options: config.roles,
+                  options: SCHOOL_ROLE_OPTIONS,
 
                   wide: true,
                 },

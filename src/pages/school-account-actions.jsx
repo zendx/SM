@@ -1,11 +1,12 @@
-﻿import React, { useId, useRef, useState } from "react";
+import { SCHOOL_ROLE_OPTIONS } from "../../shared/school-roles.js";
+import React, { useId, useRef, useState } from "react";
 import { LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import { patch } from "../api";
 import { Button, Modal, human } from "../components";
 import "../account-menu.css";
 import "./school-account-actions.css";
 
-export function SchoolAccountEditor({ account, roles, onClose, onSaved }) {
+export function SchoolAccountEditor({ account, onClose, onSaved }) {
   const prefix = useId();
   const [values, setValues] = useState({
     name: account.name,
@@ -109,9 +110,9 @@ export function SchoolAccountEditor({ account, roles, onClose, onSaved }) {
               value={values.role}
               onChange={(e) => change("role", e.target.value)}
             >
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {human(role)}
+              {SCHOOL_ROLE_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </select>
