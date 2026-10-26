@@ -76,11 +76,12 @@ export function siteOrigin(env = process.env) {
       "APP_URL must be a public HTTP(S) site URL without credentials; Vercel requires HTTPS.",
     );
   // The production edge redirects the apex to www. Never advertise that
-  // redirecting URL as canonical or include it in the sitemap. An explicit
-  // PUBLIC_SITE_URL can override this if the hosting primary domain changes.
-  if (!env.PUBLIC_SITE_URL && ["smpis.digital", "www.smpis.digital"].includes(url.hostname)) {
+  // redirecting URL as canonical or include it in the sitemap, even when
+  // PUBLIC_SITE_URL is explicitly configured with the retiring apex host.
+  if (["smpis.digital", "www.smpis.digital"].includes(url.hostname)) {
     url.hostname = "www.smpis.digital";
     url.protocol = "https:";
+    url.port = "";
   }
   return url.origin;
 }

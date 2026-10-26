@@ -66,6 +66,9 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
 });
 
 test("canonical origin comes from configuration and rejects unsafe deployment URLs", () => {
+  for (const PUBLIC_SITE_URL of ["http://smpis.digital", "https://smpis.digital", "https://www.smpis.digital:8443"]) {
+    assert.equal(siteOrigin({ PUBLIC_SITE_URL }), "https://www.smpis.digital");
+  }
   assert.equal(siteOrigin({ APP_URL: "https://smpis.digital" }), "https://www.smpis.digital");
   assert.equal(siteOrigin({ APP_URL: "https://www.smpis.digital" }), "https://www.smpis.digital");
   assert.equal(siteOrigin({ APP_URL: "https://smpis.digital", PUBLIC_SITE_URL: "https://new.example.com" }), "https://new.example.com");
@@ -155,6 +158,16 @@ test("server returns page-specific SEO without JavaScript or trusting Host heade
   assert.match(xml, /https:\/\/school\.example\.com\//);
   assert.match(xml, /https:\/\/school\.example\.com\/privacy/);
   assert.doesNotMatch(xml, /\/signup/);
+  for (const route of publicSeoPaths) {
+    const page = await fetch(`http://127.0.0.1:${server.address().port}${route}`, {
+      redirect: "manual",
+    });
+    assert.equal(page.status, 200, `${route} must be served directly`);
+    assert.equal(page.headers.get("location"), null, `${route} must not redirect`);
+    const content = await page.text();
+    assert.ok(content.includes(`<link rel="canonical" href="https://school.example.com${route}"`));
+    assert.doesNotMatch(content, /noindex|http-equiv="refresh"/i);
+  }
 });
 
 test("feature guides are crawlable and discoverable without JavaScript", async () => {

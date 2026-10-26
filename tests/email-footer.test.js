@@ -8,13 +8,13 @@ test("retired email domains preserve activation tokens and leave third-party lin
     canonicalEmailLinks(
       "https://smpis.vercel.app/login?reset=abc%2Bdef&next=school#start",
     ),
-    "https://smpis.digital/login?reset=abc%2Bdef&next=school#start",
+    "https://www.smpis.digital/login?reset=abc%2Bdef&next=school#start",
   );
   assert.equal(
     canonicalEmailLinks(
       "Visit https://www.smpis.digital/school-one/ and https://external.test/pay?id=5",
     ),
-    "Visit https://smpis.digital/school-one/ and https://external.test/pay?id=5",
+    "Visit https://www.smpis.digital/school-one/ and https://external.test/pay?id=5",
   );
   assert.equal(
     canonicalEmailLinks("https://smpis.vercel.app.evil.test/login"),
@@ -38,7 +38,7 @@ test("queued and edited email content uses canonical links and safely personaliz
             ],
       }),
     };
-    assert.equal(emailOrigin(), "https://smpis.digital");
+    assert.equal(emailOrigin(), "https://www.smpis.digital");
     const message = await renderEmail(db, "notification", {
       recipient_id: 7,
       body: "Read https://smpis.vercel.app/login?verify=a%2Bb&next=one",
@@ -48,7 +48,7 @@ test("queued and edited email content uses canonical links and safely personaliz
     assert.doesNotMatch(message.text, /smpis\.vercel\.app/);
     assert.match(message.html, /This email was sent to Henry &lt;Owner&gt;\./);
     assert.match(message.text, /This email was sent to Henry <Owner>\./);
-    assert.match(message.html, /href="https:\/\/smpis.digital\/privacy"/);
+    assert.match(message.html, /href="https:\/\/www\.smpis\.digital\/privacy"/);
     assert.match(message.html, /href="mailto:info@smpis.digital"/);
     assert.match(message.text, /verify=a%2Bb&next=one/);
     const promo = await renderEmail(
@@ -65,7 +65,7 @@ test("queued and edited email content uses canonical links and safely personaliz
     );
     assert.equal(
       promo.headers["List-Unsubscribe"],
-      "<https://smpis.digital/login?unsubscribe=7.signature>",
+      "<https://www.smpis.digital/login?unsubscribe=7.signature>",
     );
     assert.match(promo.html, /opted in to SMPIS promotional updates/);
     assert.match(promo.text, /This email was sent to Parent/);

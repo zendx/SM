@@ -4,12 +4,12 @@ export const EMAIL_TEMPLATE_REVISION = "2026-10-23-branding-footer-v1";
 export function canonicalEmailLinks(value) {
   return String(value ?? "").replace(
     /https?:\/\/(?:smpis\.vercel\.app|www\.smpis\.digital|smpis\.digital)(?=[:/?#\s<>"')]|$)(?::(?:80|443))?/gi,
-    "https://smpis.digital",
+    "https://www.smpis.digital",
   );
 }
 
 export function emailOrigin() {
-  return canonicalEmailLinks(process.env.APP_URL || "https://smpis.digital");
+  return canonicalEmailLinks(process.env.APP_URL || "https://www.smpis.digital");
 }
 
 export function emailFooter({ key, recipientName, recipientEmail } = {}) {

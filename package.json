@@ -11,6 +11,7 @@
     "build:vercel": "node scripts/vercel-preflight.mjs && vite build --outDir public --emptyOutDir",
     "preflight:vercel": "node scripts/vercel-preflight.mjs --check",
     "test": "node --test tests/*.test.js",
+    "check:seo": "node scripts/check-seo.mjs",
     "test:embedded": "node scripts/test-embedded.mjs",
     "backup": "node scripts/backup.js",
     "supabase:setup": "node scripts/supabase.js setup",
