@@ -350,7 +350,7 @@ export function Administration({
   const [tab, setTab] = useState(
       !isAdmin || new URLSearchParams(location.search).get("security") === "mfa"
         ? "security"
-        : ["school", "classes", "calendar", "users"].includes(
+        : ["school", "classes", "calendar", "users", "integrations"].includes(
               location.hash.split("/")[1],
             )
           ? location.hash.split("/")[1]
@@ -371,7 +371,7 @@ export function Administration({
 
       if (
         isAdmin &&
-        ["school", "classes", "calendar", "users"].includes(section)
+        ["school", "classes", "calendar", "users", "integrations"].includes(section)
       )
         setTab(section);
     };

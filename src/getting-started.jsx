@@ -1,9 +1,17 @@
 import React from "react";
 import { CheckCircle2, Circle } from "lucide-react";
 import { Button, Panel } from "./components";
+import { useData } from "./hooks";
 
 export function GettingStarted({ data, config, can, go }) {
   const admin = can("admin.write");
+  const paymentMethods = useData(
+    admin && can("finance.read") ? "/payments/school/methods" : null,
+    {},
+  );
+  const fees = useData(
+    can("finance.read") ? "/finance/fee-structures" : null,
+  );
   const steps = [
     {
       title: "Set school preferences",
@@ -40,6 +48,24 @@ export function GettingStarted({ data, config, can, go }) {
       page: "administration",
       section: "classes",
       allowed: admin,
+    },
+    {
+      title: "Setup Payment Method",
+      detail: "Configure how your school will receive fee payments.",
+      done: Object.keys(paymentMethods.data).length > 0,
+      page: "administration",
+      section: "integrations",
+      allowed: admin,
+    },
+    {
+      title: "Set Fee Structure",
+      detail: "Set class fees for the current academic term.",
+      done: fees.data.some((fee) =>
+        config.terms.some((term) => term.is_current && term.id === fee.term_id),
+      ),
+      page: "finance",
+      section: "fee structures",
+      allowed: can("finance.write"),
     },
     {
       title: "Enroll your first student",

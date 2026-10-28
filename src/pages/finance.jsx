@@ -86,12 +86,26 @@ export function Finance({ can, term, config, money, notify }) {
     fees = useData(can("finance.read") ? "/finance/fee-structures" : null),
     classes = useData(can("finance.read") ? "/classes" : null);
 
-  const [tab, setTab] = useState("invoices"),
+  const [tab, setTab] = useState(
+      location.hash.split("/")[1] === "fee structures" ||
+        location.hash.split("/")[1] === "fee%20structures"
+        ? "fee structures"
+        : "invoices",
+    ),
     [modal, setModal] = useState(null),
     [selected, setSelected] = useState(null),
     [filter, setFilter] = useState(""),
     [feeClassId, setFeeClassId] = useState(""),
     [feeTermId, setFeeTermId] = useState("");
+
+  useEffect(() => {
+    const sync = () => {
+      if (decodeURIComponent(location.hash.split("/")[1] || "") === "fee structures")
+        setTab("fee structures");
+    };
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
 
   const feeClass = classes.data.find((c) => String(c.id) === feeClassId);
 
