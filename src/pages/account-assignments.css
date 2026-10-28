@@ -1,0 +1,157 @@
+.assignment-picker {
+  border: 1px solid #dce7d7;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 20px 0 0;
+  min-width: 0;
+}
+.assignment-picker legend {
+  font-size: 14px;
+  font-weight: 700;
+  color: #294b3b;
+  padding: 0 6px;
+}
+.assignment-picker legend span {
+  font-weight: 400;
+  color: #657760;
+}
+.assignment-picker > p {
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 0 0 14px;
+  color: #62725c;
+}
+.assignment-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.assignment-summary .text-button {
+  min-height: 36px;
+}
+.assignment-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #dce7d7;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #60775c;
+  margin-bottom: 12px;
+}
+.assignment-search input {
+  border: 0;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 0;
+  background: transparent;
+  font-size: 16px;
+}
+.assignment-search:focus-within {
+  outline: 2px solid #8da47b;
+  outline-offset: 2px;
+}
+.assignment-search input:focus {
+  outline: 0;
+}
+.assignment-options {
+  max-height: 280px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid #e3eadf;
+}
+.assignment-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 6px;
+  border-bottom: 1px solid #e3eadf;
+  min-height: 56px;
+  cursor: pointer;
+}
+.assignment-option > input {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  accent-color: #3b6b42;
+}
+.assignment-option > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.assignment-option strong {
+  font-size: 13px;
+  color: #294b3b;
+  overflow-wrap: anywhere;
+}
+.assignment-option small {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #68785e;
+  overflow-wrap: anywhere;
+}
+.assignment-option.is-unavailable {
+  background: #f5f6f3;
+  cursor: default;
+}
+.assignment-option.is-unavailable strong {
+  color: #6b7567;
+}
+.assignment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.assignment-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c9dfc3;
+  background: #edf5e9;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  min-height: 36px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #294b3b;
+}
+.assignment-empty {
+  padding: 16px;
+  font-size: 12px;
+  color: #68785e;
+  line-height: 1.6;
+}
+.assignment-picker .assignment-help {
+  margin: 12px 0 0;
+  font-size: 11px;
+}
+.assignment-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+@media (max-width: 600px) {
+  .assignment-picker {
+    padding: 12px;
+  }
+  .assignment-footer .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .assignment-option {
+    min-height: 60px;
+  }
+  .assignment-chips button {
+    min-height: 44px;
+  }
+  .assignment-options {
+    max-height: 250px;
+  }
+}

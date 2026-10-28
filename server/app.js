@@ -10,6 +10,7 @@ import {
 } from "./referrals.js";
 import { platformNotificationRoutes } from "./platform-notifications.js";
 import { messagingRoutes } from "./messaging.js";
+import { accountAssignmentRoutes } from "./account-assignments.js";
 import { onboardingEmailRoutes } from "./onboarding-emails.js";
 import {
   publicConsentRoutes,
@@ -182,6 +183,7 @@ export async function createApp(db, options = {}) {
     saasRoutes(db, options),
     referralOwnerRoutes(db),
     accountRoutes(db),
+    accountAssignmentRoutes(db),
     coreRoutes(db, options),
     schoolBrandingRoutes(db),
     integrationRoutes(db),

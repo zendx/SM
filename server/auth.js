@@ -1,5 +1,9 @@
 import { retainAccountRecord } from "./account-retention.js";
 import { ensureTeacherStaff } from "./teacher-staff.js";
+import {
+  assignmentFields,
+  assignAccountRecords,
+} from "./account-assignments.js";
 import { checkAccountAccess } from "./account-lifecycle.js";
 import { screenRegistrationEmail } from "./stopreg.js";
 import { requireRecaptcha } from "./recaptcha.js";
@@ -835,6 +839,7 @@ export function accountRoutes(db) {
         email,
         password: password.optional(),
         role: z.enum(Object.keys(ROLE_PERMISSIONS)),
+        ...assignmentFields,
       })
       .parse(req.body);
     const u = await db.transaction(async (tx) => {
@@ -848,10 +853,17 @@ export function accountRoutes(db) {
         role: b.role,
       });
       if (user.role === "TEACHER") await ensureTeacherStaff(tx, user.school_id);
+      await assignAccountRecords(tx, req.user, user, b);
       await audit(tx, req.user, "users", user.id, "CREATE", null, {
         name: user.name,
         email: user.email,
         role: user.role,
+        ...(b.class_ids !== undefined
+          ? { class_ids: [...new Set(b.class_ids)] }
+          : {}),
+        ...(b.student_ids !== undefined
+          ? { student_ids: [...new Set(b.student_ids)] }
+          : {}),
       });
       return user;
     });

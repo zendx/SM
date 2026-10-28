@@ -1,6 +1,5 @@
 import {
   SCHOOL_ROLES,
-  SCHOOL_ROLE_OPTIONS,
 } from "../../shared/school-roles.js";
 import {
   SchoolAccountEditor,
@@ -8,6 +7,10 @@ import {
 } from "./school-account-actions";
 
 import { AccountRemoval } from "./account-removal";
+import {
+  CreateSchoolAccount,
+  AccountAssignmentsEditor,
+} from "./account-assignments";
 
 import { SiteSettings } from "./site-settings";
 
@@ -423,6 +426,7 @@ export function Administration({
     users.reload();
 
     classes.reload();
+    teachers.reload();
 
     audit.reload();
 
@@ -836,6 +840,21 @@ export function Administration({
           }}
         />
       )}
+      {modal?.type === "assignments" && (
+        <AccountAssignmentsEditor
+          account={modal.row}
+          onClose={() => setModal(null)}
+          onSaved={async () => {
+            setModal(null);
+            users.reload();
+            classes.reload();
+            teachers.reload();
+            audit.reload();
+            await reloadConfig();
+            notify("Assignments saved.");
+          }}
+        />
+      )}
 
       {tab === "users" && (
         <Panel
@@ -884,6 +903,15 @@ export function Administration({
                 render: (r) =>
                   r.id !== user.id && (
                     <div className="row-actions">
+                      {["TEACHER", "PARENT"].includes(r.role) && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => setModal({ type: "assignments", row: r })}
+                        >
+                          {r.role === "TEACHER" ? "Assign classes" : "Link children"}
+                        </button>
+                      )}
                       <button
                         className="text-button"
 
@@ -1133,7 +1161,7 @@ export function Administration({
         </Panel>
       )}
 
-      {modal && modal.type !== "edit-user" && (
+      {modal && !["edit-user", "assignments"].includes(modal.type) && (
         <Modal
           title={
             {
@@ -1273,31 +1301,7 @@ export function Administration({
             />
           )}
           {modal.type === "user" && (
-            <Form
-              fields={[
-                { name: "name", label: "Full name", wide: true },
-
-                {
-                  name: "email",
-
-                  label: "Email address",
-
-                  type: "email",
-
-                  wide: true,
-                },
-
-                {
-                  name: "role",
-
-                  label: "Role",
-
-                  options: SCHOOL_ROLE_OPTIONS,
-
-                  wide: true,
-                },
-              ]}
-
+            <CreateSchoolAccount
               onSubmit={(v) => save("/users", v)}
             />
           )}{" "}
