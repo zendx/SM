@@ -369,6 +369,9 @@ export function Landing() {
           <a href="#how-it-works">How it works</a>
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQs</a>
+          <a className="sales-menu-signin" href="/login">
+            Sign in <ArrowUpRight size={16} aria-hidden="true" />
+          </a>
         </nav>
         <div>
           <button

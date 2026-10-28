@@ -1615,6 +1615,9 @@
 .sales-page .sales-menu-toggle {
   display: none;
 }
+.sales-page .sales-nav nav .sales-menu-signin {
+  display: none;
+}
 .sales-section {
   scroll-margin-top: 115px;
 }
@@ -1663,9 +1666,24 @@
     border: 1px solid #dbe5d7;
     border-radius: 14px;
     box-shadow: 0 12px 35px #1a472a20;
+    max-height: calc(100vh - 120px);
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
   }
   .sales-page .sales-nav nav.open a {
     padding: 14px;
+  }
+  .sales-page .sales-nav nav.open .sales-menu-signin {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    bottom: 0;
+    min-height: 48px;
+    margin-top: 6px;
+    border-top: 1px solid #dbe5d7;
+    background: #fff;
+    color: #163b32;
   }
   .sales-page .sales-nav > div {
     gap: 12px;

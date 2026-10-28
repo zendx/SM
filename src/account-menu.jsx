@@ -237,7 +237,11 @@ export function AccountMenu({ user, onSaved, onLogout, onSecurity }) {
         className="account-menu"
         ref={root}
         onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+          // Safari can blur to the document when a menu button is tapped.
+          // Keep it mounted until that button's click has been delivered.
+          // Pointer events outside the menu handle taps without a focus target.
+          if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget))
+            setOpen(false);
         }}
       >
         <button
