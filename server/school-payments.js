@@ -23,6 +23,32 @@ async function configFor(db, schoolId, provider) {
       : null;
   return { ...config, mode: config.live_enabled ? "LIVE" : "TEST" };
 }
+
+// Return only publishable method details; setup reminders use the same readiness
+// rules as the family's payment screen.
+export async function schoolPaymentMethods(db, schoolId) {
+  const data = {};
+  for (const provider of providers) {
+    if (provider === "paystack") {
+      const c = await paystackConfig(schoolId, db);
+      if (c) data.paystack = { mode: c.mode };
+      continue;
+    }
+    const c = await configFor(db, schoolId, provider);
+    if (c)
+      data[provider] =
+        provider === "manual"
+          ? {
+              mode: c.mode,
+              bank_name: c.bank_name,
+              account_name: c.account_name,
+              account_number: c.account_number,
+              instructions: c.instructions,
+            }
+          : { mode: c.mode };
+  }
+  return data;
+}
 async function requestProvider(provider, config, path, body, reference) {
   let authorization = `Bearer ${config.secret_key}`;
   const base =
@@ -172,26 +198,7 @@ export function schoolPaymentRoutes(db) {
     next();
   });
   r.get("/payments/school/methods", async (req, res) => {
-    const data = {};
-    for (const provider of providers) {
-      if (provider === "paystack") {
-        const c = await paystackConfig(req.user.school_id, db);
-        if (c) data.paystack = { mode: c.mode };
-        continue;
-      }
-      const c = await configFor(db, req.user.school_id, provider);
-      if (c)
-        data[provider] =
-          provider === "manual"
-            ? {
-                mode: c.mode,
-                bank_name: c.bank_name,
-                account_name: c.account_name,
-                account_number: c.account_number,
-                instructions: c.instructions,
-              }
-            : { mode: c.mode };
-    }
+    const data = await schoolPaymentMethods(db, req.user.school_id);
     res.json({ data });
   });
   r.get("/payments/school/transactions", async (req, res) =>

@@ -105,6 +105,13 @@ export const emailTemplates = {
     body: "{{body}}\n\nOpen your account security settings: {{link}}",
     variables: ["body", "link"],
   },
+  setup_reminder: {
+    name: "School setup progress reminder",
+    direction: "Outbound",
+    subject: "{{title}}",
+    body: "{{body}}\n\nContinue your school setup: {{link}}",
+    variables: ["title", "body", "link"],
+  },
   promotional_newsletter: {
     name: "Promotional email newsletter",
     direction: "Outbound",

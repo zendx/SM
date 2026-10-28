@@ -28,6 +28,7 @@ unitTest(
       "automatic_renewals",
       "subscription_expiry",
       "onboarding_email",
+      "setup_reminders",
       "mfa_reminders",
       "school_notices",
       "school_email",

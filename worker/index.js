@@ -10,6 +10,7 @@ try {
   await db.query(
     "SELECT n.last_error,p.last_error,o.last_error,w.smtp_configured,w.email_provider FROM notifications n,platform_notifications p,onboarding_email_queue o,background_worker_status w LIMIT 0",
   );
+  await db.query("SELECT sent_count,next_send_at FROM tenant_setup_reminders LIMIT 0");
 } catch {
   await db.close();
   throw new Error(

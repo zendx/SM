@@ -11,6 +11,7 @@ import { localClock, token } from "./security.js";
 import { refreshOperationAlerts } from "./operations-service.js";
 import { expireSubscriptions } from "./saas-service.js";
 import { queueMfaReminders } from "./mfa-reminders.js";
+import { deliverSetupReminders } from "./setup-reminders.js";
 import { deliverOnboardingEmails } from "./onboarding-emails.js";
 import { deliverVerifications } from "./verification-delivery.js";
 import { reconcileDocumentUploads } from "./document-cleanup.js";
@@ -42,6 +43,7 @@ export async function runJobs(db, overrides = {}) {
     automatic_renewals: () => runAutoRenewals(db),
     subscription_expiry: () => expireSubscriptions(db),
     onboarding_email: () => deliverOnboardingEmails(db),
+    setup_reminders: () => deliverSetupReminders(db),
     mfa_reminders: () => queueMfaReminders(db),
     school_notices: () => generateSchoolNotifications(db),
     school_email: () => deliverNotifications(db),
