@@ -105,6 +105,7 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
   const page = pages[route] || pages["/"];
   const isPublicPage = Boolean(pages[route]);
   const canonical = new URL(isPublicPage ? route : requestedPath, origin).href;
+  const socialImage = new URL("/assets/social-image.png", origin).href;
   const structuredData =
     route === "/" || !pages[route]
       ? {
@@ -134,6 +135,14 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
     `<meta property="og:title" content="${escapeHtml(page.title)}" />`,
     `<meta property="og:description" content="${escapeHtml(page.description)}" />`,
     `<meta property="og:url" content="${escapeHtml(canonical)}" />`,
+    `<meta property="og:image" content="${escapeHtml(socialImage)}" />`,
+    `<meta property="og:image:type" content="image/png" />`,
+    `<meta property="og:image:alt" content="SMPIS logo" />`,
+    `<meta name="twitter:card" content="summary" />`,
+    `<meta name="twitter:title" content="${escapeHtml(page.title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(page.description)}" />`,
+    `<meta name="twitter:image" content="${escapeHtml(socialImage)}" />`,
+    `<meta name="twitter:image:alt" content="SMPIS logo" />`,
     ...(!isPublicPage
       ? ['<meta name="robots" content="noindex, follow" />']
       : []),

@@ -28,6 +28,9 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
       );
     }
     assert.ok(html.includes(`<link rel="canonical" href="${canonical}"`));
+    assert.ok(html.includes('<meta property="og:image" content="https://school.example.com/assets/social-image.png"'));
+    assert.ok(html.includes('<meta name="twitter:image" content="https://school.example.com/assets/social-image.png"'));
+    assert.ok(html.includes('<meta name="twitter:card" content="summary"'));
     for (const property of ["title", "description", "url"])
       assert.match(
         html,

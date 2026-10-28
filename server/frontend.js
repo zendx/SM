@@ -19,8 +19,8 @@ export function serveFrontend(app, directory, { origin = siteOrigin() } = {}) {
       {
         root: path.join(directory, "assets"),
         dotfiles: "deny",
-        immutable: true,
-        maxAge: "1y",
+        immutable: asset !== "social-image.png",
+        maxAge: asset === "social-image.png" ? "1d" : "1y",
         // The public logo is also embedded in externally hosted HTML emails.
         ...(/^smpis-logo-[\w-]+\.png$/.test(asset)
           ? { headers: { "Cross-Origin-Resource-Policy": "cross-origin" } }
