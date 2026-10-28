@@ -26,20 +26,20 @@ export function GettingStarted({ data, config, can, go }) {
       allowed: admin,
     },
     {
-      title: "Create a class",
-      detail: "Students need a class in the selected term's academic year.",
-      done: data.classCounts.length > 0,
-      page: "administration",
-      section: "classes",
-      allowed: admin,
-    },
-    {
       title: "Add your staff",
       detail:
         "Create staff records and teacher accounts so your team can begin.",
       done: data.staff.total > 0,
       page: "staff",
       allowed: can("staff.write"),
+    },
+    {
+      title: "Create a class",
+      detail: "Students need a class in the selected term's academic year.",
+      done: data.classCounts.length > 0,
+      page: "administration",
+      section: "classes",
+      allowed: admin,
     },
     {
       title: "Enroll your first student",
