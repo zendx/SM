@@ -1,5 +1,6 @@
 import { AccountMenu } from "./account-menu";
 import { ParentMessages } from "./pages/parent-messages";
+import { Conversations } from "./pages/conversations";
 import { TeacherAttendancePrompt } from "./teacher-attendance-prompt";
 import { BrandLogo } from "./brand-logo";
 import { MarketerPortal } from "./pages/referrals";
@@ -31,6 +32,7 @@ import {
   BookOpen,
   ChevronRight,
   LifeBuoy,
+  MessageSquare,
 } from "lucide-react";
 import { api, get, post, setCsrf, tenantSlug } from "./api";
 import { Landing, Signup, PublicBrand } from "./pages/saas-public";
@@ -462,6 +464,7 @@ function App() {
       ].some(can),
     ],
     ["messages", "Message parents", Users, can("admin.write")],
+    ["conversations", "Messages", MessageSquare, ["PARENT","TEACHER","PRINCIPAL","PROPRIETOR","SUPER_ADMIN"].includes(session?.user.role)],
     ["administration", "Administration", Settings, true],
     [
       "quality",
@@ -845,6 +848,7 @@ function App() {
       reports: Reports,
       administration: Administration,
       messages: ParentMessages,
+      conversations: Conversations,
       notifications: Notifications,
       academics: Academics,
       curriculum: Curriculum,

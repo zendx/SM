@@ -1454,11 +1454,9 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       await rows(
         db,
         permitted(req.user, "admin.write")
-          ? "SELECT id,title,body,delivery_status,created_at FROM notifications WHERE school_id=$1 ORDER BY created_at DESC LIMIT 100"
+          ? "SELECT id,title,body,delivery_status,created_at FROM notifications WHERE school_id=$1 AND (dedupe_key NOT LIKE 'chat:%' OR user_id=$2) ORDER BY created_at DESC LIMIT 100"
           : "SELECT id,title,body,delivery_status,created_at FROM notifications WHERE school_id=$1 AND user_id=$2 ORDER BY created_at DESC LIMIT 100",
-        permitted(req.user, "admin.write")
-          ? [req.user.school_id]
-          : [req.user.school_id, req.user.id],
+        [req.user.school_id, req.user.id],
       ),
     ),
   );

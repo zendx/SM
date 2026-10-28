@@ -15,6 +15,7 @@ export async function applicationSchema() {
     "email-delivery-schema.sql",
     "fee-eligibility-schema.sql",
     "setup-reminder-schema.sql",
+    "messaging-schema.sql",
   ];
   const sql = (
     await Promise.all(

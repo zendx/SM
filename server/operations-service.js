@@ -108,16 +108,26 @@ export async function caseAccess(db, u, cid, { lock = false } = {}) {
   }
   fail(403, "This case is not available to your account.");
 }
-export async function notifyUser(db, schoolId, userId, title, body, key) {
+export async function notifyUser(
+  db,
+  schoolId,
+  userId,
+  title,
+  body,
+  key,
+  link = /^(complaint-|case-stage:)/.test(key)
+    ? "#quality/complaints"
+    : "#quality",
+) {
   const user = await one(
     db,
-    "SELECT id,email FROM users WHERE school_id=$1 AND id=$2 AND status='ACTIVE'",
+    "SELECT id,email FROM users WHERE school_id=$1 AND id=$2 AND status='ACTIVE' AND archived_at IS NULL",
     [schoolId, userId],
   );
   if (user)
     await db.query(
-      "INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(school_id,dedupe_key) DO NOTHING",
-      [schoolId, user.id, user.email, title, body, key],
+      "INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key,link) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(school_id,dedupe_key) DO NOTHING",
+      [schoolId, user.id, user.email, title, body, key, link],
     );
 }
 export async function refreshOperationAlerts(db, schoolId) {

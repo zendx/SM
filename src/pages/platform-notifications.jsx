@@ -10,20 +10,22 @@ export function NotificationBell({ onClick }) {
   const q = useData("/subscription/notices/unread-count", { count: 0 });
   useEffect(() => {
     const update = () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
       post("/subscription/notices/presence", {}).catch(() => {});
       q.reload();
     };
     update();
-    const timer = setInterval(update, 30000);
+    const timer = setInterval(update, 5000);
     document.addEventListener("visibilitychange", update);
     window.addEventListener("notices-read", update);
     window.addEventListener("focus", update);
+    window.addEventListener("online", update);
     return () => {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", update);
       window.removeEventListener("notices-read", update);
       window.removeEventListener("focus", update);
+      window.removeEventListener("online", update);
     };
   }, []);
   const unread = Number(q.data?.count || 0);
@@ -35,6 +37,9 @@ export function NotificationBell({ onClick }) {
       onClick={onClick}
     >
       <Bell size={20} />
+      <span className="sr-only" role="status" aria-live="polite">
+        {unread ? `${unread} unread notifications` : "No unread notifications"}
+      </span>
       {unread > 0 && (
         <span className="notification-count" aria-hidden="true">
           {unread > 99 ? "99+" : unread}
@@ -48,15 +53,23 @@ export function PlatformInbox() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   useEffect(() => {
-    const timer = setInterval(q.reload, 30000);
-    return () => clearInterval(timer);
+    const update = () => {
+      if (document.visibilityState === "visible" && navigator.onLine)
+        q.reload();
+    };
+    const timer = setInterval(update, 5000);
+    window.addEventListener("online", update);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("online", update);
+    };
   }, []);
   return (
     <>
       <ContactPreferences />
       <Panel
-        title="SMPIS inbox"
-        description="Announcements and support updates are also queued for email, even when you are online or have read them here."
+        title="Notifications"
+        description="Messages, school updates, complaints and SMPIS announcements. Unread updates stay here while you are offline."
         action={
           <Button
             small
@@ -83,7 +96,11 @@ export function PlatformInbox() {
         {error && <p className="form-error">{error}</p>}
         {q.error && <p className="form-error">{q.error}</p>}
         <Table
-          rows={q.data}
+          rows={q.data.map((n) => ({
+            ...n,
+            inbox_key: `${n.source || "platform"}:${n.id}`,
+          }))}
+          keyField="inbox_key"
           columns={[
             {
               label: "Notification",
@@ -104,8 +121,17 @@ export function PlatformInbox() {
                     href={n.link}
                     onClick={async (event) => {
                       event.preventDefault();
-                      await post(`/subscription/notices/${n.id}/read`, {});
-                      location.assign(n.link);
+                      try {
+                        await post(
+                          `/subscription/notices/${n.source === "school" ? "school/" : ""}${n.id}/read`,
+                          {},
+                        );
+                        q.reload();
+                        window.dispatchEvent(new Event("notices-read"));
+                        location.assign(n.link);
+                      } catch (e) {
+                        setError(e.message);
+                      }
                     }}
                   >
                     Open
@@ -115,9 +141,16 @@ export function PlatformInbox() {
                       small
                       secondary
                       onClick={async () => {
-                        await post(`/subscription/notices/${n.id}/read`, {});
-                        q.reload();
-                        window.dispatchEvent(new Event("notices-read"));
+                        try {
+                          await post(
+                            `/subscription/notices/${n.source === "school" ? "school/" : ""}${n.id}/read`,
+                            {},
+                          );
+                          q.reload();
+                          window.dispatchEvent(new Event("notices-read"));
+                        } catch (e) {
+                          setError(e.message);
+                        }
                       }}
                     >
                       Mark as read

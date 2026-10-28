@@ -153,6 +153,10 @@ export async function deliverPlatformNotifications(
 
 export function platformNotificationRoutes(db) {
   const r = express.Router();
+  r.use("/subscription/notices", (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
   r.post("/subscription/notices/presence", async (req, res) => {
     await db.query(
       "UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1 AND mfa_verified",
@@ -164,8 +168,9 @@ export function platformNotificationRoutes(db) {
     res.json({
       data: await one(
         db,
-        "SELECT count(*)::int AS count FROM platform_notifications WHERE user_id=$1 AND read_at IS NULL",
-        [req.user.id],
+        `SELECT ((SELECT count(*) FROM platform_notifications WHERE user_id=$1 AND read_at IS NULL)
+          + (SELECT count(*) FROM notifications WHERE school_id=$2 AND user_id=$1 AND read_at IS NULL))::int AS count`,
+        [req.user.id, req.user.school_id],
       ),
     });
   });
@@ -173,17 +178,42 @@ export function platformNotificationRoutes(db) {
     res.json({
       data: await rows(
         db,
-        "SELECT id,title,body,link,read_at,email_status,created_at FROM platform_notifications WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100",
-        [req.user.id],
+        `SELECT * FROM (
+          SELECT id,title,body,link,read_at,email_status,created_at,'platform' AS source FROM platform_notifications WHERE user_id=$1
+          UNION ALL
+          SELECT id,title,body,CASE WHEN link='' THEN '#notifications' ELSE link END,read_at,delivery_status,created_at,'school' AS source
+          FROM notifications WHERE user_id=$1 AND school_id=$2
+        ) inbox ORDER BY created_at DESC,id DESC LIMIT 100`,
+        [req.user.id, req.user.school_id],
       ),
     }),
   );
   r.post("/subscription/notices/read-all", async (req, res) => {
-    const result = await db.query(
-      "UPDATE platform_notifications SET read_at=now() WHERE user_id=$1 AND read_at IS NULL RETURNING id",
-      [req.user.id],
+    const count = await db.transaction(async (tx) => {
+      const result = await tx.query(
+        "UPDATE platform_notifications SET read_at=now() WHERE user_id=$1 AND read_at IS NULL RETURNING id",
+        [req.user.id],
+      );
+      const school = await tx.query(
+        "UPDATE notifications SET read_at=now() WHERE user_id=$1 AND school_id=$2 AND read_at IS NULL RETURNING id",
+        [req.user.id, req.user.school_id],
+      );
+      return result.rows.length + school.rows.length;
+    });
+    res.json({ data: { count } });
+  });
+  r.post("/subscription/notices/school/:id/read", async (req, res) => {
+    const notice = await one(
+      db,
+      "UPDATE notifications SET read_at=COALESCE(read_at,now()) WHERE id=$1 AND user_id=$2 AND school_id=$3 RETURNING id",
+      [
+        z.coerce.number().int().positive().parse(req.params.id),
+        req.user.id,
+        req.user.school_id,
+      ],
     );
-    res.json({ data: { count: result.rows.length } });
+    if (!notice) fail(404, "Notification not found.");
+    res.json({ data: notice });
   });
   r.post("/subscription/notices/:id/read", async (req, res) => {
     const id = z.coerce.number().int().positive().parse(req.params.id);

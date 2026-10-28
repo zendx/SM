@@ -61,7 +61,12 @@ export function operationsRoutes(db) {
   const r = express.Router();
   r.get(
     "/operations/setup",
-    allow("operations.staff", "experience.own", "operations.summary"),
+    allow(
+      "operations.staff",
+      "experience.own",
+      "operations.summary",
+      "complaints.manage",
+    ),
     async (req, res) => {
       const u = req.user,
         scope = studentScope(u);
@@ -95,13 +100,14 @@ export function operationsRoutes(db) {
               [u.school_id],
             )
           : [],
-        users: isStaff(u)
-          ? await rows(
-              db,
-              "SELECT id,name,role FROM users WHERE school_id=$1 AND status='ACTIVE' AND role NOT IN ('PARENT','STUDENT','PROPRIETOR') ORDER BY name",
-              [u.school_id],
-            )
-          : [],
+        users:
+          isStaff(u) || permitted(u, "complaints.manage")
+            ? await rows(
+                db,
+                "SELECT id,name,role FROM users WHERE school_id=$1 AND status='ACTIVE' AND role NOT IN ('PARENT','STUDENT','PROPRIETOR') ORDER BY name",
+                [u.school_id],
+              )
+            : [],
         parents: permitted(u, "complaints.manage")
           ? await rows(
               db,
@@ -170,7 +176,7 @@ export function operationsRoutes(db) {
   );
   r.get(
     "/operations/cases",
-    allow("operations.staff", "experience.own"),
+    allow("operations.staff", "experience.own", "complaints.manage"),
     async (req, res) => {
       const kind = z
           .enum(["DISCIPLINE", "COMPLAINT", "MAINTENANCE"])
@@ -195,7 +201,7 @@ export function operationsRoutes(db) {
   );
   r.post(
     "/operations/cases",
-    allow("operations.staff", "experience.own"),
+    allow("operations.staff", "experience.own", "complaints.manage"),
     async (req, res) => {
       const b = z
           .object({
@@ -311,6 +317,22 @@ export function operationsRoutes(db) {
             `Please review CASE-${c.id}.`,
             `complaint-assigned:${c.id}:${assigned}`,
           );
+        if (b.kind === "COMPLAINT")
+          for (const leader of await rows(
+            tx,
+            "SELECT id FROM users WHERE school_id=$1 AND status='ACTIVE' AND archived_at IS NULL AND role IN ('SUPER_ADMIN','PRINCIPAL','PROPRIETOR')",
+            [u.school_id],
+          )) {
+            if (leader.id === assigned) continue;
+            await notifyUser(
+              tx,
+              u.school_id,
+              leader.id,
+              "New parent complaint",
+              `CASE-${c.id}: ${b.description}`,
+              `complaint-new:${c.id}:${leader.id}`,
+            );
+          }
         if (b.kind === "MAINTENANCE" && b.priority === "URGENT")
           for (const m of await rows(
             tx,
@@ -426,7 +448,7 @@ export function operationsRoutes(db) {
           b.feedback_score || null,
         ],
       );
-      await insert(tx, "case_actions", {
+      const caseAction = await insert(tx, "case_actions", {
         school_id: u.school_id,
         case_id: c.id,
         actor_id: u.id,
@@ -441,10 +463,7 @@ export function operationsRoutes(db) {
           cost_cents: cost,
           closed_by: u.id,
         });
-      if (
-        c.kind === "COMPLAINT" &&
-        ["RESPONSE_PROVIDED", "RESOLVED"].includes(b.stage)
-      )
+      if (c.kind === "COMPLAINT" && !feedback)
         await notifyUser(
           tx,
           u.school_id,
@@ -453,6 +472,20 @@ export function operationsRoutes(db) {
           b.note,
           `case-stage:${c.id}:${b.stage}`,
         );
+      if (feedback)
+        for (const leader of await rows(
+          tx,
+          "SELECT id FROM users WHERE school_id=$1 AND status='ACTIVE' AND archived_at IS NULL AND (role IN ('SUPER_ADMIN','PRINCIPAL','PROPRIETOR') OR id=$2)",
+          [u.school_id, c.assigned_to],
+        ))
+          await notifyUser(
+            tx,
+            u.school_id,
+            leader.id,
+            `Parent feedback on CASE-${c.id}`,
+            b.note,
+            `complaint-feedback:${caseAction.id}:${leader.id}`,
+          );
       await audit(
         tx,
         u,

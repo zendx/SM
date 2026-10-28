@@ -9,6 +9,7 @@ import {
   referralOwnerRoutes,
 } from "./referrals.js";
 import { platformNotificationRoutes } from "./platform-notifications.js";
+import { messagingRoutes } from "./messaging.js";
 import { onboardingEmailRoutes } from "./onboarding-emails.js";
 import {
   publicConsentRoutes,
@@ -174,6 +175,7 @@ export async function createApp(db, options = {}) {
     contactPreferenceRoutes(db),
     subscriptionGate(db),
     platformNotificationRoutes(db),
+    messagingRoutes(db),
     emailDeliveryRoutes(db),
     onboardingEmailRoutes(db),
     emailTemplateRoutes(db),

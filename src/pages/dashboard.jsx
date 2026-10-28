@@ -405,43 +405,45 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
     </>
   );
 }
-export function Notifications() {
-  const q = useData("/notifications");
+export function Notifications({ can }) {
+  const isAdmin = can("admin.write");
+  const q = useData(isAdmin ? "/notifications" : null);
   return (
     <>
       <PlatformInbox />
-      <PageHead
-        title="Notifications"
-        description="School updates and delivery status."
-      />
-      <Panel>
-        {q.error ? (
-          <p className="form-error">{q.error}</p>
-        ) : (
-          <Table
-            rows={q.data}
-            columns={[
-              {
-                label: "Message",
-                render: (r) => (
-                  <div>
-                    <strong>{r.title}</strong>
-                    <p>{r.body}</p>
-                  </div>
-                ),
-              },
-              {
-                label: "Delivery",
-                render: (r) => <Badge value={r.delivery_status} />,
-              },
-              {
-                label: "Created",
-                render: (r) => new Date(r.created_at).toLocaleString(),
-              },
-            ]}
-          />
-        )}
-      </Panel>
+      {isAdmin && (
+        <Panel
+          title="School delivery log"
+          description="School notices and their email delivery status."
+        >
+          {q.error ? (
+            <p className="form-error">{q.error}</p>
+          ) : (
+            <Table
+              rows={q.data}
+              columns={[
+                {
+                  label: "Message",
+                  render: (n) => (
+                    <div>
+                      <strong>{n.title}</strong>
+                      <p>{n.body}</p>
+                    </div>
+                  ),
+                },
+                {
+                  label: "Delivery",
+                  render: (n) => <Badge value={n.delivery_status} />,
+                },
+                {
+                  label: "Created",
+                  render: (n) => new Date(n.created_at).toLocaleString(),
+                },
+              ]}
+            />
+          )}
+        </Panel>
+      )}
     </>
   );
 }

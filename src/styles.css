@@ -154,6 +154,17 @@ input[type="date"] {
   border-radius: 12px;
   overflow: visible;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .icon-btn.notification-button.has-unread {
   color: #c53024;
   border-color: #f2a26d;

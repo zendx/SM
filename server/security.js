@@ -19,6 +19,7 @@ export function verifyPassword(password, hash) {
 export const ROLE_PERMISSIONS = {
   SUPER_ADMIN: ["*"],
   PROPRIETOR: [
+    "complaints.manage",
     "dashboard.read",
     "finance.summary",
     "analytics.summary",

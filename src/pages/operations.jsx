@@ -632,7 +632,7 @@ export function Quality(props) {
       ...(can("discipline.manage") || can("discipline.report")
         ? ["discipline"]
         : []),
-      ...(can("operations.staff") || can("experience.own")
+      ...(can("operations.staff") || can("experience.own") || can("complaints.manage")
         ? ["complaints"]
         : []),
       ...(can("complaints.manage") ||
@@ -643,11 +643,19 @@ export function Quality(props) {
       ...(can("admin.write") ? ["policy"] : []),
     ],
     [tab, setTab] = useState(
-      new URLSearchParams(location.search).get("case_kind") === "COMPLAINT" &&
+      (new URLSearchParams(location.search).get("case_kind") === "COMPLAINT" || location.hash.split("/")[1] === "complaints") &&
         tabs.includes("complaints")
         ? "complaints"
         : tabs[0],
     );
+  useEffect(() => {
+    const sync = () => {
+      const section = location.hash.split("/")[1];
+      if (section === "complaints" && tabs.includes(section)) setTab(section);
+    };
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
   return (
     <>
       <PageHead
