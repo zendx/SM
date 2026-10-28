@@ -1,7 +1,8 @@
 import { productModules, featurePath } from "./product-catalog.js";
+import { schoolManagementFaq } from "./public-faq.js";
 
 const homeDescription =
-  "Manage admissions, attendance, school fees, academics and staff in one school management platform. Start a 30-day trial with no card required.";
+  "School management software for small schools: manage admissions, attendance, school fees online, academics and staff. Start a 30-day trial with no card required.";
 
 const pages = {
   "/": {
@@ -164,9 +165,10 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
           .join("")
       : "";
   const featureLinks = `<nav aria-label="Product features"><a href="/features">Explore all features</a>${productModules.map((item) => `<a href="${featurePath(item)}">${escapeHtml(item.title)}</a>`).join(" ")}</nav>`;
+  const faqContent = `<section aria-label="School management questions">${schoolManagementFaq.map(([question, answer]) => `<h2>${escapeHtml(question)}</h2><p>${escapeHtml(answer)}</p>`).join("")}</section>`;
   const intro =
     route === "/"
-      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p>${featureLinks}<footer><a href="https://maidensail.com/startup/smpis" rel="dofollow"><img src="https://maidensail.com/badge/smpis.svg" alt="Featured on Maidensail" width="190" height="44" /></a></footer><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
+      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p>${featureLinks}${faqContent}<footer><a href="https://maidensail.com/startup/smpis" rel="dofollow"><img src="https://maidensail.com/badge/smpis.svg" alt="Featured on Maidensail" width="190" height="44" /></a></footer><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
       : `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p>${productContent}<noscript>Enable JavaScript to view this page.</noscript></main>`;
   return html
     .replace(

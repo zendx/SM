@@ -1,4 +1,5 @@
 import { BrandLogo } from "../brand-logo";
+import { schoolManagementFaq } from "../../server/public-faq.js";
 import React, { useState, useEffect, useRef } from "react";
 import {
   GraduationCap,
@@ -758,6 +759,7 @@ export function Landing() {
           </div>
           <div className="faq-list">
             {[
+              ...schoolManagementFaq,
               [
                 "Can we manage exams and generate report cards?",
                 "Yes. Set weighted assessments, record scores, manage exam timetables and generate term report cards. Review and finalize each batch before publishing it to linked parent and student accounts. Reports can be downloaded as PDFs. This is exam and results administration, not online test delivery.",
