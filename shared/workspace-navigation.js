@@ -1,7 +1,7 @@
 export const WORKSPACE_GROUPS = [
   ["dashboard", []],
   ["admissions", ["students", "attendance"]],
-  ["academics", ["finance", "curriculum", "messages", "platform"]],
+  ["academics", ["finance", "curriculum", "platform"]],
   ["staff", ["people"]],
   [
     "administration",
@@ -10,6 +10,7 @@ export const WORKSPACE_GROUPS = [
       "intelligence",
       "facilities",
       "alerts",
+      "messages",
       "reports",
       "subscription",
       "support",

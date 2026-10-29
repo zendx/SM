@@ -35,7 +35,10 @@ export function WorkspaceNavigation({ nav, page, go }) {
     <nav className="tenant-navigation" aria-label="School workspace">
       {groups.map(({ entry, children }) => {
         const [key, label] = entry;
-        const open = expanded[key] ?? activeParent === key;
+        const open =
+          expanded[key] ??
+          (activeParent === key ||
+            children.some(([childKey]) => childKey === "messages"));
         return (
           <div
             key={key}

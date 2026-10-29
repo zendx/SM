@@ -38,7 +38,7 @@ test("tenant navigation follows the requested order with clickable parents and d
   );
   assert.deepEqual(
     groups[2].children.map(([key]) => key),
-    ["finance", "curriculum", "messages"],
+    ["finance", "curriculum"],
   );
   assert.deepEqual(
     groups[3].children.map(([key]) => key),
@@ -51,6 +51,7 @@ test("tenant navigation follows the requested order with clickable parents and d
       "intelligence",
       "facilities",
       "alerts",
+      "messages",
       "reports",
       "subscription",
       "support",
