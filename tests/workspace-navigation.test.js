@@ -30,7 +30,7 @@ test("tenant navigation follows the requested order with clickable parents and d
   const groups = workspaceGroups(keys.map(entry));
   assert.deepEqual(
     groups.map((g) => g.entry[0]),
-    ["dashboard", "admissions", "staff", "administration", "academics"],
+    ["dashboard", "admissions", "academics", "staff", "administration"],
   );
   assert.deepEqual(
     groups[1].children.map(([key]) => key),
@@ -38,15 +38,23 @@ test("tenant navigation follows the requested order with clickable parents and d
   );
   assert.deepEqual(
     groups[2].children.map(([key]) => key),
-    ["people"],
+    ["finance", "curriculum", "messages"],
   );
   assert.deepEqual(
     groups[3].children.map(([key]) => key),
-    ["quality", "intelligence", "facilities", "alerts"],
+    ["people"],
   );
   assert.deepEqual(
     groups[4].children.map(([key]) => key),
-    ["finance", "curriculum", "messages", "reports", "subscription", "support"],
+    [
+      "quality",
+      "intelligence",
+      "facilities",
+      "alerts",
+      "reports",
+      "subscription",
+      "support",
+    ],
   );
   const all = groups
     .flatMap((g) => [g.entry, ...g.children])
