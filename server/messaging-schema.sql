@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS school_conversations (
 );
 CREATE INDEX IF NOT EXISTS school_conversations_parent ON school_conversations(school_id,parent_user_id,updated_at DESC);
 CREATE INDEX IF NOT EXISTS school_conversations_staff ON school_conversations(school_id,staff_user_id,updated_at DESC);
+-- Direct school/parent chats also work before a child has been enrolled.
+ALTER TABLE school_conversations ALTER COLUMN student_id DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS school_conversations_direct
+ ON school_conversations(school_id,parent_user_id,staff_user_id) WHERE student_id IS NULL;
 CREATE TABLE IF NOT EXISTS school_messages (
  id SERIAL PRIMARY KEY,school_id INT NOT NULL REFERENCES schools(id),conversation_id INT NOT NULL,
  sender_id INT NOT NULL,recipient_id INT NOT NULL,body TEXT NOT NULL CHECK(length(body) BETWEEN 1 AND 4000),

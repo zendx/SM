@@ -1,4 +1,4 @@
-import { ensureTeacherStaff } from "./teacher-staff.js";
+import { ensureSchoolStaff } from "./teacher-staff.js";
 import { one } from "./db.js";
 import { emailLogo } from "./email-design.js";
 import { emailDeliveryRoutes } from "./email-delivery-routes.js";
@@ -55,7 +55,7 @@ export async function createApp(db, options = {}) {
     );
   await migrateMfaSecrets(db);
   await seedRoles(db);
-  await ensureTeacherStaff(db);
+  await ensureSchoolStaff(db);
   options = {
     ...options,
     production: Boolean(

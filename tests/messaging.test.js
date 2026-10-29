@@ -23,7 +23,7 @@ async function call(who, path, method = "GET", body, expected = 200) {
   assert.equal(res.status, expected, JSON.stringify(result));
   return result.data;
 }
-async function start(staff = "teacher", parent = "parent") {
+async function start(staff = "tenant", parent = "parent") {
   return call(parent, "/messages", "POST", {
     student_id: student.id,
     recipient_id: users[staff].id,
@@ -117,43 +117,52 @@ after(async () => {
   if (fixture) await fixture.db.close();
 });
 
-test("contacts include only the child's class/subject teachers and school leadership", async () => {
+test("messaging is limited to active school administrators and parents in the same school", async () => {
   const contacts = await call("parent", "/messages/contacts");
   assert.deepEqual(
-    contacts.map((c) => c.recipient_id).sort((a, b) => a - b),
-    ["tenant", "teacher", "subject", "principal", "proprietor"]
-      .map((k) => users[k].id)
-      .sort((a, b) => a - b),
+    contacts.map((c) => c.recipient_id),
+    [users.tenant.id],
   );
-  assert.equal((await call("otherparent", "/messages/contacts")).length, 0);
-  assert.equal((await call("unrelated", "/messages/contacts")).length, 0);
-  assert.equal(
-    (await call("teacher", "/messages/contacts"))[0].recipient_id,
-    users.parent.id,
-  );
-  await call(
-    "parent",
-    "/messages",
-    "POST",
-    { student_id: student.id, recipient_id: users.unrelated.id },
-    403,
-  );
-  await call(
-    "parent",
-    "/messages",
-    "POST",
-    { student_id: student.id, recipient_id: users.foreign.id },
-    403,
-  );
-  await call(
-    "otherparent",
-    "/messages",
-    "POST",
-    { student_id: student.id, recipient_id: users.teacher.id },
-    403,
-  );
-  await call("finance", "/messages/contacts", "GET", undefined, 403);
+  assert.equal((await call("otherparent", "/messages/contacts")).length, 1);
+  assert.equal((await call("tenant", "/messages/contacts")).length, 2);
+  for (const who of [
+    "teacher",
+    "subject",
+    "unrelated",
+    "principal",
+    "proprietor",
+    "finance",
+  ]) {
+    await call(who, "/messages/contacts", "GET", undefined, 403);
+    await call(who, "/messages", "GET", undefined, 403);
+  }
+  for (const recipient of ["teacher", "foreign", "otherparent"])
+    await call(
+      "parent",
+      "/messages",
+      "POST",
+      { recipient_id: users[recipient].id },
+      403,
+    );
 });
+
+test("direct conversations work without a linked or enrolled child and are reused", async () => {
+  const thread = await start("tenant", "otherparent");
+  assert.equal(thread.student_id, null);
+  const again = await call("tenant", "/messages", "POST", {
+    recipient_id: users.otherparent.id,
+  });
+  assert.equal(again.id, thread.id);
+  await send("otherparent", thread, "Can we discuss admission?");
+  assert.ok(
+    (await call("tenant", `/messages/${thread.id}`)).messages.length > 0,
+  );
+  await call("tenant", `/messages/${thread.id}/read`, "POST", {
+    through_id: (await call("tenant", `/messages/${thread.id}`)).messages.at(-1)
+      .id,
+  });
+});
+
 test("messages persist offline, notify only the recipient, and deduplicate retries", async () => {
   const thread = await start();
   const key = randomUUID();
@@ -163,24 +172,30 @@ test("messages persist offline, notify only the recipient, and deduplicate retri
     sent.id,
   );
   assert.equal(
-    (await call("teacher", `/messages/${thread.id}`)).messages.length,
+    (await call("tenant", `/messages/${thread.id}`)).messages.length,
     1,
   );
-  assert.equal((await call("teacher", "/messages"))[0].unread_count, 1);
   assert.equal(
-    (await call("teacher", "/subscription/notices/unread-count")).count,
+    (await call("tenant", "/messages")).find((t) => t.id === thread.id)
+      .unread_count,
+    1,
+  );
+  assert.equal(
+    (await call("tenant", "/subscription/notices/unread-count")).count,
     1,
   );
   assert.equal(
     (await call("parent", "/subscription/notices/unread-count")).count,
     0,
   );
-  const inbox = await call("teacher", "/subscription/notices");
+  const inbox = (await call("tenant", "/subscription/notices")).filter(
+    (n) => !n.read_at,
+  );
   assert.equal(inbox.length, 1);
   assert.equal(inbox[0].source, "school");
-  assert.equal(inbox[0].link, `#conversations/${thread.id}`);
+  assert.equal(inbox[0].link, `#messages/${thread.id}`);
   assert.equal(
-    (await call("tenant", "/notifications")).some((n) =>
+    (await call("principal", "/notifications")).some((n) =>
       n.body.includes("Please help with homework."),
     ),
     false,
@@ -192,25 +207,26 @@ test("messages persist offline, notify only the recipient, and deduplicate retri
     {},
     404,
   );
-  await call("teacher", `/messages/${thread.id}/read`, "POST", {
+  await call("tenant", `/messages/${thread.id}/read`, "POST", {
     through_id: sent.id,
   });
   assert.equal(
-    (await call("teacher", "/subscription/notices/unread-count")).count,
+    (await call("tenant", "/subscription/notices/unread-count")).count,
     0,
   );
   assert.ok(
     (await call("parent", `/messages/${thread.id}`)).messages[0].read_at,
   );
-  await send("teacher", thread, "Happy to help!");
+  await send("tenant", thread, "Happy to help!");
   assert.equal(
     (await call("parent", "/subscription/notices/unread-count")).count,
     1,
   );
 });
-test("conversation reads, sends and read receipts enforce participant and school isolation", async () => {
+
+test("conversation reads, sends and receipts enforce participant and school isolation", async () => {
   const thread = await start();
-  for (const who of ["otherparent", "unrelated", "foreign"]) {
+  for (const who of ["otherparent", "foreign"]) {
     await call(who, `/messages/${thread.id}`, "GET", undefined, 404);
     await call(
       who,
@@ -226,7 +242,10 @@ test("conversation reads, sends and read receipts enforce participant and school
       { through_id: 999999 },
       404,
     );
-    assert.equal((await call(who, "/messages")).length, 0);
+    assert.equal(
+      (await call(who, "/messages")).some((t) => t.id === thread.id),
+      false,
+    );
   }
   const res = await fetch(base + `/messages/${thread.id}/send`, {
     method: "POST",
@@ -245,64 +264,123 @@ test("conversation reads, sends and read receipts enforce participant and school
     422,
   );
 });
-test("online presence expires and revoked teaching or parent relationships lose access", async () => {
+
+test("online presence expires and revoked school membership loses access", async () => {
   await fixture.db.query(
     "UPDATE sessions SET last_seen_at=now()-interval '2 minutes' WHERE user_id=$1",
-    [users.teacher.id],
+    [users.tenant.id],
   );
-  let contacts = await call("parent", "/messages/contacts");
-  assert.equal(
-    contacts.find((c) => c.recipient_id === users.teacher.id).online,
-    false,
-  );
-  await call("teacher", "/subscription/notices/presence", "POST", {});
-  contacts = await call("parent", "/messages/contacts");
-  assert.equal(
-    contacts.find((c) => c.recipient_id === users.teacher.id).online,
-    true,
-  );
+  assert.equal((await call("parent", "/messages/contacts"))[0].online, false);
+  await call("tenant", "/subscription/notices/presence", "POST", {});
+  assert.equal((await call("parent", "/messages/contacts"))[0].online, true);
   const thread = await start();
-  await fixture.db.query("UPDATE classes SET teacher_user_id=$2 WHERE id=$1", [
-    classroom.id,
-    users.unrelated.id,
+  await fixture.db.query("UPDATE users SET status='SUSPENDED' WHERE id=$1", [
+    users.tenant.id,
   ]);
-  await call("teacher", `/messages/${thread.id}`, "GET", undefined, 403);
+  await call("parent", `/messages/${thread.id}`, "GET", undefined, 403);
   await call(
     "parent",
     `/messages/${thread.id}/send`,
     "POST",
-    { body: "Old teacher", client_key: randomUUID() },
+    { body: "Old contact", client_key: randomUUID() },
     403,
   );
-  await fixture.db.query("UPDATE classes SET teacher_user_id=$2 WHERE id=$1", [
-    classroom.id,
-    users.teacher.id,
-  ]);
-  await fixture.db.query("UPDATE students SET parent_user_id=$2 WHERE id=$1", [
-    student.id,
-    users.otherparent.id,
-  ]);
-  await call("parent", `/messages/${thread.id}`, "GET", undefined, 403);
-  await fixture.db.query("UPDATE students SET parent_user_id=$2 WHERE id=$1", [
-    student.id,
-    users.parent.id,
+  assert.equal((await call("parent", "/messages")).length, 0);
+  await fixture.db.query("UPDATE users SET status='ACTIVE' WHERE id=$1", [
+    users.tenant.id,
   ]);
 });
+
 test("reading through an older message leaves later messages and other recipients unread", async () => {
-  const thread = await start("principal");
+  const thread = await start();
   const first = await send("parent", thread, "First question");
   const second = await send("parent", thread, "Second question");
-  await call("principal", `/messages/${thread.id}/read`, "POST", {
+  await call("tenant", `/messages/${thread.id}/read`, "POST", {
     through_id: first.id,
   });
-  const messages = (await call("principal", `/messages/${thread.id}`)).messages;
+  const messages = (await call("tenant", `/messages/${thread.id}`)).messages;
   assert.ok(messages.find((m) => m.id === first.id).read_at);
   assert.equal(messages.find((m) => m.id === second.id).read_at, null);
   assert.equal(
-    (await call("principal", "/subscription/notices/unread-count")).count,
+    (await call("tenant", "/subscription/notices/unread-count")).count,
     1,
   );
 });
+
+test("school updates arrive in private conversations and parents can reply", async () => {
+  await call("parent", "/subscription/notices/read-all", "POST", {});
+  const result = await call("tenant", "/parent-messages", "POST", {
+    recipient_ids: [users.parent.id, users.otherparent.id, users.parent.id],
+    title: "Friday meeting",
+    body: "Please attend the school meeting.",
+  });
+  assert.equal(result.count, 2);
+  const notices = await call("otherparent", "/subscription/notices");
+  const notice = notices.find((n) => n.title === "Friday meeting");
+  assert.match(notice.link, /^#messages\//);
+  const threadId = Number(notice.link.split("/")[1]);
+  const thread = await call("otherparent", `/messages/${threadId}`);
+  assert.ok(
+    thread.messages.some(
+      (m) => m.body === "Friday meeting\n\nPlease attend the school meeting.",
+    ),
+  );
+  await call("otherparent", `/messages/${threadId}/read`, "POST", {
+    through_id: thread.messages.at(-1).id,
+  });
+  assert.ok(
+    (await call("otherparent", "/subscription/notices")).find(
+      (n) => n.id === notice.id,
+    ).read_at,
+  );
+  await send("otherparent", { id: threadId }, "We will be there.");
+  assert.ok(
+    (await call("tenant", `/messages/${threadId}`)).messages.some(
+      (m) => m.body === "We will be there.",
+    ),
+  );
+  const firstThread = (await call("parent", "/messages")).find(
+    (t) => t.recipient_id === users.tenant.id,
+  );
+  assert.notEqual(firstThread.id, threadId);
+});
+
+test("long school updates preserve their complete content", async () => {
+  const body = "x".repeat(5000);
+  await call("tenant", "/parent-messages", "POST", {
+    recipient_ids: [users.parent.id],
+    title: "Long update",
+    body,
+  });
+  const thread = await start();
+  const messages = (await call("parent", `/messages/${thread.id}`)).messages;
+  assert.equal(
+    messages
+      .slice(-2)
+      .map((m) => m.body)
+      .join(""),
+    "Long update\n\n" + body,
+  );
+});
+
+test("platform staff cannot enter school messaging or appear in parent contacts", async () => {
+  await insert(fixture.db, "platform_staff", {
+    user_id: users.tenant.id,
+    scope: "TECHNICAL",
+    created_by: fixture.users.owner.id,
+  });
+  try {
+    await call("tenant", "/messages", "GET", undefined, 403);
+    await call("tenant", "/parent-messages/recipients", "GET", undefined, 403);
+    assert.equal((await call("parent", "/messages/contacts")).length, 0);
+    assert.equal((await call("parent", "/messages")).length, 0);
+  } finally {
+    await fixture.db.query("DELETE FROM platform_staff WHERE user_id=$1", [
+      users.tenant.id,
+    ]);
+  }
+});
+
 test("complaints notify tenant/leadership, school updates notify parents, feedback notifies leadership", async () => {
   const complaint = await call("parent", "/operations/cases", "POST", {
     kind: "COMPLAINT",

@@ -1,6 +1,8 @@
 import { GettingStarted } from "../getting-started";
 import { PlatformInbox } from "./platform-notifications";
-import React, { useEffect } from "react";
+import { NotificationReader } from "../notification-reader";
+import { notificationPreview } from "../notification-content";
+import React, { useEffect, useState } from "react";
 import {
   Users,
   CalendarCheck,
@@ -406,6 +408,7 @@ export function Dashboard({ user, config, term, can, money, go, notify }) {
   );
 }
 export function Notifications({ can }) {
+  const [opened, setOpened] = useState(null);
   const isAdmin = can("admin.write");
   const q = useData(isAdmin ? "/notifications" : null);
   return (
@@ -426,8 +429,16 @@ export function Notifications({ can }) {
                   label: "Message",
                   render: (n) => (
                     <div>
-                      <strong>{n.title}</strong>
-                      <p>{n.body}</p>
+                      <button
+                        type="button"
+                        className="text-button notification-topic"
+                        onClick={() => setOpened({ ...n, source: "school" })}
+                      >
+                        {n.title}
+                      </button>
+                      <p className="notification-preview">
+                        {notificationPreview(n.body)}
+                      </p>
                     </div>
                   ),
                 },
@@ -443,6 +454,9 @@ export function Notifications({ can }) {
             />
           )}
         </Panel>
+      )}
+      {opened && (
+        <NotificationReader notice={opened} onClose={() => setOpened(null)} />
       )}
     </>
   );

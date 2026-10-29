@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
+    "dompurify": "^3.4.17",
     "dotenv": "^18.0.4",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^27.4.0",
     "prettier": "^3.9.9",
     "vite": "^8.3.5"
   },

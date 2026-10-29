@@ -1,3 +1,4 @@
+import { CreateSchoolAccount } from "./account-assignments";
 import { AccountRemoval } from "./account-removal";
 import React, { useEffect, useState } from "react";
 import { Plus, CheckCheck, Save, LogIn, LogOut } from "lucide-react";
@@ -244,8 +245,6 @@ export function Attendance({ config, can, notify, term, go }) {
 export function Staff({ can, notify, config, user }) {
   const staff = useData("/hr/staff"),
     attendance = useData("/attendance/staff"),
-    accounts = useData(can("staff.write") ? "/hr/staff/accounts" : null),
-    [accountId, setAccountId] = useState(""),
     [tab, setTab] = useState("directory"),
     [modal, setModal] = useState(null),
     [removeAccount, setRemoveAccount] = useState(null);
@@ -253,28 +252,18 @@ export function Staff({ can, notify, config, user }) {
     await post(path, body);
     staff.reload();
     attendance.reload();
-    accounts.reload();
     setModal(null);
     notify("Staff record updated.");
   }
-  const staffOpts = staff.data.map((s) => ({
-    value: s.id,
-    label: `${s.first_name} ${s.last_name}`,
-  }));
-  const selectedAccount = accounts.data.find(
-    (account) => String(account.id) === accountId,
-  );
-  const nameParts = selectedAccount?.name.trim().split(/\s+/) || [];
   return (
     <>
       <PageHead
         title="Staff & attendance"
         description="Record staff arrival and departure times, and review attendance."
       >
-        {can("staff.write") && (
+        {can("admin.write") && (
           <Button
             onClick={() => {
-              setAccountId("");
               setModal({ type: "new" });
             }}
           >
@@ -308,10 +297,9 @@ export function Staff({ can, notify, config, user }) {
               title: "Add your first staff member",
               description:
                 "Create staff records so you can track attendance and build your school team.",
-              children: can("staff.write") ? (
+              children: can("admin.write") ? (
                 <Button
                   onClick={() => {
-                    setAccountId("");
                     setModal({ type: "new" });
                   }}
                 >
@@ -413,11 +401,6 @@ export function Staff({ can, notify, config, user }) {
                   ]
                 : []),
             ]}
-            empty={{
-              title: "Meet your school team",
-              description:
-                "Teacher accounts appear here automatically. Add other staff members as needed.",
-            }}
           />
         ) : (
           <Table
@@ -460,106 +443,52 @@ export function Staff({ can, notify, config, user }) {
             setRemoveAccount(null);
             staff.reload();
             attendance.reload();
-            accounts.reload();
             notify(message);
           }}
         />
       )}
-      {modal && (
+      {modal?.type === "new" && (
+        <Modal title="Create school account" onClose={() => setModal(null)}>
+          <CreateSchoolAccount
+            onSubmit={async (values) => {
+              const result = await post("/users", values);
+              staff.reload();
+              attendance.reload();
+              setModal(null);
+              notify(result.message || "Account created.");
+            }}
+          />
+        </Modal>
+      )}
+      {modal?.type === "status" && (
         <Modal
-          title={
-            modal.type === "new"
-              ? "Add staff member"
-              : "Record staff attendance status"
-          }
+          title="Record staff attendance status"
           onClose={() => setModal(null)}
         >
-          {modal.type === "new" && (
-            <label className="field">
-              <span>Existing staff account (optional)</span>
-              <select
-                value={accountId}
-                onChange={(event) => setAccountId(event.target.value)}
-                disabled={accounts.loading}
-              >
-                <option value="">Add staff without a linked account</option>
-                {accounts.data.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ? {account.email} ({human(account.role)})
-                  </option>
-                ))}
-              </select>
-              <small>
-                Teachers appear in the directory automatically and use their
-                existing login. Select an account here for other staff members
-                who need attendance access.
-              </small>
-              {accounts.error && (
-                <span className="form-error">{accounts.error}</span>
-              )}
-            </label>
-          )}
           <Form
-            key={modal.type === "new" ? accountId : "status"}
-            initial={
-              modal.type === "new"
-                ? {
-                    first_name: nameParts[0] || "",
-                    last_name: nameParts.slice(1).join(" "),
-                    position:
-                      selectedAccount?.role === "TEACHER" ? "Teacher" : "",
-                  }
-                : {}
-            }
-            fields={
-              modal.type === "new"
-                ? [
-                    { name: "first_name", label: "First name" },
-                    { name: "last_name", label: "Last name" },
-                    { name: "department", label: "Department" },
-                    { name: "position", label: "Position" },
-                    {
-                      name: "employment_type",
-                      label: "Employment type",
-                      options: ["FULL_TIME", "PART_TIME", "CONTRACT"],
-                      default: "FULL_TIME",
-                    },
-                    {
-                      name: "hire_date",
-                      label: "Hire date",
-                      type: "date",
-                      default: config.today,
-                    },
-                  ]
-                : [
-                    {
-                      name: "date",
-                      label: "Date",
-                      type: "date",
-                      default: config.today,
-                    },
-                    {
-                      name: "status",
-                      label: "Attendance status",
-                      options: [
-                        "ABSENT",
-                        "LEAVE",
-                        "SICK_LEAVE",
-                        "OFFICIAL_ASSIGNMENT",
-                      ],
-                    },
-                  ]
-            }
-            onSubmit={(v) =>
-              modal.type === "new"
-                ? action("/hr/staff", {
-                    ...v,
-                    user_id: accountId ? Number(accountId) : null,
-                  })
-                : action("/attendance/staff/status", {
-                    ...v,
-                    staff_id: modal.staff_id,
-                  })
+            fields={[
+              {
+                name: "date",
+                label: "Date",
+                type: "date",
+                default: config.today,
+              },
+              {
+                name: "status",
+                label: "Attendance status",
+                options: [
+                  "ABSENT",
+                  "LEAVE",
+                  "SICK_LEAVE",
+                  "OFFICIAL_ASSIGNMENT",
+                ],
+              },
+            ]}
+            onSubmit={(values) =>
+              action("/attendance/staff/status", {
+                ...values,
+                staff_id: modal.staff_id,
+              })
             }
           />
         </Modal>

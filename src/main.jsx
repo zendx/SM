@@ -1,6 +1,6 @@
+import { WorkspaceNavigation } from "./workspace-navigation";
 import { AccountMenu } from "./account-menu";
 import { ParentMessages } from "./pages/parent-messages";
-import { Conversations } from "./pages/conversations";
 import { TeacherAttendancePrompt } from "./teacher-attendance-prompt";
 import { BrandLogo } from "./brand-logo";
 import { MarketerPortal } from "./pages/referrals";
@@ -463,8 +463,14 @@ function App() {
         "hr.manage",
       ].some(can),
     ],
-    ["messages", "Message parents", Users, can("admin.write")],
-    ["conversations", "Messages", MessageSquare, ["PARENT","TEACHER","PRINCIPAL","PROPRIETOR","SUPER_ADMIN"].includes(session?.user.role)],
+    [
+      "messages",
+      session?.user.role === "PARENT" ? "Message school" : "Message parents",
+      MessageSquare,
+      ["SUPER_ADMIN", "PARENT"].includes(session?.user.role) &&
+        !session?.user.platform_operator &&
+        !session?.user.platform_scope,
+    ],
     ["administration", "Administration", Settings, true],
     [
       "quality",
@@ -614,12 +620,21 @@ function App() {
       go("finance");
   }, [session]);
   useEffect(() => {
-    const fn = () =>
-      setPage(location.hash.slice(1).split("/")[0] || "dashboard");
+    const fn = () => {
+      if (location.hash.startsWith("#conversations")) {
+        location.replace(location.hash.replace("#conversations", "#messages"));
+        setPage("messages");
+      } else setPage(location.hash.slice(1).split("/")[0] || "dashboard");
+    };
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
   }, []);
   useEffect(() => {
+    if (page === "conversations" && nav.some((n) => n[0] === "messages")) {
+      location.replace(location.hash.replace("#conversations", "#messages"));
+      setPage("messages");
+      return;
+    }
     if (
       session &&
       !session.mfa_required &&
@@ -848,7 +863,7 @@ function App() {
       reports: Reports,
       administration: Administration,
       messages: ParentMessages,
-      conversations: Conversations,
+      conversations: ParentMessages,
       notifications: Notifications,
       academics: Academics,
       curriculum: Curriculum,
@@ -883,19 +898,7 @@ function App() {
           </div>
         </div>
         <div className="nav-label">WORKSPACE</div>
-        <nav>
-          {nav.map(([key, label, Icon]) => (
-            <button
-              key={key}
-              className={page === key ? "active" : ""}
-              onClick={() => go(key)}
-            >
-              <Icon size={19} />
-              {label}
-              {page === key && <span className="nav-dot" />}
-            </button>
-          ))}
-        </nav>
+        <WorkspaceNavigation nav={nav} page={page} go={go} />
         <div className="sidebar-bottom">
           <div className="core-label">
             <span /> Core operations & academics

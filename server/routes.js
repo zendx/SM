@@ -1,5 +1,7 @@
 import { SCHOOL_ROLES } from "../shared/school-roles.js";
-import { ensureTeacherStaff } from "./teacher-staff.js";
+import { schoolParentConversation } from "./messaging.js";
+import { consoleAccess } from "./platform-access.js";
+import { ensureSchoolStaff } from "./teacher-staff.js";
 import { smtpConfig } from "./integrations.js";
 import express from "express";
 import multer from "multer";
@@ -794,7 +796,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     "/hr/staff",
     allow("staff.read", "staff.attendance.read", "staff.self"),
     async (req, res) => {
-      await ensureTeacherStaff(db, req.user.school_id);
+      await ensureSchoolStaff(db, req.user.school_id);
       return ok(
         res,
         await rows(
@@ -812,7 +814,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     "/hr/staff/accounts",
     requirePermission("staff.write"),
     async (req, res) => {
-      await ensureTeacherStaff(db, req.user.school_id);
+      await ensureSchoolStaff(db, req.user.school_id);
       ok(
         res,
         await rows(
@@ -881,7 +883,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     "/attendance/staff/today",
     requirePermission("staff.self"),
     async (req, res) => {
-      await ensureTeacherStaff(db, req.user.school_id);
+      await ensureSchoolStaff(db, req.user.school_id);
       const school = await currentSchool(db, req.user);
       const date = localClock(school.timezone).date;
       const staff = await one(
@@ -906,7 +908,7 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
   );
   for (const action of ["check-in", "check-out"])
     r.post(`/attendance/staff/${action}`, async (req, res) => {
-      await ensureTeacherStaff(db, req.user.school_id);
+      await ensureSchoolStaff(db, req.user.school_id);
       const staffId = req.body.staff_id ? id.parse(req.body.staff_id) : null;
       let staff;
       if (staffId && permitted(req.user, "staff.attendance.write"))
@@ -1380,6 +1382,15 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
     },
   );
 
+  r.use("/parent-messages", (req, _res, next) => {
+    if (
+      !req.user.school_id ||
+      req.user.role !== "SUPER_ADMIN" ||
+      consoleAccess(req.user)
+    )
+      fail(403, "Only school administrators can send parent updates.");
+    next();
+  });
   r.get(
     "/parent-messages/recipients",
     requirePermission("admin.write"),
@@ -1389,10 +1400,14 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
         await rows(
           db,
           `SELECT u.id,u.name,u.email,
+          EXISTS(SELECT 1 FROM sessions se WHERE se.user_id=u.id AND se.expires_at>now()
+            AND se.mfa_verified AND se.last_seen_at>now()-interval '45 seconds') AS online,
           COALESCE((SELECT json_agg(json_build_object('name',s.first_name || ' ' || s.last_name,'class_id',s.class_id,'class_name',c.name) ORDER BY s.first_name,s.id)
             FROM students s LEFT JOIN classes c ON c.id=s.class_id AND c.school_id=s.school_id
             WHERE s.school_id=u.school_id AND s.parent_user_id=u.id AND s.status='ENROLLED'), '[]'::json) AS children
-          FROM users u WHERE u.school_id=$1 AND u.role='PARENT' AND u.status='ACTIVE' ORDER BY u.name,u.id`,
+          FROM users u WHERE u.school_id=$1 AND u.role='PARENT' AND u.status='ACTIVE' AND u.archived_at IS NULL
+          AND NOT EXISTS(SELECT 1 FROM platform_operators po WHERE po.user_id=u.id)
+          AND NOT EXISTS(SELECT 1 FROM platform_staff ps WHERE ps.user_id=u.id) ORDER BY u.name,u.id`,
           [req.user.school_id],
         ),
       );
@@ -1413,15 +1428,41 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
       const count = await db.transaction(async (tx) => {
         const parents = await rows(
           tx,
-          "SELECT id,email FROM users WHERE school_id=$1 AND role='PARENT' AND status='ACTIVE' AND id=ANY($2::int[])",
+          `SELECT id,email FROM users u WHERE school_id=$1 AND role='PARENT' AND status='ACTIVE' AND archived_at IS NULL AND id=ANY($2::int[])
+          AND NOT EXISTS(SELECT 1 FROM platform_operators po WHERE po.user_id=u.id)
+          AND NOT EXISTS(SELECT 1 FROM platform_staff ps WHERE ps.user_id=u.id)`,
           [req.user.school_id, ids],
         );
         if (parents.length !== ids.length)
           fail(422, "Choose active parents from your school.");
         const batch = token();
-        for (const parent of parents)
+        for (const parent of parents) {
+          const conversation = await schoolParentConversation(
+            tx,
+            req.user.school_id,
+            parent.id,
+            req.user.id,
+          );
+          const content = Array.from(`${b.title}\n\n${b.body}`);
+          for (let offset = 0; offset < content.length; offset += 4000) {
+            await tx.query(
+              "INSERT INTO school_messages(school_id,conversation_id,sender_id,recipient_id,body,client_key) VALUES($1,$2,$3,$4,$5,$6)",
+              [
+                req.user.school_id,
+                conversation.id,
+                req.user.id,
+                parent.id,
+                content.slice(offset, offset + 4000).join(""),
+                `${batch}:${offset}`,
+              ],
+            );
+          }
           await tx.query(
-            "INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key) VALUES($1,$2,$3,$4,$5,$6)",
+            "UPDATE school_conversations SET updated_at=now() WHERE id=$1",
+            [conversation.id],
+          );
+          await tx.query(
+            "INSERT INTO notifications(school_id,user_id,email,title,body,dedupe_key,link) VALUES($1,$2,$3,$4,$5,$6,$7)",
             [
               req.user.school_id,
               parent.id,
@@ -1429,8 +1470,10 @@ export function coreRoutes(db, { dataDir = "./data", documentStorage } = {}) {
               b.title,
               b.body,
               `parent-message:${batch}:${parent.id}`,
+              `#messages/${conversation.id}`,
             ],
           );
+        }
         await audit(
           tx,
           req.user,

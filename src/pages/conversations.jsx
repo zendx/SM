@@ -21,7 +21,7 @@ function messageKey() {
 function Thread({ id, user, onRead }) {
   const q = useData(`/messages/${id}`, null);
   const refresh = useCallback(q.reload, [id]);
-  useLiveUpdates(refresh);
+  useLiveUpdates(refresh, 1000);
   const [draft, setDraft] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -185,17 +185,18 @@ function Thread({ id, user, onRead }) {
   );
 }
 
-export function Conversations({ user }) {
+export function Conversations({ user, embedded = false }) {
   const q = useData("/messages"),
     contacts = useData("/messages/contacts");
   const refresh = useCallback(q.reload, []),
     refreshContacts = useCallback(contacts.reload, []);
-  useLiveUpdates(refresh);
-  useLiveUpdates(refreshContacts, 15000);
+  useLiveUpdates(refresh, 1000);
+  useLiveUpdates(refreshContacts, 5000);
   const [active, setActive] = useState(fromHash),
     [newChat, setNewChat] = useState(false),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [search, setSearch] = useState("");
   useEffect(() => {
     const sync = () => {
       setActive(fromHash());
@@ -207,18 +208,37 @@ export function Conversations({ user }) {
   const choose = (id) => {
     setActive(id);
     setNewChat(false);
-    location.hash = `conversations/${id}`;
+    location.hash = `messages/${id}`;
   };
+  async function startConversation(contact) {
+    setBusy(true);
+    setError("");
+    try {
+      const thread = await post("/messages", {
+        recipient_id: contact.recipient_id,
+      });
+      refresh();
+      choose(thread.id);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const matches = (name) =>
+    name.toLowerCase().includes(search.trim().toLowerCase());
   return (
     <>
-      <PageHead
-        title="Messages"
-        description={
-          user.role === "PARENT"
-            ? "Talk with your child's teachers, principal or school proprietor."
-            : "Stay in touch with parents about their children."
-        }
-      />
+      {!embedded && (
+        <PageHead
+          title={user.role === "PARENT" ? "Message school" : "Message parents"}
+          description={
+            user.role === "PARENT"
+              ? "Talk with your school administrator."
+              : "Stay in touch with parents about their children."
+          }
+        />
+      )}
       <div className={`chat-layout ${active && !newChat ? "has-active" : ""}`}>
         <aside className="chat-sidebar" aria-label="Conversations">
           <Button
@@ -230,38 +250,63 @@ export function Conversations({ user }) {
             <Plus size={17} />
             New conversation
           </Button>
+          <label className="chat-search">
+            <span className="sr-only">Search conversations</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={
+                user.role === "PARENT"
+                  ? "Search school contacts"
+                  : "Search parents"
+              }
+            />
+          </label>
+          <p className="chat-live-note">
+            <span />
+            Updates automatically
+          </p>
           {q.error && (
             <p className="form-error" role="alert">
               {q.error}
             </p>
           )}
-          {!q.data.length && (
+          {!q.loading && !q.error && !q.data.length && (
             <p className="chat-empty">No conversations yet.</p>
           )}
-          {q.data.map((t) => (
-            <button
-              type="button"
-              key={t.id}
-              className={`chat-contact ${active === t.id ? "is-active" : ""}`}
-              onClick={() => choose(t.id)}
-            >
-              <strong>
-                {t.recipient_name}
-                {t.unread_count > 0 && (
+          {q.data
+            .filter((t) => matches(t.recipient_name))
+            .map((t) => (
+              <button
+                type="button"
+                key={t.id}
+                className={`chat-contact ${active === t.id ? "is-active" : ""}`}
+                onClick={() => choose(t.id)}
+              >
+                <strong>
+                  {t.recipient_name}
+                  {t.unread_count > 0 && (
+                    <span
+                      className="chat-count"
+                      aria-label={`${t.unread_count} unread messages`}
+                    >
+                      {t.unread_count}
+                    </span>
+                  )}
+                </strong>
+                <small>
                   <span
-                    className="chat-count"
-                    aria-label={`${t.unread_count} unread messages`}
+                    className={`chat-presence ${t.online ? "is-online" : ""}`}
                   >
-                    {t.unread_count}
+                    {t.online ? "Online now" : "Offline"}
                   </span>
-                )}
-              </strong>
-              <small>
-                {t.student_name} · {roleLabel(t.recipient_role)}
-              </small>
-              <span>{t.last_message || "Start a conversation"}</span>
-            </button>
-          ))}
+                  {t.student_id ? t.student_name : ""} ·{" "}
+                  {roleLabel(t.recipient_role)}
+                </small>
+                <span>{t.last_message || "Start a conversation"}</span>
+              </button>
+            ))}
         </aside>
         <div className="chat-main">
           {active && !newChat && (
@@ -270,7 +315,7 @@ export function Conversations({ user }) {
               type="button"
               onClick={() => {
                 setActive(null);
-                location.hash = "conversations";
+                location.hash = "messages";
               }}
             >
               <ArrowLeft size={17} />
@@ -280,7 +325,7 @@ export function Conversations({ user }) {
           {newChat ? (
             <section className="chat-new">
               <h2>Start a conversation</h2>
-              <p>Choose a child and the person you want to message.</p>
+              <p>Choose a contact to start a private conversation.</p>
               {contacts.error && (
                 <p className="form-error" role="alert">
                   {contacts.error}
@@ -291,46 +336,53 @@ export function Conversations({ user }) {
                   {error}
                 </p>
               )}
-              <label>
-                Child and recipient
-                <select
-                  disabled={busy}
-                  value=""
-                  onChange={async (e) => {
-                    const contact = contacts.data[Number(e.target.value)];
-                    if (!contact) return;
-                    setBusy(true);
-                    setError("");
-                    try {
-                      const thread = await post("/messages", {
-                        student_id: contact.student_id,
-                        recipient_id: contact.recipient_id,
-                      });
-                      refresh();
-                      choose(thread.id);
-                    } catch (e) {
-                      setError(e.message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  <option value="">Choose a recipient</option>
-                  {contacts.data.map((c, i) => (
-                    <option key={`${c.student_id}:${c.recipient_id}`} value={i}>
-                      {c.student_name} — {c.recipient_name} (
-                      {roleLabel(c.recipient_role)})
-                    </option>
-                  ))}
-                </select>
+              <label className="chat-search">
+                Search contacts
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name"
+                />
               </label>
+              {contacts.loading && <p role="status">Loading contacts...</p>}
+              <div className="chat-contact-picker">
+                {[...contacts.data]
+                  .filter((c) => matches(c.recipient_name))
+                  .sort(
+                    (a, b) =>
+                      Number(b.online) - Number(a.online) ||
+                      a.recipient_name.localeCompare(b.recipient_name),
+                  )
+                  .map((contact) => (
+                    <button
+                      type="button"
+                      key={contact.recipient_id}
+                      className="chat-person"
+                      disabled={busy}
+                      onClick={() => startConversation(contact)}
+                    >
+                      <span className="chat-avatar" aria-hidden="true">
+                        {contact.recipient_name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span>
+                        <strong>{contact.recipient_name}</strong>
+                        <small className={contact.online ? "chat-online" : ""}>
+                          {contact.online
+                            ? "Online now"
+                            : "Offline - leave a message"}
+                        </small>
+                      </span>
+                      <MessageSquare size={18} aria-hidden="true" />
+                    </button>
+                  ))}
+              </div>
               {!contacts.loading &&
                 !contacts.error &&
                 !contacts.data.length && (
                   <p>
-                    No contacts are available. Check that the child has an
-                    active parent account and an assigned teacher or school
-                    leader.
+                    No contacts are available. Your school needs an active
+                    administrator and parent account to start a conversation.
                   </p>
                 )}
             </section>

@@ -3,29 +3,28 @@ import { one, rows } from "./db.js";
 import { fail } from "./security.js";
 import { id, z } from "./validation.js";
 import { notifyUser } from "./operations-service.js";
+import { consoleAccess } from "./platform-access.js";
 
-// Resolve relationships from current enrolment and teaching assignments on every
-// request, including reads. A changed school/child assignment revokes access.
+// Resolve active school/parent membership on every request, including reads.
 async function contacts(db, user) {
   return rows(
     db,
-    `SELECT s.id AS student_id,s.first_name || ' ' || s.last_name AS student_name,
+    `SELECT NULL::int AS student_id,'School conversation' AS student_name,
     p.id AS parent_user_id,p.name AS parent_name,u.id AS staff_user_id,u.name AS staff_name,u.role AS staff_role,
     CASE WHEN p.id=$2 THEN u.id ELSE p.id END AS recipient_id,
     CASE WHEN p.id=$2 THEN u.name ELSE p.name END AS recipient_name,
     CASE WHEN p.id=$2 THEN u.role ELSE p.role END AS recipient_role,
     EXISTS(SELECT 1 FROM sessions se WHERE se.user_id=CASE WHEN p.id=$2 THEN u.id ELSE p.id END
       AND se.expires_at>now() AND se.mfa_verified AND se.last_seen_at>now()-interval '45 seconds') AS online
-    FROM students s JOIN users p ON p.id=s.parent_user_id AND p.school_id=s.school_id
-    JOIN users u ON u.school_id=s.school_id AND u.id<>p.id
-    WHERE s.school_id=$1 AND s.status='ENROLLED' AND p.role='PARENT' AND p.status='ACTIVE' AND p.archived_at IS NULL
+    FROM users p JOIN users u ON u.school_id=p.school_id AND u.id<>p.id
+    WHERE p.school_id=$1 AND p.role='PARENT' AND p.status='ACTIVE' AND p.archived_at IS NULL
     AND u.status='ACTIVE' AND u.archived_at IS NULL AND ${user.role === "PARENT" ? "p.id=$2" : "u.id=$2"}
     AND NOT EXISTS(SELECT 1 FROM platform_operators po WHERE po.user_id=u.id)
     AND NOT EXISTS(SELECT 1 FROM platform_staff ps WHERE ps.user_id=u.id)
-    AND (u.role IN ('SUPER_ADMIN','PRINCIPAL','PROPRIETOR') OR (u.role='TEACHER' AND (
-      EXISTS(SELECT 1 FROM classes c WHERE c.school_id=s.school_id AND c.id=s.class_id AND c.teacher_user_id=u.id)
-      OR EXISTS(SELECT 1 FROM class_subjects cs WHERE cs.school_id=s.school_id AND cs.class_id=s.class_id AND cs.teacher_user_id=u.id))))
-    ORDER BY s.first_name,u.name,p.name`,
+    AND NOT EXISTS(SELECT 1 FROM platform_operators po WHERE po.user_id=p.id)
+    AND NOT EXISTS(SELECT 1 FROM platform_staff ps WHERE ps.user_id=p.id)
+    AND u.role='SUPER_ADMIN'
+    ORDER BY u.name,p.name`,
     [user.school_id, user.id],
   );
 }
@@ -39,7 +38,6 @@ async function access(db, user, conversationId, lock = false) {
   if (!thread) fail(404, "Conversation not found.");
   const contact = (await contacts(db, user)).find(
     (c) =>
-      c.student_id === thread.student_id &&
       c.parent_user_id === thread.parent_user_id &&
       c.staff_user_id === thread.staff_user_id,
   );
@@ -52,9 +50,8 @@ export function messagingRoutes(db) {
   r.use("/messages", (req, res, next) => {
     if (
       !req.user.school_id ||
-      !["PARENT", "TEACHER", "PRINCIPAL", "PROPRIETOR", "SUPER_ADMIN"].includes(
-        req.user.role,
-      )
+      consoleAccess(req.user) ||
+      !["PARENT", "SUPER_ADMIN"].includes(req.user.role)
     )
       return next(
         Object.assign(
@@ -71,10 +68,7 @@ export function messagingRoutes(db) {
   r.get("/messages", async (req, res) => {
     const allowed = await contacts(db, req.user);
     const byRelationship = new Map(
-      allowed.map((c) => [
-        `${c.student_id}:${c.parent_user_id}:${c.staff_user_id}`,
-        c,
-      ]),
+      allowed.map((c) => [`${c.parent_user_id}:${c.staff_user_id}`, c]),
     );
     const threads = await rows(
       db,
@@ -88,7 +82,7 @@ export function messagingRoutes(db) {
     res.json({
       data: threads.flatMap((t) => {
         const contact = byRelationship.get(
-          `${t.student_id}:${t.parent_user_id}:${t.staff_user_id}`,
+          `${t.parent_user_id}:${t.staff_user_id}`,
         );
         return contact ? [{ ...t, ...contact, id: t.id }] : [];
       }),
@@ -96,28 +90,22 @@ export function messagingRoutes(db) {
   });
   r.post("/messages", async (req, res) => {
     const b = z
-      .object({ student_id: id, recipient_id: id })
+      .object({ student_id: id.nullable().optional(), recipient_id: id })
       .strict()
       .parse(req.body);
     const contact = (await contacts(db, req.user)).find(
-      (c) => c.student_id === b.student_id && c.recipient_id === b.recipient_id,
+      (c) => c.recipient_id === b.recipient_id,
     );
     if (!contact)
       fail(
         403,
-        "Choose a parent, assigned teacher or school leader linked to this child.",
+        "Choose an active parent or school administrator in your school.",
       );
-    const thread = await one(
+    const thread = await schoolParentConversation(
       db,
-      `INSERT INTO school_conversations(school_id,student_id,parent_user_id,staff_user_id)
-      VALUES($1,$2,$3,$4) ON CONFLICT(school_id,student_id,parent_user_id,staff_user_id)
-      DO UPDATE SET student_id=EXCLUDED.student_id RETURNING *`,
-      [
-        req.user.school_id,
-        b.student_id,
-        contact.parent_user_id,
-        contact.staff_user_id,
-      ],
+      req.user.school_id,
+      contact.parent_user_id,
+      contact.staff_user_id,
     );
     res.json({ data: { ...thread, ...contact, id: thread.id } });
   });
@@ -180,7 +168,7 @@ export function messagingRoutes(db) {
         `New message from ${req.user.name}`,
         `${thread.student_name}: ${b.body}`,
         `chat:${thread.id}:${saved.id}:${recipient}`,
-        `#conversations/${thread.id}`,
+        `#messages/${thread.id}`,
       );
       return saved;
     });
@@ -197,12 +185,30 @@ export function messagingRoutes(db) {
       );
       await tx.query(
         `UPDATE notifications SET read_at=COALESCE(read_at,now()) WHERE school_id=$1 AND user_id=$2
-        AND dedupe_key IN (SELECT 'chat:' || conversation_id || ':' || id || ':' || recipient_id FROM school_messages
-          WHERE conversation_id=$3 AND recipient_id=$2 AND id<=$4) AND read_at IS NULL`,
+        AND (dedupe_key IN (SELECT 'chat:' || conversation_id || ':' || id || ':' || recipient_id FROM school_messages
+          WHERE conversation_id=$3 AND recipient_id=$2 AND id<=$4)
+          OR (link='#messages/' || $3::text AND dedupe_key LIKE 'parent-message:%'
+            AND created_at <= (SELECT created_at FROM school_messages WHERE conversation_id=$3 AND id=$4 AND recipient_id=$2)))
+        AND read_at IS NULL`,
         [req.user.school_id, req.user.id, thread.id, b.through_id],
       );
     });
     res.json({ data: { ok: true } });
   });
   return r;
+}
+
+export async function schoolParentConversation(
+  db,
+  schoolId,
+  parentId,
+  staffId,
+) {
+  return one(
+    db,
+    `INSERT INTO school_conversations(school_id,parent_user_id,staff_user_id)
+     VALUES($1,$2,$3) ON CONFLICT(school_id,parent_user_id,staff_user_id) WHERE student_id IS NULL
+     DO UPDATE SET parent_user_id=EXCLUDED.parent_user_id RETURNING *`,
+    [schoolId, parentId, staffId],
+  );
 }

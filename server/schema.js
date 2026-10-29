@@ -82,3 +82,20 @@ export async function checkFeeEligibilitySchema(db) {
     );
   }
 }
+
+export async function checkDirectMessagingSchema(db) {
+  const column = (
+    await db.query(
+      "SELECT is_nullable FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='school_conversations' AND column_name='student_id'",
+    )
+  ).rows[0];
+  const index = (
+    await db.query(
+      "SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema() AND c.relname='school_conversations_direct' AND i.indisvalid AND i.indisunique",
+    )
+  ).rows[0];
+  if (column?.is_nullable !== "YES" || !index)
+    throw new Error(
+      "Direct messaging schema migration is incomplete. Apply supabase:setup before deploying.",
+    );
+}

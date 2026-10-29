@@ -19,6 +19,22 @@
   gap: 24px;
   align-items: start;
 }
+.pm-presence {
+  color: #7b8981;
+  font-size: 10px;
+}
+.pm-presence.is-online {
+  color: #287143;
+}
+.pm-presence.is-online::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: #368455;
+}
 .pm-audience,
 .pm-composer {
   background: #fff;

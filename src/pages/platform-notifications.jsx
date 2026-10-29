@@ -5,6 +5,8 @@ import { useData } from "../hooks";
 import { post } from "../api";
 import { Panel, Form, Button, Table } from "../components";
 import { ContactPreferences } from "./communication-preferences";
+import { NotificationReader } from "../notification-reader";
+import { notificationPreview } from "../notification-content";
 
 export function NotificationBell({ onClick }) {
   const q = useData("/subscription/notices/unread-count", { count: 0 });
@@ -50,8 +52,25 @@ export function NotificationBell({ onClick }) {
 }
 export function PlatformInbox() {
   const q = useData("/subscription/notices");
+  const [opened, setOpened] = useState(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  async function markRead(notice) {
+    try {
+      await post(
+        `/subscription/notices/${notice.source === "school" ? "school/" : ""}${notice.id}/read`,
+        {},
+      );
+      q.reload();
+      window.dispatchEvent(new Event("notices-read"));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+  function openNotice(notice) {
+    setOpened(notice);
+    if (!notice.read_at) markRead(notice);
+  }
   useEffect(() => {
     const update = () => {
       if (document.visibilityState === "visible" && navigator.onLine)
@@ -66,7 +85,6 @@ export function PlatformInbox() {
   }, []);
   return (
     <>
-      <ContactPreferences />
       <Panel
         title="Notifications"
         description="Messages, school updates, complaints and SMPIS announcements. Unread updates stay here while you are offline."
@@ -106,8 +124,16 @@ export function PlatformInbox() {
               label: "Notification",
               render: (n) => (
                 <div>
-                  <strong>{n.title}</strong>
-                  <p className="support-description">{n.body}</p>
+                  <button
+                    type="button"
+                    className="text-button notification-topic"
+                    onClick={() => openNotice(n)}
+                  >
+                    {n.title}
+                  </button>
+                  <p className="notification-preview">
+                    {notificationPreview(n.body)}
+                  </p>
                   <small>{new Date(n.created_at).toLocaleString()}</small>
                 </div>
               ),
@@ -117,42 +143,11 @@ export function PlatformInbox() {
               label: "Actions",
               render: (n) => (
                 <div className="toolbar">
-                  <a
-                    href={n.link}
-                    onClick={async (event) => {
-                      event.preventDefault();
-                      try {
-                        await post(
-                          `/subscription/notices/${n.source === "school" ? "school/" : ""}${n.id}/read`,
-                          {},
-                        );
-                        q.reload();
-                        window.dispatchEvent(new Event("notices-read"));
-                        location.assign(n.link);
-                      } catch (e) {
-                        setError(e.message);
-                      }
-                    }}
-                  >
-                    Open
-                  </a>
+                  <Button small secondary onClick={() => openNotice(n)}>
+                    Read message
+                  </Button>
                   {!n.read_at && (
-                    <Button
-                      small
-                      secondary
-                      onClick={async () => {
-                        try {
-                          await post(
-                            `/subscription/notices/${n.source === "school" ? "school/" : ""}${n.id}/read`,
-                            {},
-                          );
-                          q.reload();
-                          window.dispatchEvent(new Event("notices-read"));
-                        } catch (e) {
-                          setError(e.message);
-                        }
-                      }}
-                    >
+                    <Button small secondary onClick={() => markRead(n)}>
                       Mark as read
                     </Button>
                   )}
@@ -162,6 +157,10 @@ export function PlatformInbox() {
           ]}
         />
       </Panel>
+      {opened && (
+        <NotificationReader notice={opened} onClose={() => setOpened(null)} />
+      )}
+      <ContactPreferences />
     </>
   );
 }

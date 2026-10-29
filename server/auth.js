@@ -1,5 +1,5 @@
 import { retainAccountRecord } from "./account-retention.js";
-import { ensureTeacherStaff } from "./teacher-staff.js";
+import { ensureSchoolStaff } from "./teacher-staff.js";
 import {
   assignmentFields,
   assignAccountRecords,
@@ -852,7 +852,7 @@ export function accountRoutes(db) {
         email_verified: false,
         role: b.role,
       });
-      if (user.role === "TEACHER") await ensureTeacherStaff(tx, user.school_id);
+      await ensureSchoolStaff(tx, user.school_id);
       await assignAccountRecords(tx, req.user, user, b);
       await audit(tx, req.user, "users", user.id, "CREATE", null, {
         name: user.name,
@@ -995,8 +995,7 @@ export function accountRoutes(db) {
           next.status,
         ],
       );
-      if (next.role === "TEACHER")
-        await ensureTeacherStaff(tx, req.user.school_id);
+      await ensureSchoolStaff(tx, req.user.school_id);
       await tx.query("DELETE FROM sessions WHERE user_id=$1", [uid]);
       await audit(tx, req.user, "users", uid, "UPDATE", account, {
         ...next,

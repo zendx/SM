@@ -1,4 +1,6 @@
-﻿import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Conversations } from "./conversations";
+import { useLiveUpdates } from "../live-updates";
 import {
   Users,
   Search,
@@ -15,8 +17,66 @@ import { PageHead, Button, Modal } from "../components";
 import "./parent-messages.css";
 
 const plural = (n) => `${n} parent${n === 1 ? "" : "s"}`;
-export function ParentMessages({ config, go }) {
+export function ParentMessages({ user, config, go }) {
+  const [tab, setTab] = useState(() =>
+    location.hash.split("/")[1] === "updates" ? "updates" : "conversations",
+  );
+  useEffect(() => {
+    const sync = () =>
+      setTab(
+        location.hash.split("/")[1] === "updates" ? "updates" : "conversations",
+      );
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  const parent = user.role === "PARENT";
+  return (
+    <div className="parent-messaging">
+      <PageHead
+        title={parent ? "Message school" : "Message parents"}
+        description={
+          parent
+            ? "Reach your school administrator and keep the conversation going."
+            : "Talk with families, see who’s online, and send school updates."
+        }
+      />
+      {!parent && (
+        <div className="tabs" aria-label="Messaging views">
+          <button
+            type="button"
+            className={tab === "conversations" ? "active" : ""}
+            onClick={() => {
+              location.hash = "messages";
+              setTab("conversations");
+            }}
+          >
+            Conversations
+          </button>
+          <button
+            type="button"
+            className={tab === "updates" ? "active" : ""}
+            onClick={() => {
+              location.hash = "messages/updates";
+              setTab("updates");
+            }}
+          >
+            Send school update
+          </button>
+        </div>
+      )}
+      {tab === "updates" && !parent ? (
+        <ParentAnnouncements config={config} go={go} />
+      ) : (
+        <Conversations user={user} embedded />
+      )}
+    </div>
+  );
+}
+
+function ParentAnnouncements({ config, go }) {
   const parents = useData("/parent-messages/recipients");
+  const refreshParents = useCallback(parents.reload, []);
+  useLiveUpdates(refreshParents, 5000);
   const [audience, setAudience] = useState("selected");
   const [selected, setSelected] = useState([]),
     [search, setSearch] = useState(""),
@@ -88,18 +148,14 @@ export function ParentMessages({ config, go }) {
   }
   return (
     <div className="parent-messaging">
-      <PageHead
-        title="Message parents"
-        description="Keep families informed, from a quick reminder to a school-wide update."
-      />
       {sent && (
         <div className="pm-success" role="status">
           <CheckCircle2 size={22} />
           <div>
             <strong>Message sent to {plural(sent.count)}</strong>
             <p>
-              {sent.title} — available in parent notifications. Email delivery
-              will be attempted separately.
+              {sent.title} — parents can read and reply in their school
+              conversations. Email delivery will be attempted separately.
             </p>
           </div>
           <button
@@ -288,6 +344,11 @@ export function ParentMessages({ config, go }) {
                         </span>
                         <span className="pm-parent-info">
                           <strong>{p.name}</strong>
+                          <span
+                            className={`pm-presence ${p.online ? "is-online" : ""}`}
+                          >
+                            {p.online ? "Online now" : "Offline"}
+                          </span>
                           <small>
                             {(p.children || []).length
                               ? p.children
@@ -370,7 +431,8 @@ export function ParentMessages({ config, go }) {
           <div className="pm-delivery-note">
             <Check size={15} />
             <span>
-              Delivered to parent notifications.{" "}
+              Delivered to parent notifications and conversations. Parents can
+              reply privately.{" "}
               {config?.smtp_configured
                 ? "Also queued for email delivery."
                 : "Set up school email in Administration to send email copies."}

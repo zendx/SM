@@ -8,6 +8,7 @@ import {
 import {
   applicationSchema,
   checkFeeEligibilitySchema,
+  checkDirectMessagingSchema,
 } from "../server/schema.js";
 import { decryptConfig } from "../server/integrations.js";
 import { unseal } from "../server/security-vault.js";
@@ -58,6 +59,7 @@ export async function checkDeployment() {
     if (columns.length !== 2)
       throw new Error("Account security schema migration is incomplete.");
     await checkFeeEligibilitySchema(client);
+    await checkDirectMessagingSchema(client);
     for (const role of ["anon", "authenticated"]) {
       const grants = (
         await client.query(

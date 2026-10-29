@@ -180,11 +180,9 @@ test("account creation assigns multiple classes or children atomically and prese
     f.db,
     "SELECT id FROM users WHERE email='teacher@multiple.test'",
   );
-  assert.ok(
-    (await call("/messages/contacts", { who: "PARENT" })).some(
-      (c) => c.recipient_id === teacher.id,
-    ),
-  );
+  const contacts = await call("/messages/contacts", { who: "PARENT" });
+  assert.ok(!contacts.some((c) => c.recipient_id === teacher.id));
+  assert.ok(contacts.some((c) => c.recipient_id === f.users.tenant.id));
 });
 test("foreign, wrong-role and occupied selections roll back the new account and every link", async () => {
   const cases = [
