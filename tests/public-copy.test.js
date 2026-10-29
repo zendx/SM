@@ -44,14 +44,17 @@ test("public pricing waits for configured plan data and does not display fallbac
   );
 });
 
-test("cookie information has no acceptance action or optional notice cookie", () => {
+test("cookie information stays closed on page load and cookie details remain available", () => {
   const html = renderToStaticMarkup(React.createElement(legal.CookieNotice));
   const document = new JSDOM(html).window.document;
-  assert.deepEqual(
-    [...document.querySelectorAll("button")].map(
-      (button) => button.textContent,
-    ),
-    ["Dismiss notice"],
+  assert.equal(document.querySelector(".cookie-notice"), null);
+  const footer = new JSDOM(
+    renderToStaticMarkup(React.createElement(legal.LegalFooter)),
+  ).window.document;
+  assert.ok(footer.querySelector('a[href="/cookies"]'));
+  assert.equal(
+    footer.querySelector("button").textContent,
+    "Cookie information",
   );
   const policy = renderToStaticMarkup(
     React.createElement(legal.LegalPage, { type: "cookies" }),

@@ -6,10 +6,10 @@ import React, { useState } from "react";
 import { useData } from "../hooks";
 import { Button, Loading } from "../components";
 import { BrandLogo } from "../brand-logo";
-// Remove the retired notice-preference cookie; dismissal now stays in memory.
+// Cookie information opens only on request; no dismissal preference is needed.
 const legacyPreference = "smpis_cookie_preferences";
 export function CookieNotice() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   React.useEffect(() => {
     if (
       document.cookie
