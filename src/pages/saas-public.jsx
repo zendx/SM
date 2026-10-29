@@ -2,17 +2,12 @@ import { BrandLogo } from "../brand-logo";
 import { schoolManagementFaq } from "../../server/public-faq.js";
 import React, { useState, useEffect, useRef } from "react";
 import {
-  GraduationCap,
   ArrowUpRight,
   Check,
   ShieldCheck,
   Users,
   CalendarCheck,
-  Wallet,
-  BookOpen,
   ChartNoAxesCombined,
-  Building2,
-  MessageSquare,
   ArrowRight,
   Menu,
   X,
@@ -28,7 +23,13 @@ export const planPrice = (cycle, config = {}) => {
   const monthly = Number(
     config.monthly_price_cents ?? config.base_monthly_cents ?? 10000,
   );
-  return cycle === "YEARLY" ? Math.round(monthly * 12 * 0.85) : monthly;
+  return cycle === "YEARLY"
+    ? Number(
+        config.yearly_price_cents ??
+          config.base_yearly_cents ??
+          Math.round(monthly * 12 * 0.85),
+      )
+    : monthly;
 };
 export const annualDiscount = (config = {}) =>
   Math.max(
@@ -70,7 +71,16 @@ export function registrationFields(
   const year = new Date().getUTCFullYear();
   return [
     { name: "school_name", label: "School name", wide: true },
-    { name: 'referral_code', label: 'Referral code (optional)', required: false, maxLength: 32, default: publicSignup ? new URLSearchParams(location.search).get('ref') || '' : '', hint: 'If a marketer introduced you to SMPIS, enter their code.' },
+    {
+      name: "referral_code",
+      label: "Referral code (optional)",
+      required: false,
+      maxLength: 32,
+      default: publicSignup
+        ? new URLSearchParams(location.search).get("ref") || ""
+        : "",
+      hint: "If a marketer introduced you to SMPIS, enter their code.",
+    },
     {
       name: "portal_slug",
       label: "School portal name",
@@ -220,20 +230,20 @@ export function Signup() {
               <Check /> Access based on each person’s role
             </li>
             <li>
-              <Check /> All modules in your 30-day trial
+              <Check /> Core school modules during the 30-day trial
             </li>
             <li>
               <Check />{" "}
-              {subscriptionMoney(
-                planPrice("MONTHLY", q.data || {}),
-                q.data || {},
+              {q.data ? (
+                <>
+                  {subscriptionMoney(planPrice("MONTHLY", q.data), q.data)}
+                  /month or{" "}
+                  {subscriptionMoney(planPrice("YEARLY", q.data), q.data)}/year
+                  for Pro
+                </>
+              ) : (
+                "Pro pricing is shown after plan details load."
               )}
-              /month or{" "}
-              {subscriptionMoney(
-                planPrice("YEARLY", q.data || {}),
-                q.data || {},
-              )}
-              /year for Pro
             </li>
           </ul>
           <div className="signup-note">
@@ -253,6 +263,8 @@ export function Signup() {
               {registered.message}{" "}
               <a href="/login">Sign in or resend verification</a>
             </div>
+          ) : q.loading ? (
+            <p role="status">Loading registration options…</p>
           ) : q.error ? (
             <p className="form-error">{q.error}</p>
           ) : q.data && !q.data.registration_open ? (
@@ -290,16 +302,20 @@ export function Landing() {
   const [yearly, setYearly] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const plans = useData("/saas/plans", null);
-  const displayCurrency = plans.data?.display_currency || "USD";
+  const displayCurrency = plans.data?.display_currency;
   const displayRate =
     displayCurrency === "NGN" ? Number(plans.data?.display_usd_rate || 1) : 1;
   const displayPrice = (amount) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: displayCurrency,
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 0,
-    }).format(amount * displayRate);
+    !plans.data
+      ? plans.error
+        ? "Unavailable"
+        : "Loading…"
+      : new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: displayCurrency,
+          maximumFractionDigits: 2,
+          minimumFractionDigits: 0,
+        }).format(amount * displayRate);
   const page = useRef(null);
   useEffect(() => {
     const root = page.current;
@@ -397,7 +413,7 @@ export function Landing() {
             <div className="hero-tag">
               <span /> ONE SCHOOL. ONE CONNECTED WORKSPACE.
             </div>
-            <h1>Run your school with less paperwork.</h1>
+            <h1>School administration in one workspace.</h1>
             <p>
               Bring admissions, attendance, school fees, exams, report cards,
               teaching plans and staff records together. Give your team one
@@ -419,7 +435,7 @@ export function Landing() {
                 <Check /> Your own school portal
               </span>
               <span>
-                <Check /> All modules included
+                <Check /> Core school modules
               </span>
             </div>
             <div className="hero-banner" aria-label="SMPIS highlight features">
@@ -516,19 +532,22 @@ export function Landing() {
           <div className="section-intro">
             <div className="eyebrow">A SCHOOL DAY, THOUGHTFULLY CONNECTED</div>
             <h2>
-              Everything you manage.
-              <br />A clearer way to manage it.
+              School records and workflows.
+              <br />
+              Tools for your team.
             </h2>
             <p>
-              Replace disconnected registers and spreadsheets with a shared
-              workspace, tailored to each person’s role.
+              Manage the records described below in a shared workspace, with
+              access based on each person’s role.
             </p>
           </div>
           <div className="catalog-section-link">
             <a className="sales-text-link" href="/features">
-              Browse the complete product guide <ArrowRight size={18} />
+              Browse the feature guide <ArrowRight size={18} />
             </a>
-            <span>12 areas of school life, with guides to help you get started</span>
+            <span>
+              12 areas of school life, with guides to help you get started
+            </span>
           </div>
           <FeatureCards />
           <div className="intelligence-band">
@@ -536,8 +555,8 @@ export function Landing() {
             <div>
               <h3>See where your school needs attention.</h3>
               <p>
-                See attendance, fee balances and academic progress together.
-                Use reports and alerts to spot issues and plan your next steps.
+                See attendance, fee balances and academic progress together. Use
+                reports and alerts to spot issues and plan your next steps.
               </p>
             </div>
             <a href="/signup">
@@ -549,8 +568,9 @@ export function Landing() {
           <div>
             <div className="eyebrow">YES, EXAMS AND REPORT CARDS TOO</div>
             <h2>
-              A complete term.
-              <br />A report families can understand.
+              Record assessments.
+              <br />
+              Publish term reports.
             </h2>
             <p>
               Set continuous assessment and exam weights, enter scores, review
@@ -587,8 +607,8 @@ export function Landing() {
               <div>
                 <strong>Publish & share</strong>
                 <p>
-                  Publish the reports so parents and students can view them
-                  in their accounts and download a PDF.
+                  Publish the reports so parents and students can view them in
+                  their accounts and download a PDF.
                 </p>
               </div>
             </li>
@@ -599,8 +619,8 @@ export function Landing() {
             <div className="eyebrow">SEE THE WORKSPACE</div>
             <h2>Built around real school tasks.</h2>
             <p>
-              Actual SMPIS screens from our fictional Greenfield Academy starter
-              guide. Open a screen for a closer look.
+              Example SMPIS screens with fictional school data. They illustrate
+              workflows; layouts may differ from the current product.
             </p>
           </div>
           <ProductSnapshots />
@@ -633,8 +653,8 @@ export function Landing() {
               ],
               [
                 "03",
-                "Start free. Grow with Pro.",
-                "Explore every module for 30 days. Upgrade by bank transfer or card when you are ready.",
+                "Try the service, then choose a paid period.",
+                "Try the core school modules for 30 days. Payment methods for Pro depend on operator configuration.",
               ],
             ].map(([n, title, copy]) => (
               <article key={n}>
@@ -669,7 +689,7 @@ export function Landing() {
               aria-pressed={yearly}
             >
               Yearly{" "}
-              {annualDiscount(plans.data || {}) > 0 && (
+              {plans.data && annualDiscount(plans.data) > 0 && (
                 <span>Save {annualDiscount(plans.data || {})}%</span>
               )}
             </button>
@@ -713,7 +733,7 @@ export function Landing() {
               </span>
               <div className="eyebrow">KEEP YOUR SCHOOL CONNECTED</div>
               <h3>Pro</h3>
-              <p>A complete workspace for your school.</p>
+              <p>Continued access to the school modules.</p>
               <div
                 className={`plan-price ${displayCurrency === "NGN" ? "ngn-price" : ""}`}
               >
@@ -724,12 +744,16 @@ export function Landing() {
                 <span>/ {yearly ? "year" : "month"}</span>
               </div>
               <p className="price-note">
-                {yearly
-                  ? `Billed yearly — equivalent to ${displayPrice(planPrice("YEARLY", plans.data || {}) / 1200)}/month.`
-                  : "Billed monthly. Yearly billing is also available."}
+                {!plans.data
+                  ? "Price details have not loaded."
+                  : yearly
+                    ? `Billed yearly — equivalent to ${displayPrice(planPrice("YEARLY", plans.data || {}) / 1200)}/month.`
+                    : "Billed monthly. Yearly billing is also available."}
               </p>
               <p className="price-note">
-                Prices displayed in {displayCurrency}.
+                {plans.data
+                  ? `Prices displayed in ${displayCurrency}.`
+                  : "Current pricing is shown after plan details load."}
                 {displayCurrency === "NGN" &&
                   " Your payment method confirms the final payable amount before checkout."}
               </p>
@@ -740,8 +764,8 @@ export function Landing() {
                 {[
                   "Everything included in your trial",
                   "Continued access throughout your paid period",
-                  "Secure school records and role permissions",
-                  "Bank transfer or verified card checkout",
+                  "School records with role-based permissions",
+                  "Configured bank transfer or card payment methods",
                 ].map((x) => (
                   <li key={x}>
                     <Check />
@@ -750,7 +774,10 @@ export function Landing() {
                 ))}
               </ul>
               <small>
-                Card payments enable automatic renewal by default. Uncheck the authorization to pay once, or turn renewal off in Subscription.
+                Renewal authorization is checked by default at card checkout.
+                Renewal requires a verified live payment and reusable payment
+                method. Uncheck to pay once, or turn renewal off in
+                Subscription.
               </small>
             </article>
           </div>
@@ -773,7 +800,7 @@ export function Landing() {
               ],
               [
                 "Do payment and email services need configuration?",
-                "To collect school fees online, your administrator needs to connect a supported payment account. The provider sets available currencies and transaction fees. SMPIS handles account emails through its email service. Paying your SMPIS subscription is separate from collecting fees from families.",
+                "To collect school fees online, your administrator needs to connect a supported payment account. The provider sets available currencies and transaction fees. Account emails require the operator's email service to be configured; delivery depends on that provider. Paying your SMPIS subscription is separate from collecting fees from families.",
               ],
               [
                 "What happens after the 30-day Free plan?",
@@ -785,7 +812,9 @@ export function Landing() {
               ],
               [
                 "How does the yearly discount work?",
-                `Pro costs ${displayPrice(planPrice("MONTHLY", plans.data || {}) / 100)} per month or ${displayPrice(planPrice("YEARLY", plans.data || {}) / 100)} upfront for a full year.`,
+                plans.data
+                  ? `Pro costs ${displayPrice(planPrice("MONTHLY", plans.data) / 100)} per month or ${displayPrice(planPrice("YEARLY", plans.data) / 100)} upfront for a full year.`
+                  : "Current prices have not loaded. Checkout shows the final amount before payment.",
               ],
               [
                 "Will my card renew my subscription automatically?",
@@ -815,13 +844,12 @@ export function Landing() {
           </div>
         </section>
         <section className="sales-cta">
-          <div className="eyebrow">MAKE ROOM FOR WHAT MATTERS</div>
-          <h2>
-            Your next school day
-            <br />
-            could look different.
-          </h2>
-          <p>Bring clarity to the everyday. Start your SMPIS portal today.</p>
+          <div className="eyebrow">CREATE A SCHOOL WORKSPACE</div>
+          <h2>Set up your school portal.</h2>
+          <p>
+            Start a 30-day trial and configure your school's records and
+            accounts.
+          </p>
           <a className="btn" href="/signup">
             Get started free <ArrowUpRight size={18} />
           </a>
@@ -833,18 +861,6 @@ export function Landing() {
           School Management, Performance
           <br />& Intelligence System
         </p>
-        <a
-          className="sales-footer-badge"
-          href="https://maidensail.com/startup/smpis"
-          rel="dofollow"
-        >
-          <img
-            src="https://maidensail.com/badge/smpis.svg"
-            alt="Featured on Maidensail"
-            width="190"
-            height="44"
-          />
-        </a>
         <a href="/features">Explore all features</a>
         <a href="/marketers">Become a referral marketer</a>
         <span>Clarity for every school day.</span>

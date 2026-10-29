@@ -169,7 +169,7 @@ export function OwnerReferrals() {
       </Panel>
       <Panel
         title="Commissions and payout history"
-        description="Commission is normally paid three calendar days after successful payment approval. Payment may be earlier, including immediately, depending on processing volume. Amounts are kept in the currency actually paid."
+        description="Commission due dates are set three calendar days after payment approval. The owner makes transfers outside SMPIS and records them here. A due date does not guarantee bank settlement time. Amounts remain in the currency actually paid."
       >
         <Totals rows={q.data.commissions} />
         <CommissionHistory
@@ -280,9 +280,9 @@ export function MarketerPortal() {
           {program.data && (
             <p>
               Current commission: {program.data.referral_percent}% of the first
-              approved subscription payment. Payment is normally made three
-              calendar days after approval and may be earlier, including
-              immediately, depending on processing volume. Rates in effect at
+              approved subscription payment. The portal sets a due date three
+              calendar days after approval. Transfers are made manually outside
+              SMPIS; bank settlement time is not guaranteed. Rates in effect at
               payment approval apply.
             </p>
           )}
@@ -451,9 +451,9 @@ export function MarketerPortal() {
                   </div>
                   <p>
                     Current rate: {q.data.program.referral_percent}% · First
-                    approved payment only. Payment is normally made three
-                    calendar days after approval. It may be earlier, including
-                    immediately, depending on processing volume. Renewals,
+                    approved payment only. The portal sets a due date three
+                    calendar days after approval. Transfers are made manually
+                    outside SMPIS; settlement time is not guaranteed. Renewals,
                     trials and test payments do not earn commission.
                   </p>
                 </Panel>

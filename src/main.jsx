@@ -54,7 +54,6 @@ import {
   Academics,
   Curriculum,
   Intelligence,
-  Platform,
   ManagementAlerts,
 } from "./pages";
 import "./styles.css";

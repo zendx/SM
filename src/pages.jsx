@@ -7,4 +7,4 @@ export { Reports, Administration } from "./pages/admin";
 export { Academics } from "./pages/academics";
 export { Curriculum } from "./pages/curriculum";
 export { ManagementAlerts } from "./pages/alerts";
-export { Intelligence, Platform } from "./pages/intelligence";
+export { Intelligence } from "./pages/intelligence";

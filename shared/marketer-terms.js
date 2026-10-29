@@ -1,4 +1,4 @@
-export const MARKETER_TERMS_VERSION = "2026-10-23.2";
+export const MARKETER_TERMS_VERSION = "2026-10-29";
 export const MARKETER_TERMS = [
   {
     title: "Eligible referrals",
@@ -10,7 +10,7 @@ export const MARKETER_TERMS = [
   },
   {
     title: "Payment timeline",
-    body: "Commission payments are normally made three calendar days after the referred tenant's subscription payment is successfully verified and approved. Depending on the volume of payments being processed, your commission may be paid earlier, including immediately. Immediate payment is not guaranteed.",
+    body: "The portal sets a commission due date three calendar days after the referred tenant's subscription payment is verified and approved. The owner makes and records transfers outside SMPIS. A scheduled due date does not guarantee the time funds reach your bank.",
   },
   {
     title: "Bank details and payment history",

@@ -5,47 +5,37 @@ import {
 import React, { useState } from "react";
 import { useData } from "../hooks";
 import { Button, Loading } from "../components";
-export const COOKIE_PREFERENCE = "smpis_cookie_preferences";
-const preferenceValue = "essential-v1";
+// Remove the retired notice-preference cookie; dismissal now stays in memory.
+const legacyPreference = "smpis_cookie_preferences";
 export function CookieNotice() {
-  const accepted = () =>
-    document.cookie
-      .split(";")
-      .some((v) => v.trim() === `${COOKIE_PREFERENCE}=${preferenceValue}`);
-  const [visible, setVisible] = useState(() => !accepted());
+  const [visible, setVisible] = useState(true);
   React.useEffect(() => {
+    if (
+      document.cookie
+        .split(";")
+        .some((cookie) => cookie.trim().startsWith(legacyPreference + "="))
+    ) {
+      document.cookie = `${legacyPreference}=; Path=/; Max-Age=0; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+    }
     const open = () => setVisible(true);
     window.addEventListener("smpis-cookie-settings", open);
     return () => window.removeEventListener("smpis-cookie-settings", open);
   }, []);
-  function save() {
-    document.cookie = `${COOKIE_PREFERENCE}=${preferenceValue}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
-    setVisible(false);
-  }
-  function dismiss() {
-    document.cookie = `${COOKIE_PREFERENCE}=; Path=/; Max-Age=0; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
-    setVisible(false);
-  }
   if (!visible) return null;
   return (
-    <aside className="cookie-notice" aria-label="Cookie notice">
+    <aside className="cookie-notice" aria-label="Cookie information">
       <div>
-        <strong>Cookies on SMPIS</strong>
+        <strong>Cookies used by SMPIS</strong>
         <p>
-          We use a required sign-in cookie and, if you accept, a cookie
-          remembering this notice. We do not use application analytics or
-          advertising cookies. Protected forms may use Google reCAPTCHA for
-          abuse prevention when enabled. Dismissing this notice does not prevent
-          sign-in cookies needed for your account.
+          SMPIS sets a cookie after sign-in to maintain your account session. It
+          does not set advertising or website-usage analytics cookies. Protected
+          forms may run Google reCAPTCHA when submitted; that service uses a
+          security cookie and browser signals to check for abuse. Dismissing
+          this notice does not set a preference cookie.
         </p>
-        <a href="/cookies">See exact cookie details</a>
+        <a href="/cookies">See cookie details</a>
       </div>
-      <div className="toolbar">
-        <Button onClick={save}>Accept required cookies</Button>
-        <Button secondary onClick={dismiss}>
-          Dismiss without saving
-        </Button>
-      </div>
+      <Button onClick={() => setVisible(false)}>Dismiss notice</Button>
     </aside>
   );
 }
@@ -60,7 +50,7 @@ export function LegalFooter() {
         className="text-button"
         onClick={() => window.dispatchEvent(new Event("smpis-cookie-settings"))}
       >
-        Cookie settings
+        Cookie information
       </button>
     </footer>
   );
@@ -70,9 +60,9 @@ function CookieDetails() {
     <section id="cookies">
       <h2>Cookies and browser storage</h2>
       <p>
-        These are the cookies set by SMPIS application code. Both are
-        first-party, use Path=/, and have no Domain attribute, so they are
-        scoped to the current host.
+        SMPIS application code creates one first-party cookie, after sign-in. It
+        uses Path=/ and has no Domain attribute, so it is scoped to the current
+        host. Browsing the public pages does not require this cookie.
       </p>
       <div className="table-wrap">
         <table>
@@ -98,43 +88,53 @@ function CookieDetails() {
                 8 hours; removed on sign-out. Server-side sessions also expire.
               </td>
               <td>
-                HttpOnly; SameSite=Strict; Secure when NODE_ENV=production. Not
+                HttpOnly; SameSite=Strict; Secure in production deployments. Not
                 readable by application JavaScript.
               </td>
             </tr>
             <tr>
               <td>
-                <code>smpis_cookie_preferences</code>
+                <code>_GRECAPTCHA</code> (Google reCAPTCHA)
               </td>
               <td>
-                Preference cookie created only when you press Accept required
-                cookies. Stores <code>essential-v1</code> to remember acceptance
-                of this notice version. Not required to sign in.
+                Third-party security cookie used by reCAPTCHA when a protected
+                signup or sign-in form is submitted and the service is
+                configured. The application loads reCAPTCHA from recaptcha.net,
+                rather than loading it on the landing page.
               </td>
-              <td>365 days. Dismiss without saving removes it.</td>
               <td>
-                SameSite=Lax; Secure on HTTPS; readable by JavaScript to display
-                the notice.
+                Controlled by the reCAPTCHA provider and browser settings.
+              </td>
+              <td>
+                Provider-managed security cookie, not an SMPIS advertising
+                cookie.
               </td>
             </tr>
           </tbody>
         </table>
       </div>
       <p>
-        No application analytics or advertising cookies are configured. When
-        enabled, Google reCAPTCHA on protected forms may use cookies and process
-        browser/device signals to prevent abuse; Google's privacy policy and
-        terms apply. The application does not currently use localStorage or
-        sessionStorage. Hosting features, deployment protection, or external
-        payment pages may use their own cookies under their providers' notices;
-        these are outside this application's cookie inventory.
+        SMPIS does not use application advertising or website-usage analytics
+        cookies, localStorage or sessionStorage. It no longer creates a cookie
+        to remember this notice; an old <code>smpis_cookie_preferences</code>{" "}
+        cookie is removed when the application opens. Dismissal lasts only while
+        this page remains open. Google describes its reCAPTCHA cookie in its{" "}
+        <a
+          href="https://developers.google.com/recaptcha/docs/faq#does-recaptcha-use-cookies"
+          target="_blank"
+          rel="noreferrer"
+        >
+          cookie documentation
+        </a>
+        . Hosting protection and external checkout pages may set cookies under
+        their providers' notices; these are separate from the application
+        cookie.
       </p>
       <p>
-        You can reopen Cookie settings in the footer or clear cookies in your
-        browser. Blocking the session cookie prevents sign-in. Deleting the
-        preference cookie makes the notice appear again. Cookie acceptance does
-        not provide consent for unrelated school record processing or accept the
-        Terms on your behalf.
+        You can reopen this information from the footer or clear cookies in your
+        browser. Blocking the session cookie prevents sign-in. This is an
+        information notice, not consent to marketing, school record processing,
+        or the Terms. Promotional contact choices are managed separately.
       </p>
     </section>
   );
@@ -160,8 +160,7 @@ export function LegalPage({ type }) {
           <p>
             Last updated: {q.data.updated}. Operator:{" "}
             <strong>
-              {q.data.organization ||
-                "Not yet configured by the super administrator"}
+              {q.data.organization || "Operator name not yet published"}
             </strong>
             .
           </p>
@@ -175,8 +174,8 @@ export function LegalPage({ type }) {
           </p>
           {(!q.data.organization || !q.data.contact) && (
             <p className="notice">
-              Operator details are incomplete. The super administrator must
-              publish them in Administration &gt; Site settings.
+              Operator details are incomplete. Contact SMPIS support to request
+              the missing service-operator details.
             </p>
           )}
         </>
@@ -192,10 +191,10 @@ export function LegalPage({ type }) {
             policies and applicable law also govern your use.
           </p>
           <p>
-            Product owner: Henry Shedrack. The legal service operator and
-            privacy contact are identified above. These terms cover school
-            administrators, authorized school users and referral marketers, as
-            applicable to their accounts.
+            The service operator and privacy contact are identified above when
+            published by the operator. These terms cover school administrators,
+            authorized school users and referral marketers, as applicable to
+            their accounts.
           </p>
           <h2>Accounts and responsibilities</h2>
           <p>
@@ -329,7 +328,9 @@ export function LegalPage({ type }) {
             Maintenance, outages, and external providers may interrupt access.
             Administrators must arrange appropriate backups and recovery.
             Recovery must cover both database records and private documents. The
-            operator manages the platform backup and recovery process.
+            operator is responsible for configuring and testing the platform
+            backup and recovery process. Availability of backup commands does
+            not mean backups run automatically or guarantee recovery.
           </p>
           <h2>Privacy, changes, and contact</h2>
           <p>
@@ -379,9 +380,11 @@ export function LegalPage({ type }) {
             admissions and enrollment; attendance; assessment results and
             reports; school fee invoices and payment references; staff
             employment and HR documents; complaints, discipline and survey
-            responses; and security, session and audit records. Schools may
-            enter medical or other sensitive information. The current system
-            does not collect fingerprint or facial templates.
+            responses; private school-parent messages, read timestamps and
+            recent session activity used to show online status; and security,
+            session and audit records. Schools may enter medical or other
+            sensitive information. The current system does not collect
+            fingerprint or facial templates.
           </p>
           <h2>Why information is used</h2>
           <p>
@@ -398,8 +401,9 @@ export function LegalPage({ type }) {
             reporting, staff administration, fee accounting, notifications,
             access control, and investigation of changes or misuse. Schools must
             establish the appropriate legal basis for each use and appropriate
-            conditions for sensitive information and children's data. Cookie
-            notice acceptance is not blanket permission for these activities.
+            conditions for sensitive information and children's data. This
+            cookie information notice does not provide permission for these
+            activities.
           </p>
           <h2>Email, phone numbers and promotional communications</h2>
           <p>
@@ -471,26 +475,28 @@ export function LegalPage({ type }) {
           <p>
             The application uses hosted Supabase PostgreSQL and private Supabase
             document storage. Hosting, database and storage providers process
-            information needed to provide those services. Vercel hosts the web
-            application and Railway runs background jobs in the current
-            deployment. Brevo delivers transactional emails over HTTPS or SMTP,
-            processing recipient addresses, message content and delivery
-            results; school-related emails may contain the school name and logo.
-            Authorized platform support staff can access support tickets and
-            replies for their assigned duties. Configured payment providers
-            process payment information under their own notices. Paystack
-            handles school fee checkout; Stripe, Paystack and Flutterwave
-            support SMPIS subscription checkout. Subscription records include
-            the school, billing period, payment references and verification
-            status. Twilio SMS delivery is not yet implemented. The operator
-            must assess any cross-border processing and applicable safeguards
-            with its providers. Hosting, storage, email, screening and payment
-            services may process data outside Nigeria. Where applicable,
-            transfers require an appropriate legal basis and safeguards under
-            the Nigeria Data Protection Act 2023, such as adequate protection or
-            contractual safeguards. Ask the privacy contact for the providers
-            and safeguards relevant to your account; no particular hosting
-            country is guaranteed by this notice.
+            information needed to provide those services. The project supports
+            Vercel web hosting and a Railway background worker; the active
+            deployment is managed by the operator. The configured email service,
+            including Brevo where enabled, delivers emails, processing recipient
+            addresses, message content and delivery results; school-related
+            emails may contain the school name and logo. Authorized platform
+            support staff can access support tickets and replies for their
+            assigned duties. Configured payment providers process payment
+            information under their own notices. School fee integrations include
+            Paystack, Stripe, PayPal and Flutterwave, when enabled by the
+            school. Stripe, Paystack and Flutterwave can provide SMPIS
+            subscription checkout when configured by the operator. Subscription
+            records include the school, billing period, payment references and
+            verification status. Twilio SMS delivery is not yet implemented. The
+            operator must assess any cross-border processing and applicable
+            safeguards with its providers. Hosting, storage, email, screening
+            and payment services may process data outside Nigeria. Where
+            applicable, transfers require an appropriate legal basis and
+            safeguards under the Nigeria Data Protection Act 2023, such as
+            adequate protection or contractual safeguards. Ask the privacy
+            contact for the providers and safeguards relevant to your account;
+            no particular hosting country is guaranteed by this notice.
           </p>
           <h2>Subscription payments and renewal records</h2>
           <p>
@@ -518,9 +524,10 @@ export function LegalPage({ type }) {
             Role and school checks restrict access. Passwords are hashed; MFA is
             required for privileged accounts and available to other users;
             integration credentials are encrypted using a server-held key.
-            Hosted deployments use HTTPS. Other record fields are not separately
-            encrypted by application code. Authorized administrators and service
-            providers may access information as necessary for their duties.
+            Production deployments must use HTTPS. Other record fields are not
+            separately encrypted by application code. Authorized administrators
+            and service providers may access information as necessary for their
+            duties.
           </p>
           <h2>Retention and your requests</h2>
           <p>

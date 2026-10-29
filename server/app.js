@@ -101,16 +101,16 @@ export async function createApp(db, options = {}) {
               defaultSrc: ["'self'"],
               scriptSrc: [
                 "'self'",
-                "https://www.google.com/recaptcha/",
+                "https://www.recaptcha.net/recaptcha/",
                 "https://www.gstatic.com/recaptcha/",
               ],
               frameSrc: [
-                "https://www.google.com/recaptcha/",
-                "https://recaptcha.google.com/recaptcha/",
+                "https://www.recaptcha.net/recaptcha/",
+                "https://recaptcha.net/recaptcha/",
               ],
               styleSrc: ["'self'", "'unsafe-inline'"],
-              imgSrc: ["'self'", "data:", "https://maidensail.com/badge/"],
-              connectSrc: ["'self'", "https://www.google.com/recaptcha/"],
+              imgSrc: ["'self'", "data:"],
+              connectSrc: ["'self'", "https://www.recaptcha.net/recaptcha/"],
               upgradeInsecureRequests: null,
             },
           }

@@ -21,7 +21,7 @@ function loadRecaptcha(siteKey) {
     scriptPromise = withTimeout(
       new Promise((resolve, reject) => {
         script = document.createElement("script");
-        script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+        script.src = `https://www.recaptcha.net/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
         script.async = true;
         script.onload = () => {
           if (!window.grecaptcha?.ready) {

@@ -648,15 +648,6 @@
   font-size: 11px;
   line-height: 1.8;
 }
-.sales-footer-badge {
-  display: inline-flex;
-  flex-shrink: 0;
-}
-.sales-footer-badge img {
-  display: block;
-  width: 190px;
-  height: 44px;
-}
 .sales-footer > span {
   margin-left: auto;
   color: #8c9785;
@@ -2358,7 +2349,11 @@
   -webkit-overflow-scrolling: touch;
   padding-bottom: max(28px, env(safe-area-inset-bottom));
 }
-.owner-sidebar > * { flex-shrink: 0; }
+.owner-sidebar > * {
+  flex-shrink: 0;
+}
 @media (max-width: 760px) {
-  .owner-sidebar { max-height: calc(100dvh - 24px); }
+  .owner-sidebar {
+    max-height: calc(100dvh - 24px);
+  }
 }

@@ -1,23 +1,16 @@
 import { ModelLab } from "./refinements";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { TrendingUp, Users, Wallet, AlertCircle } from "lucide-react";
 import { useData } from "../hooks";
-import { post } from "../api";
-import {
-  PageHead,
-  Panel,
-  Table,
-  Metric,
-  Form,
-  Modal,
-  Button,
-  Loading,
-  human,
-} from "../components";
+import { PageHead, Panel, Table, Metric, Loading, human } from "../components";
 export function Intelligence({ money, can }) {
   const q = useData("/intelligence", null);
   useEffect(() => {
-    if (q.data && location.hash.endsWith("/models") && can("intelligence.manage"))
+    if (
+      q.data &&
+      location.hash.endsWith("/models") &&
+      can("intelligence.manage")
+    )
       document.getElementById("historical-model-evaluation")?.scrollIntoView();
   }, [q.data, can]);
   if (q.error) return <p className="form-error">{q.error}</p>;
@@ -153,133 +146,5 @@ export function Intelligence({ money, can }) {
         </ul>
       </Panel>
     </>
-  );
-}
-export function Platform({ notify }) {
-  const q = useData("/platform/schools"),
-    [create, setCreate] = useState(false);
-  return (
-    <>
-      <PageHead
-        title="Schools"
-        description="Create a separate portal for each school. Its administrator manages the school’s accounts and records."
-        action={null}
-      >
-        <Button onClick={() => setCreate(true)}>Add school</Button>
-      </PageHead>
-      {q.error && <p className="form-error">{q.error}</p>}
-      <Panel
-        title="School portfolio"
-        description="This view contains school summaries. Student, financial and personnel records remain within each school’s account."
-      >
-        <Table
-          rows={q.data}
-          columns={[
-            { label: "School", key: "name" },
-            { label: "Code", key: "short_code" },
-            { label: "Currency", key: "currency_code" },
-            { label: "Enrolled", key: "enrolled" },
-            { label: "Active accounts", key: "active_accounts" },
-          ]}
-        />
-      </Panel>
-      {create && (
-        <Modal
-          title="Provision school workspace"
-          onClose={() => setCreate(false)}
-        >
-          <Form
-            fields={[
-              { name: "name", label: "School name" },
-              { name: "short_code", label: "School code", maxLength: 12 },
-              { name: "currency_code", label: "Currency", default: "NGN" },
-              { name: "timezone", label: "Timezone", default: "Africa/Lagos" },
-              { name: "admin_name", label: "School administrator name" },
-              {
-                name: "admin_email",
-                label: "School administrator email",
-                type: "email",
-              },
-              {
-                name: "admin_password",
-                label: "Initial administrator password",
-                type: "password",
-                minLength: 12,
-                wide: true,
-              },
-              { name: "year_name", label: "Academic year", wide: true },
-              { name: "start_date", label: "Year start", type: "date" },
-              { name: "end_date", label: "Year end", type: "date" },
-            ]}
-            onSubmit={async (v) => {
-              await post("/platform/schools", v);
-              setCreate(false);
-              q.reload();
-              notify(
-                "School created. Its administrator can sign in and configure term dates.",
-              );
-            }}
-            submit="Create school"
-          >
-            <p className="muted">
-              The new administrator receives school access only. Share the
-              initial credentials securely. Review the initial term dates after
-              signing in.
-            </p>
-          </Form>
-        </Modal>
-      )}
-    </>
-  );
-}
-export function IntegrationReadiness() {
-  const q = useData("/integrations/readiness", null);
-  return (
-    <Panel title="Production integration readiness">
-      {q.error ? (
-        <p className="form-error">{q.error}</p>
-      ) : q.data ? (
-        <>
-          <Table
-            rows={[
-              {
-                name: "Application address",
-                value: q.data.app_url || "Not configured",
-              },
-              {
-                name: "HTTPS address",
-                value: q.data.https ? "Configured" : "Pending",
-              },
-              {
-                name: "Email service",
-                value: q.data.email_configured
-                  ? "Configured; delivery must be verified"
-                  : "Pending SMTP and sender",
-              },
-              {
-                name: "PostgreSQL server",
-                value: q.data.postgresql_configured
-                  ? "Configured"
-                  : "Local database",
-              },
-              {
-                name: "Secure cookies",
-                value: q.data.secure_cookies
-                  ? "Enabled"
-                  : "Supabase configuration required",
-              },
-              { name: "Backups", value: q.data.backup_storage },
-            ]}
-            columns={[
-              { label: "Integration", key: "name" },
-              { label: "Status", key: "value" },
-            ]}
-          />
-          <p className="muted">{q.data.deployment}</p>
-        </>
-      ) : (
-        <Loading />
-      )}
-    </Panel>
   );
 }

@@ -6,8 +6,8 @@ const homeDescription =
 
 const pages = {
   "/": {
-    title: "School Management Software for Growing Schools | SMPIS",
-    heading: "A calmer, smarter way to run your school.",
+    title: "School Management Software | SMPIS",
+    heading: "School administration in one workspace.",
     description: homeDescription,
   },
   "/terms": {
@@ -26,7 +26,7 @@ const pages = {
     title: "Cookie Policy | SMPIS",
     heading: "Cookies",
     description:
-      "See which essential cookies SMPIS uses for secure sign-in and cookie preferences, what they store and how long they last.",
+      "See which cookies used for sign-in and configured form security, what they store and how long they last.",
   },
 };
 
@@ -88,9 +88,12 @@ export function siteOrigin(env = process.env) {
 }
 
 export function renderSitemap(origin = siteOrigin()) {
-  const urls = publicSeoPaths.map((route) =>
-    `  <url><loc>${escapeHtml(new URL(route, origin).href)}</loc></url>`
-  ).join("\n");
+  const urls = publicSeoPaths
+    .map(
+      (route) =>
+        `  <url><loc>${escapeHtml(new URL(route, origin).href)}</loc></url>`,
+    )
+    .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
@@ -168,7 +171,7 @@ export function renderSeoHtml(html, pathname = "/", origin = siteOrigin()) {
   const faqContent = `<section aria-label="School management questions">${schoolManagementFaq.map(([question, answer]) => `<h2>${escapeHtml(question)}</h2><p>${escapeHtml(answer)}</p>`).join("")}</section>`;
   const intro =
     route === "/"
-      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p>${featureLinks}${faqContent}<footer><a href="https://maidensail.com/startup/smpis" rel="dofollow"><img src="https://maidensail.com/badge/smpis.svg" alt="Featured on Maidensail" width="190" height="44" /></a></footer><noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
+      ? `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p><p><a href="/signup">Start your 30-day free trial</a></p>${featureLinks}${faqContent}<noscript>Enable JavaScript to explore the SMPIS school management platform.</noscript></main>`
       : `<main class="public-application"><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.description)}</p>${productContent}<noscript>Enable JavaScript to view this page.</noscript></main>`;
   return html
     .replace(

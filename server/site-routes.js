@@ -15,11 +15,11 @@ export function legalRoutes(db) {
         organization:
           settings?.organization ||
           process.env.LEGAL_ORGANIZATION_NAME ||
-          "SMPIS Digital",
+          "Cyberlife Digital",
         contact:
           settings?.privacy_email ||
           process.env.PRIVACY_CONTACT_EMAIL ||
-          "info@smpis.digital",
+          "cyberlifeng@gmail.com",
         updated: PRIVACY_POLICY_VERSION,
         operator_updated_at: settings?.updated_at || null,
         privacy_policy_version: PRIVACY_POLICY_VERSION,

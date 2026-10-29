@@ -7,7 +7,7 @@ export const productModules = [
     icon: "Users",
     summary:
       "Follow every learner from application to enrolment, with their records in one place.",
-    outcome: "A clear next step for every application.",
+    outcome: "Track the status and next steps of an application.",
     capabilities: [
       "Let families apply online and receive an application reference",
       "Track applications, arrange assessments and send offers",
@@ -86,7 +86,7 @@ export const productModules = [
     icon: "CalendarCheck",
     summary:
       "Mark daily attendance for students and staff, and keep a record of corrections.",
-    outcome: "A dependable daily register for learners and staff.",
+    outcome: "Daily attendance records for learners and staff.",
     capabilities: [
       "Class-based student attendance registers",
       "Student attendance history and attendance summaries",
@@ -138,10 +138,11 @@ export const productModules = [
     icon: "Users",
     summary:
       "Give families a focused view of their own children's records, fees and published results.",
-    outcome: "Families know where to look and what to do next.",
+    outcome: "Family access to linked records and school communications.",
     capabilities: [
       "Give your school its own portal address and each person the right access",
       "Parent accounts linked to their children's records",
+      "Private school administrator and parent messages, replies and online status",
       "Student accounts linked to their own published academic results",
       "Published report-card viewing and PDF downloads",
       "Parent invoices, balances and available fee-payment methods",
@@ -153,7 +154,7 @@ export const productModules = [
       "Publish completed reports and issue invoices through your school workspace.",
       "Families sign in to view the information their role permits.",
     ],
-    note: "Access depends on school-created accounts, correct student links and publication settings. Parent and student permissions differ; not every school-office screen is available to families.",
+    note: "Record access depends on school-created accounts, correct student links and publication settings. Messaging is limited to active school administrators and parents in their own school; it refreshes while the page is visible and does not provide device push notifications. Parent and student permissions differ.",
     audience: ["Parents", "Students", "School administrators"],
     screenshot: "families",
     related: ["exams-report-cards", "finance", "school-experience"],
@@ -165,7 +166,7 @@ export const productModules = [
     icon: "Building2",
     summary:
       "Keep staff details, job applications, leave requests and reviews in one place.",
-    outcome: "Support your staff through every stage of school life.",
+    outcome: "Record staff administration and review activity.",
     capabilities: [
       "Staff profiles and staff document records",
       "Vacancies, applicants and recruitment stage history",

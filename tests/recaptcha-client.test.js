@@ -40,7 +40,13 @@ test("v3 generates fresh tokens on submit and retries using the form's action", 
   };
   try {
     const { recaptchaResponse } = await import("../src/recaptcha.js");
+    assert.equal(
+      scripts.length,
+      0,
+      "Importing the form helper must not load third-party scripts",
+    );
     assert.deepEqual(await recaptchaResponse(false), {});
+    assert.equal(scripts.length, 0);
     for (const [index, action] of [
       "login",
       "login",
@@ -58,7 +64,7 @@ test("v3 generates fresh tokens on submit and retries using the form's action", 
     assert.equal(scripts.length, 1);
     assert.equal(
       scripts[0].src,
-      "https://www.google.com/recaptcha/api.js?render=v3-public-key",
+      "https://www.recaptcha.net/recaptcha/api.js?render=v3-public-key",
     );
     rejectExecution = true;
     await assert.rejects(

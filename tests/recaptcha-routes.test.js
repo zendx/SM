@@ -30,11 +30,19 @@ test("signup and both login routes enforce CAPTCHA without exposing the secret",
     assert.equal(config.headers.get("cache-control"), "no-store");
     assert.match(
       config.headers.get("content-security-policy"),
-      /img-src 'self' data: https:\/\/maidensail\.com\/badge\//,
+      /img-src 'self' data:/,
     );
     assert.match(
       config.headers.get("content-security-policy"),
       /https:\/\/www.gstatic.com\/recaptcha\//,
+    );
+    assert.match(
+      config.headers.get("content-security-policy"),
+      /https:\/\/www.recaptcha.net\/recaptcha\//,
+    );
+    assert.doesNotMatch(
+      config.headers.get("content-security-policy"),
+      /maidensail|www\.google\.com/,
     );
     for (const path of ["/auth/login", "/auth/owner/login", "/saas/register"]) {
       const response = await fetch(base + path, {
