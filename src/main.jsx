@@ -978,10 +978,6 @@ function App() {
         <main className="main-content">
           <Current key={page} {...context} />
         </main>
-        <footer className="app-footer">
-          <span>SMPIS · School management, thoughtfully connected.</span>
-          <span>{config.school.timezone}</span>
-        </footer>
       </div>
       {toast && (
         <div className="toast" role="status">

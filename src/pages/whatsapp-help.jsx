@@ -9,7 +9,17 @@ const helpUrl =
 
 export function WhatsAppHelp() {
   const [expanded, setExpanded] = useState(true);
+  const [footerVisible, setFooterVisible] = useState(false);
+  const showGreeting = expanded && !footerVisible;
   const root = useRef(null);
+  useEffect(() => {
+    const footer = document.querySelector(".legal-footer");
+    const observer = new IntersectionObserver(([entry]) =>
+      setFooterVisible(entry.isIntersecting),
+    );
+    if (footer) observer.observe(footer);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     let cookie;
     const resize = new ResizeObserver(() => position());
@@ -38,10 +48,10 @@ export function WhatsAppHelp() {
   return (
     <aside
       ref={root}
-      className={`whatsapp-help ${expanded ? "expanded" : ""}`}
+      className={`whatsapp-help ${showGreeting ? "expanded" : ""}`}
       aria-label="SMPIS WhatsApp support"
     >
-      {expanded && (
+      {showGreeting && (
         <div className="whatsapp-greeting">
           <button
             className="icon-btn"
@@ -62,7 +72,7 @@ export function WhatsAppHelp() {
         rel="noopener noreferrer"
         aria-label="Get help from SMPIS on WhatsApp (opens in a new tab)"
       >
-        {expanded && (
+        {showGreeting && (
           <svg
             className="smpis-help-mascot"
             viewBox="0 0 100 110"

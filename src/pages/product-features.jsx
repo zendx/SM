@@ -190,17 +190,6 @@ function ProductFooter() {
           Review plans and pricing
         </a>
       </section>
-      <footer className="sales-footer">
-        <a className="brand" href="/" aria-label="SMPIS home">
-          <BrandLogo />
-        </a>
-        <p>
-          School Management, Performance
-          <br />& Intelligence System
-        </p>
-        <a href="/features">Explore all features</a>
-        <a href="/#pricing">Plans & pricing</a>
-      </footer>
     </>
   );
 }

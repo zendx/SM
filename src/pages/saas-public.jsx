@@ -855,16 +855,6 @@ export function Landing() {
           </a>
         </section>
       </main>
-      <footer className="sales-footer">
-        <PublicBrand />
-        <p>
-          School Management, Performance
-          <br />& Intelligence System
-        </p>
-        <a href="/features">Explore all features</a>
-        <a href="/marketers">Become a referral marketer</a>
-        <span>Clarity for every school day.</span>
-      </footer>
       <WhatsAppHelp />
     </div>
   );

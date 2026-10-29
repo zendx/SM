@@ -5,6 +5,7 @@ import {
 import React, { useState } from "react";
 import { useData } from "../hooks";
 import { Button, Loading } from "../components";
+import { BrandLogo } from "../brand-logo";
 // Remove the retired notice-preference cookie; dismissal now stays in memory.
 const legacyPreference = "smpis_cookie_preferences";
 export function CookieNotice() {
@@ -42,16 +43,57 @@ export function CookieNotice() {
 export function LegalFooter() {
   return (
     <footer className="legal-footer">
-      <a href="mailto:info@smpis.digital">info@smpis.digital</a>
-      <a href="/terms">Terms and conditions</a>
-      <a href="/privacy">Privacy policy</a>
-      <a href="/cookies">Cookies</a>
-      <button
-        className="text-button"
-        onClick={() => window.dispatchEvent(new Event("smpis-cookie-settings"))}
-      >
-        Cookie information
-      </button>
+      <div className="footer-main">
+        <div className="footer-identity">
+          <a href="/" className="footer-brand" aria-label="SMPIS home">
+            <BrandLogo />
+          </a>
+          <p>
+            School Management, Performance
+            <br />
+            &amp; Intelligence System
+          </p>
+          <a className="footer-email" href="mailto:info@smpis.digital">
+            info@smpis.digital
+          </a>
+        </div>
+        <nav className="footer-product" aria-label="Explore SMPIS">
+          <h2>Explore SMPIS</h2>
+          <a href="/features">Features</a>
+          <a href="/#pricing">Plans &amp; pricing</a>
+          <a href="/marketers">Referral programme</a>
+        </nav>
+        <nav aria-label="Policies and privacy">
+          <h2>Policies &amp; privacy</h2>
+          <a href="/terms">Terms and conditions</a>
+          <a href="/privacy">Privacy policy</a>
+          <a href="/cookies">Cookies</a>
+          <button
+            type="button"
+            onClick={() =>
+              window.dispatchEvent(new Event("smpis-cookie-settings"))
+            }
+          >
+            Cookie information
+          </button>
+        </nav>
+      </div>
+      <div className="footer-bottom">
+        <p>
+          © {new Date().getFullYear()} SMPIS <span aria-hidden="true">·</span>{" "}
+          Operated by Cyberlife Digital
+        </p>
+        <a
+          className="footer-maidensail"
+          href="https://maidensail.com/startup/smpis"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Find SMPIS on <strong>Maidensail</strong>{" "}
+          <span aria-hidden="true">↗</span>
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      </div>
     </footer>
   );
 }

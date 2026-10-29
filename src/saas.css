@@ -5,8 +5,7 @@
 .sales-nav,
 .sales-hero,
 .sales-strip,
-.sales-section,
-.sales-footer {
+.sales-section {
   max-width: 1240px;
   margin: auto;
 }
@@ -636,23 +635,6 @@
   background: #e5ecce;
   color: #274d35;
 }
-.sales-footer {
-  display: flex;
-  align-items: center;
-  gap: 35px;
-  padding: 42px 40px;
-}
-.sales-footer p {
-  margin: 0;
-  color: #86907e;
-  font-size: 11px;
-  line-height: 1.8;
-}
-.sales-footer > span {
-  margin-left: auto;
-  color: #8c9785;
-  font-size: 11px;
-}
 .signup-shell {
   max-width: 1180px;
   margin: auto;
@@ -888,8 +870,7 @@
   }
   .sales-nav,
   .sales-hero,
-  .sales-section,
-  .sales-footer {
+  .sales-section {
     padding-left: 25px;
     padding-right: 25px;
   }
@@ -1040,14 +1021,6 @@
   }
   .sales-cta h2 {
     font-size: 34px;
-  }
-  .sales-footer {
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-  .sales-footer > span {
-    margin-left: 0;
-    width: 100%;
   }
   .signup-shell {
     padding: 22px;
