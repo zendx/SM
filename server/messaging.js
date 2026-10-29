@@ -5,45 +5,48 @@ import { id, z } from "./validation.js";
 import { notifyUser } from "./operations-service.js";
 import { consoleAccess } from "./platform-access.js";
 
-// Resolve active school/parent membership on every request, including reads.
-async function contacts(db, user) {
+// Both list and thread reads enforce the same current school membership.
+const contactFields = `NULL::int AS student_id,'School conversation' AS student_name,
+ p.id AS parent_user_id,p.name AS parent_name,u.id AS staff_user_id,u.name AS staff_name,u.role AS staff_role,
+ CASE WHEN p.id=$2 THEN u.id ELSE p.id END AS recipient_id,
+ CASE WHEN p.id=$2 THEN u.name ELSE p.name END AS recipient_name,
+ CASE WHEN p.id=$2 THEN u.role ELSE p.role END AS recipient_role,
+ EXISTS(SELECT 1 FROM sessions se WHERE se.user_id=CASE WHEN p.id=$2 THEN u.id ELSE p.id END
+   AND se.expires_at>now() AND se.mfa_verified AND se.last_seen_at>now()-interval '45 seconds') AS online`;
+const activeParticipants = `p.role='PARENT' AND p.status='ACTIVE' AND p.archived_at IS NULL
+ AND u.role='SUPER_ADMIN' AND u.status='ACTIVE' AND u.archived_at IS NULL
+ AND NOT EXISTS(SELECT 1 FROM platform_operators po WHERE po.user_id IN (p.id,u.id))
+ AND NOT EXISTS(SELECT 1 FROM platform_staff ps WHERE ps.user_id IN (p.id,u.id))`;
+
+async function contacts(db, user, recipientId = null) {
   return rows(
     db,
-    `SELECT NULL::int AS student_id,'School conversation' AS student_name,
-    p.id AS parent_user_id,p.name AS parent_name,u.id AS staff_user_id,u.name AS staff_name,u.role AS staff_role,
-    CASE WHEN p.id=$2 THEN u.id ELSE p.id END AS recipient_id,
-    CASE WHEN p.id=$2 THEN u.name ELSE p.name END AS recipient_name,
-    CASE WHEN p.id=$2 THEN u.role ELSE p.role END AS recipient_role,
-    EXISTS(SELECT 1 FROM sessions se WHERE se.user_id=CASE WHEN p.id=$2 THEN u.id ELSE p.id END
-      AND se.expires_at>now() AND se.mfa_verified AND se.last_seen_at>now()-interval '45 seconds') AS online
-    FROM users p JOIN users u ON u.school_id=p.school_id AND u.id<>p.id
-    WHERE p.school_id=$1 AND p.role='PARENT' AND p.status='ACTIVE' AND p.archived_at IS NULL
-    AND u.status='ACTIVE' AND u.archived_at IS NULL AND ${user.role === "PARENT" ? "p.id=$2" : "u.id=$2"}
-    AND NOT EXISTS(SELECT 1 FROM platform_operators po WHERE po.user_id=u.id)
-    AND NOT EXISTS(SELECT 1 FROM platform_staff ps WHERE ps.user_id=u.id)
-    AND NOT EXISTS(SELECT 1 FROM platform_operators po WHERE po.user_id=p.id)
-    AND NOT EXISTS(SELECT 1 FROM platform_staff ps WHERE ps.user_id=p.id)
-    AND u.role='SUPER_ADMIN'
-    ORDER BY u.name,p.name`,
-    [user.school_id, user.id],
+    `SELECT ${contactFields}
+   FROM users p JOIN users u ON u.school_id=p.school_id AND u.id<>p.id
+   WHERE p.school_id=$1 AND ${activeParticipants}
+   AND ${user.role === "PARENT" ? "p.id=$2" : "u.id=$2"}
+   AND ($3::int IS NULL OR ${user.role === "PARENT" ? "u.id" : "p.id"}=$3)
+   ORDER BY u.name,p.name`,
+    [user.school_id, user.id, recipientId],
   );
 }
 async function access(db, user, conversationId, lock = false) {
+  // Resolve only this pair in one query. Loading every parent in the school on
+  // each read, send and read receipt adds avoidable database work and round trips.
   const thread = await one(
     db,
-    `SELECT * FROM school_conversations WHERE school_id=$1 AND id=$2
-    AND (parent_user_id=$3 OR staff_user_id=$3)${lock ? " FOR UPDATE" : ""}`,
-    [user.school_id, conversationId, user.id],
+    `SELECT c.*,${contactFields},(${activeParticipants}) AS available
+   FROM school_conversations c
+   JOIN users p ON p.id=c.parent_user_id AND p.school_id=c.school_id
+   JOIN users u ON u.id=c.staff_user_id AND u.school_id=c.school_id
+   WHERE c.school_id=$1 AND c.id=$3 AND (c.parent_user_id=$2 OR c.staff_user_id=$2)
+   ${lock ? "FOR UPDATE OF c" : ""}`,
+    [user.school_id, user.id, conversationId],
   );
   if (!thread) fail(404, "Conversation not found.");
-  const contact = (await contacts(db, user)).find(
-    (c) =>
-      c.parent_user_id === thread.parent_user_id &&
-      c.staff_user_id === thread.staff_user_id,
-  );
-  if (!contact)
+  if (!thread.available)
     fail(403, "This conversation is no longer available to your account.");
-  return { ...thread, ...contact, id: thread.id };
+  return thread;
 }
 export function messagingRoutes(db) {
   const r = express.Router();
@@ -93,9 +96,7 @@ export function messagingRoutes(db) {
       .object({ student_id: id.nullable().optional(), recipient_id: id })
       .strict()
       .parse(req.body);
-    const contact = (await contacts(db, req.user)).find(
-      (c) => c.recipient_id === b.recipient_id,
-    );
+    const contact = (await contacts(db, req.user, b.recipient_id))[0];
     if (!contact)
       fail(
         403,

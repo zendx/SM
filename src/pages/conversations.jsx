@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare, Send, Plus, ArrowLeft } from "lucide-react";
-import { useData } from "../hooks";
-import { useLiveUpdates } from "../live-updates";
+import { useLiveData } from "../live-updates";
 import { get, post } from "../api";
 import { Button, PageHead, human } from "../components";
 import "./conversations.css";
@@ -19,17 +18,14 @@ function messageKey() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 function Thread({ id, user, onRead }) {
-  const q = useData(`/messages/${id}`, null);
-  const refresh = useCallback(q.reload, [id]);
-  useLiveUpdates(refresh, 1000);
+  const q = useLiveData(`/messages/${id}`, null);
   const [draft, setDraft] = useState(""),
-    [busy, setBusy] = useState(false),
+    [outbox, setOutbox] = useState([]),
     [error, setError] = useState(""),
     [older, setOlder] = useState([]),
     [more, setMore] = useState(null),
     [loadingOlder, setLoadingOlder] = useState(false);
-  const pending = useRef(null),
-    sending = useRef(false),
+  const sending = useRef(new Set()),
     readThrough = useRef(0),
     bottom = useRef(null);
   const thread = q.data?.conversation;
@@ -37,10 +33,23 @@ function Thread({ id, user, onRead }) {
   const combined = [
     ...new Map([...older, ...latest].map((m) => [m.id, m])).values(),
   ].sort((a, b) => a.id - b.id);
+  const displayed = [
+    ...combined,
+    ...outbox.filter(
+      (entry) =>
+        !combined.some((message) => message.client_key === entry.client_key),
+    ),
+  ];
   const lastId = latest.at(-1)?.id;
   useEffect(() => {
+    const acknowledged = new Set(latest.map((message) => message.client_key));
+    setOutbox((current) =>
+      current.filter((entry) => !acknowledged.has(entry.client_key)),
+    );
+  }, [q.data]);
+  useEffect(() => {
     bottom.current?.scrollIntoView({ block: "nearest" });
-  }, [lastId]);
+  }, [lastId, outbox.length]);
   useEffect(() => {
     if (document.visibilityState !== "visible") return;
     const unread = latest
@@ -57,28 +66,60 @@ function Thread({ id, user, onRead }) {
         readThrough.current = 0;
       });
   }, [q.data, id, user.id]);
-  async function send(e) {
-    e.preventDefault();
-    if (sending.current || !draft.trim()) return;
-    sending.current = true;
-    setBusy(true);
+  async function deliver(entry) {
+    if (sending.current.has(entry.client_key)) return;
+    sending.current.add(entry.client_key);
+    setOutbox((current) =>
+      current.map((message) =>
+        message.client_key === entry.client_key
+          ? { ...message, state: "sending" }
+          : message,
+      ),
+    );
     setError("");
-    const body = draft.trim();
     try {
-      if (pending.current?.body !== body)
-        pending.current = { body, client_key: messageKey() };
-      await post(`/messages/${id}/send`, pending.current);
-      setDraft("");
-      pending.current = null;
-      refresh();
+      const saved = await post(`/messages/${id}/send`, {
+        body: entry.body,
+        client_key: entry.client_key,
+      });
+      setOutbox((current) =>
+        current.map((message) =>
+          message.client_key === entry.client_key
+            ? { ...saved, state: "sent" }
+            : message,
+        ),
+      );
+      q.reload();
       onRead();
       window.dispatchEvent(new Event("notices-read"));
     } catch (e) {
-      setError(`Message not sent. Your draft is still here. ${e.message}`);
+      setOutbox((current) =>
+        current.map((message) =>
+          message.client_key === entry.client_key
+            ? { ...message, state: "failed" }
+            : message,
+        ),
+      );
+      setError(
+        `A message could not be sent. Use Retry beside it. ${e.message}`,
+      );
     } finally {
-      sending.current = false;
-      setBusy(false);
+      sending.current.delete(entry.client_key);
     }
+  }
+  function send(e) {
+    e.preventDefault();
+    if (!draft.trim()) return;
+    const entry = {
+      body: draft.trim(),
+      client_key: messageKey(),
+      sender_id: user.id,
+      created_at: new Date().toISOString(),
+      state: "sending",
+    };
+    setDraft("");
+    setOutbox((current) => [...current, entry]);
+    deliver(entry);
   }
   return (
     <section className="chat-thread" aria-label="Conversation">
@@ -132,23 +173,36 @@ function Thread({ id, user, onRead }) {
                 {loadingOlder ? "Loading…" : "Load earlier messages"}
               </Button>
             )}
-            {!combined.length && (
+            {!displayed.length && (
               <p className="chat-empty">
-                Start a conversation about {thread.student_name}.
+                Send a message to {thread.recipient_name}.
               </p>
             )}
-            {combined.map((m) => (
+            {displayed.map((m) => (
               <article
-                key={m.id}
+                key={m.client_key || m.id}
                 className={`chat-bubble ${m.sender_id === user.id ? "is-mine" : ""}`}
               >
                 <p>{m.body}</p>
                 <small>
                   {new Date(m.created_at).toLocaleString()}{" "}
-                  {m.sender_id === user.id && (
-                    <> · {m.read_at ? "Read" : "Sent"}</>
-                  )}
+                  {m.state === "sending"
+                    ? " · Sending…"
+                    : m.state === "failed"
+                      ? " · Not sent"
+                      : m.sender_id === user.id && (
+                          <> · {m.read_at ? "Read" : "Sent"}</>
+                        )}
                 </small>
+                {m.state === "failed" && (
+                  <button
+                    type="button"
+                    className="text-button chat-retry"
+                    onClick={() => deliver(m)}
+                  >
+                    Retry
+                  </button>
+                )}
               </article>
             ))}
             <div ref={bottom} />
@@ -167,15 +221,14 @@ function Thread({ id, user, onRead }) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               maxLength={4000}
-              rows={3}
+              rows={2}
               placeholder="Write a message…"
-              disabled={busy}
             />
             <div>
               <small>{draft.length}/4000</small>
-              <Button type="submit" disabled={busy || !draft.trim()}>
+              <Button type="submit" disabled={!draft.trim()}>
                 <Send size={17} />
-                {busy ? "Sending…" : "Send"}
+                Send
               </Button>
             </div>
           </form>
@@ -186,12 +239,9 @@ function Thread({ id, user, onRead }) {
 }
 
 export function Conversations({ user, embedded = false }) {
-  const q = useData("/messages"),
-    contacts = useData("/messages/contacts");
-  const refresh = useCallback(q.reload, []),
-    refreshContacts = useCallback(contacts.reload, []);
-  useLiveUpdates(refresh, 1000);
-  useLiveUpdates(refreshContacts, 5000);
+  const q = useLiveData("/messages", [], 2000),
+    contacts = useLiveData("/messages/contacts", [], 5000);
+  const refresh = q.reload;
   const [active, setActive] = useState(fromHash),
     [newChat, setNewChat] = useState(false),
     [error, setError] = useState(""),
@@ -322,9 +372,13 @@ export function Conversations({ user, embedded = false }) {
               All conversations
             </button>
           )}
-          {newChat ? (
+          {newChat || !active ? (
             <section className="chat-new">
-              <h2>Start a conversation</h2>
+              <h2>
+                {user.role === "PARENT"
+                  ? "Message your school"
+                  : "Choose a parent"}
+              </h2>
               <p>Choose a contact to start a private conversation.</p>
               {contacts.error && (
                 <p className="form-error" role="alert">
@@ -386,17 +440,8 @@ export function Conversations({ user, embedded = false }) {
                   </p>
                 )}
             </section>
-          ) : active ? (
-            <Thread key={active} id={active} user={user} onRead={refresh} />
           ) : (
-            <div className="chat-placeholder">
-              <MessageSquare size={38} />
-              <h2>Your school conversations</h2>
-              <p>
-                Choose a conversation or start a new one. Messages stay saved
-                when someone is offline.
-              </p>
-            </div>
+            <Thread key={active} id={active} user={user} onRead={refresh} />
           )}
         </div>
       </div>

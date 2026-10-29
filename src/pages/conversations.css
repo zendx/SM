@@ -195,6 +195,11 @@
   font-size: 10px;
   color: #576c51;
 }
+.chat-bubble .chat-retry {
+  margin-left: 12px;
+  font-size: 12px;
+  text-decoration: underline;
+}
 .chat-composer {
   padding: 16px 20px;
   border-top: 1px solid var(--border);
@@ -262,9 +267,26 @@
   }
   .chat-thread {
     min-height: 0;
+    flex: 1;
+  }
+  .chat-layout.has-active .chat-main {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 210px);
+    min-height: 420px;
   }
   .chat-history {
-    height: 340px;
+    height: auto;
+    flex: 1;
+    min-height: 100px;
+  }
+  .chat-heading,
+  .chat-composer {
+    flex-shrink: 0;
+  }
+  .chat-composer textarea {
+    min-height: 56px;
+    max-height: 120px;
   }
   .chat-layout .chat-back {
     display: flex;
