@@ -2,7 +2,7 @@ import { productModules, featurePath } from "./product-catalog.js";
 import { schoolManagementFaq } from "./public-faq.js";
 
 const homeDescription =
-  "School management software for small schools: manage admissions, attendance, school fees online, academics and staff. Start a 30-day trial with no card required.";
+  "School management software for small schools: admissions, attendance, school fees online, exams and report cards. Start a 30-day trial. No card required.";
 
 const pages = {
   "/": {

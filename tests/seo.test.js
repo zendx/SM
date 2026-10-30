@@ -20,7 +20,10 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
     assert.match(html, /<meta name="description" content="[^"]+"/);
     if (route === "/") {
       assert.match(html, /<title>School Management Software \| SMPIS<\/title>/);
-      assert.match(html, /<h1>Less chasing records\. More time for your school\.<\/h1>/);
+      assert.match(
+        html,
+        /<h1>Less chasing records\. More time for your school\.<\/h1>/,
+      );
       assert.match(html, /href="\/signup">Start your 30-day free trial<\/a>/);
       assert.doesNotMatch(html, /maidensail|Featured on|calmer, smarter/);
     }
@@ -258,4 +261,38 @@ test("feature guides are crawlable and discoverable without JavaScript", async (
     renderSeoHtml(template, "/features/unknown", "https://school.example.com"),
     /name="robots" content="noindex/,
   );
+});
+
+test("public descriptions are concise and homepage social metadata stays consistent", async () => {
+  const template = await readFile("index.html", "utf8");
+  const expected =
+    "School management software for small schools: admissions, attendance, school fees online, exams and report cards. Start a 30-day trial. No card required.";
+  assert.equal(expected.length, 153);
+  for (const route of publicSeoPaths) {
+    const html = renderSeoHtml(template, route, "https://www.smpis.digital");
+    const descriptions = [
+      ...html.matchAll(/<meta name="description" content="([^"]+)"/g),
+    ];
+    assert.equal(descriptions.length, 1, `${route}: one meta description`);
+    const description = descriptions[0][1]
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">");
+    assert.ok(
+      description.length <= 160,
+      `${route}: description exceeds 160 characters`,
+    );
+    if (route === "/") {
+      assert.equal(description, expected);
+      assert.ok(
+        html.includes(`<meta property="og:description" content="${expected}"`),
+      );
+      assert.ok(
+        html.includes(`<meta name="twitter:description" content="${expected}"`),
+      );
+      assert.ok(html.includes(`"description":"${expected}"`));
+    }
+  }
 });
