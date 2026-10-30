@@ -369,7 +369,7 @@ export async function enroll(db, u, id, termId) {
 }
 
 export async function refreshAlerts(db, schoolId) {
-  const school = await one(db, "SELECT * FROM schools WHERE id=$1", [schoolId]);
+  const school = await one(db, "SELECT timezone,attendance_threshold FROM schools WHERE id=$1", [schoolId]);
   if (!school) return;
   const today = localClock(school.timezone).date;
   await db.transaction(async (tx) => {

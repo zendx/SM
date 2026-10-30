@@ -25,13 +25,23 @@ test("slow messaging reads survive refreshes and ignore responses from a previou
     });
   }
   const requests = [];
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+  let tick;
+  let pollInterval;
+  globalThis.setInterval = (callback, interval) => {
+    tick = callback;
+    pollInterval = interval;
+    return 1;
+  };
+  globalThis.clearInterval = () => {};
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (url) =>
     new Promise((resolve) => requests.push({ url, resolve }));
   const { useLiveData } = await import("../src/live-updates.js");
   let query;
   function Screen({ path }) {
-    query = useLiveData(path, null, 60000);
+    query = useLiveData(path, null);
     return React.createElement("p", null, JSON.stringify(query.data));
   }
   const root = createRoot(document.getElementById("root"));
@@ -47,33 +57,52 @@ test("slow messaging reads survive refreshes and ignore responses from a previou
     await act(async () =>
       root.render(React.createElement(Screen, { path: "/messages/1" })),
     );
+    assert.equal(pollInterval, 5000);
+    await act(async () => {
+      for (let i = 0; i < 10; i++) tick();
+    });
+    await respond(0, { body: "Initial response" });
+    assert.equal(requests.length, 1, "automatic polls must not queue reads behind a slow request");
+    await act(async () => tick());
     await act(async () => {
       for (let i = 0; i < 10; i++) query.reload();
     });
     assert.equal(
       requests.length,
-      1,
+      2,
       "refreshes must not overlap unfinished requests",
     );
-    await respond(0, { body: "First response" });
+    await respond(1, { body: "First response" });
     assert.equal(
       query.data.body,
       "First response",
       "refreshes must not discard slow responses",
     );
-    assert.equal(requests.length, 2, "refreshes coalesce into one queued read");
+    assert.equal(requests.length, 3, "refreshes coalesce into one queued read");
     await act(async () =>
       root.render(React.createElement(Screen, { path: "/messages/2" })),
     );
-    assert.equal(requests.length, 3);
-    await respond(2, { body: "New conversation" });
-    await respond(1, { body: "Stale conversation" });
+    assert.equal(requests.length, 4);
+    await respond(3, { body: "New conversation" });
+    await respond(2, { body: "Stale conversation" });
     assert.equal(query.data.body, "New conversation");
     assert.equal(query.loading, false);
     assert.equal(query.error, "");
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    await act(async () => tick());
+    assert.equal(requests.length, 4, "hidden tabs must not poll");
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    await act(async () => tick());
+    assert.equal(requests.length, 4, "offline tabs must not poll");
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    await act(async () => window.dispatchEvent(new window.Event("online")));
+    assert.equal(requests.length, 5, "reconnecting refreshes immediately");
   } finally {
     await act(async () => root.unmount());
     globalThis.fetch = originalFetch;
+    globalThis.setInterval = originalSetInterval;
+    globalThis.clearInterval = originalClearInterval;
     for (const [key, descriptor] of originals) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);
       else delete globalThis[key];

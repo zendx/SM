@@ -84,7 +84,7 @@ async function generateSchoolNotifications(db) {
     ON CONFLICT(school_id,dedupe_key) DO NOTHING`);
   for (const school of await rows(
     db,
-    "SELECT c.* FROM schools c WHERE NOT EXISTS(SELECT 1 FROM school_subscriptions s WHERE s.school_id=c.id AND (s.deletion_requested_at IS NOT NULL OR s.suspension_reason='TENANT_PAUSED'))",
+    "SELECT c.id,c.timezone,c.currency_code FROM schools c WHERE NOT EXISTS(SELECT 1 FROM school_subscriptions s WHERE s.school_id=c.id AND (s.deletion_requested_at IS NOT NULL OR s.suspension_reason='TENANT_PAUSED'))",
   )) {
     await refreshAlerts(db, school.id);
     await refreshOperationAlerts(db, school.id);

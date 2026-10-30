@@ -132,7 +132,7 @@ export async function notifyUser(
 }
 export async function refreshOperationAlerts(db, schoolId) {
   const settings = await operationSettings(db, schoolId),
-    school = await one(db, "SELECT * FROM schools WHERE id=$1", [schoolId]);
+    school = await one(db, "SELECT timezone FROM schools WHERE id=$1", [schoolId]);
   const today = localClock(school.timezone).date;
   const candidates = [];
   for (const r of await rows(

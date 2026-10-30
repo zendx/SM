@@ -17,7 +17,7 @@ export function NotificationBell({ onClick }) {
       q.reload();
     };
     update();
-    const timer = setInterval(update, 5000);
+    const timer = setInterval(update, 30000);
     document.addEventListener("visibilitychange", update);
     window.addEventListener("notices-read", update);
     window.addEventListener("focus", update);
@@ -76,7 +76,7 @@ export function PlatformInbox() {
       if (document.visibilityState === "visible" && navigator.onLine)
         q.reload();
     };
-    const timer = setInterval(update, 5000);
+    const timer = setInterval(update, 30000);
     window.addEventListener("online", update);
     return () => {
       clearInterval(timer);

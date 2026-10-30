@@ -76,7 +76,7 @@ export function ParentMessages({ user, config, go }) {
 function ParentAnnouncements({ config, go }) {
   const parents = useData("/parent-messages/recipients");
   const refreshParents = useCallback(parents.reload, []);
-  useLiveUpdates(refreshParents, 5000);
+  useLiveUpdates(refreshParents, 30000);
   const [audience, setAudience] = useState("selected");
   const [selected, setSelected] = useState([]),
     [search, setSearch] = useState(""),

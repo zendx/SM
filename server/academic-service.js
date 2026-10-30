@@ -57,7 +57,7 @@ export async function matchTerm(db, u, classId, termId) {
 }
 export async function assertEditable(db, u, classId, termId) {
   const term = await matchTerm(db, u, classId, termId),
-    school = await currentSchool(db, u),
+    school = await one(db, "SELECT timezone FROM schools WHERE id=$1", [u.school_id]),
     today = localClock(school.timezone).date;
   const control = await one(
     db,
@@ -400,7 +400,7 @@ export async function reportAccess(db, u, reportId) {
 
 export async function curriculumRows(db, u, termId, { summary = false } = {}) {
   const term = await schoolRecord(db, u, "terms", termId),
-    school = await currentSchool(db, u),
+    school = await one(db, "SELECT timezone FROM schools WHERE id=$1", [u.school_id]),
     policy = await academicPolicy(db, u.school_id);
   const today = localClock(school.timezone).date,
     currentWeek = Math.max(

@@ -239,8 +239,8 @@ function Thread({ id, user, onRead }) {
 }
 
 export function Conversations({ user, embedded = false }) {
-  const q = useLiveData("/messages", [], 2000),
-    contacts = useLiveData("/messages/contacts", [], 5000);
+  const q = useLiveData("/messages", [], 10000),
+    contacts = useLiveData("/messages/contacts", [], 60000);
   const refresh = q.reload;
   const [active, setActive] = useState(fromHash),
     [newChat, setNewChat] = useState(false),
