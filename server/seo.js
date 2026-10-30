@@ -7,7 +7,7 @@ const homeDescription =
 const pages = {
   "/": {
     title: "School Management Software | SMPIS",
-    heading: "School administration in one workspace.",
+    heading: "Less chasing records. More time for your school.",
     description: homeDescription,
   },
   "/terms": {

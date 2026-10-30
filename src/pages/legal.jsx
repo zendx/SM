@@ -53,6 +53,7 @@ export function LegalFooter() {
             <br />
             &amp; Intelligence System
           </p>
+          <p className="footer-enquiry-label">Email enquiries</p>
           <a className="footer-email" href="mailto:info@smpis.digital">
             info@smpis.digital
           </a>

@@ -17,12 +17,18 @@ import {
   Wallet,
 } from "lucide-react";
 import { BrandLogo } from "../brand-logo";
-import { WhatsAppHelp } from "./whatsapp-help";
 import { productModules, featurePath } from "../../server/product-catalog.js";
 import admissionsImage from "../assets/product/admissions.png";
 import financeImage from "../assets/product/finance.png";
 import familiesImage from "../assets/product/families.png";
 import "../saas.css";
+import "../public-design.css";
+import {
+  BackToTop,
+  PublicEnquiries,
+  ZoomImage,
+  useViewportEntrance,
+} from "../public-ui";
 
 const icons = {
   Users,
@@ -89,6 +95,59 @@ export function FeatureCards({ modules = productModules }) {
   );
 }
 
+export function HeroShowcase() {
+  const [active, setActive] = useState("admissions");
+  const image = screenshots[active];
+  const guides = {
+    admissions: "admissions",
+    finance: "finance",
+    families: "family-portal",
+  };
+  return (
+    <div className="hero-evidence">
+      <div className="evidence-heading">
+        <span>YOUR SCHOOL, CONNECTED</span>
+        <span>Product preview</span>
+      </div>
+      <div
+        className="showcase-switcher"
+        role="group"
+        aria-label="Choose a product preview"
+      >
+        {[
+          ["admissions", "Admissions"],
+          ["finance", "School fees"],
+          ["families", "Families"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={active === key}
+            onClick={() => setActive(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <ZoomImage key={active} src={image.src} alt={image.alt} priority />
+      <div className="evidence-caption">
+        <strong>
+          {active === "admissions"
+            ? "Every application has a next step."
+            : active === "finance"
+              ? "Give families a clear view of fees."
+              : "Keep parents close to the school day."}
+        </strong>
+        <p>{image.caption}</p>
+        <span>Example screen / Fictional school data</span>
+      </div>
+      <a className="sales-text-link" href={`/features/${guides[active]}`}>
+        Explore this workspace <ArrowRight size={17} aria-hidden="true" />
+      </a>
+    </div>
+  );
+}
+
 export function ProductSnapshots({ single }) {
   const images = single ? [single] : ["admissions", "finance", "families"];
   return (
@@ -97,20 +156,7 @@ export function ProductSnapshots({ single }) {
         const image = screenshots[key];
         return (
           <figure key={key}>
-            <a
-              href={image.src}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Enlarge ${key} demo screenshot (opens in a new tab)`}
-            >
-              <img
-                src={image.src}
-                alt={image.alt}
-                width="1440"
-                height="1000"
-                loading="lazy"
-              />
-            </a>
+            <ZoomImage src={image.src} alt={image.alt} />
             <figcaption>
               {image.caption}
               <span>
@@ -127,6 +173,17 @@ export function ProductSnapshots({ single }) {
 
 function ProductHeader() {
   const [open, setOpen] = useState(false);
+  React.useEffect(() => {
+    if (!open) return;
+    const close = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        document.querySelector(".sales-menu-toggle")?.focus();
+      }
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
   return (
     <header className="sales-nav">
       <a className="brand" href="/" aria-label="SMPIS home">
@@ -169,7 +226,7 @@ function ProductHeader() {
           Sign in
         </a>
         <a className="btn" href="/signup">
-          Start free <ArrowUpRight size={16} />
+          Start free trial <ArrowUpRight size={16} />
         </a>
       </div>
     </header>
@@ -189,6 +246,7 @@ function ProductFooter() {
         <a className="product-pricing-link" href="/#pricing">
           Review plans and pricing
         </a>
+        <PublicEnquiries />
       </section>
     </>
   );
@@ -423,6 +481,7 @@ function ModuleDetail({ module }) {
 }
 
 export function ProductFeatures() {
+  const entranceRef = useViewportEntrance();
   const slug = location.pathname.replace(/\/$/, "").split("/")[2];
   const module = productModules.find((m) => m.slug === slug);
   const notFound = Boolean(
@@ -430,9 +489,12 @@ export function ProductFeatures() {
     location.pathname.replace(/\/$/, "").split("/").length > 3,
   );
   return (
-    <div className="sales-page product-pages">
+    <div className="sales-page product-pages school-desk" ref={entranceRef}>
+      <a className="public-skip" href="#public-main">
+        Skip to content
+      </a>
       <ProductHeader />
-      <main>
+      <main id="public-main" tabIndex={-1}>
         {notFound ? (
           <section className="sales-section catalog-hero">
             <h1>Feature guide not found</h1>
@@ -448,7 +510,7 @@ export function ProductFeatures() {
         )}
       </main>
       <ProductFooter />
-      <WhatsAppHelp />
+      <BackToTop />
     </div>
   );
 }

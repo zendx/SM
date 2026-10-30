@@ -2039,9 +2039,6 @@ pre {
   gap: 48px;
   padding-bottom: 36px;
 }
-#root:has(.whatsapp-help) > .legal-footer {
-  padding-bottom: 112px;
-}
 .footer-brand {
   display: inline-flex;
   margin-bottom: 14px;
@@ -2504,10 +2501,6 @@ textarea:focus-visible {
   height: auto;
   flex-shrink: 0;
   border-radius: 4px;
-}
-
-.preview-top .brand-logo {
-  width: 120px;
 }
 @media (max-width: 600px) {
   .sales-nav .brand .brand-logo {

@@ -20,7 +20,7 @@ test("public HTML contains crawlable SEO metadata and a visible primary heading"
     assert.match(html, /<meta name="description" content="[^"]+"/);
     if (route === "/") {
       assert.match(html, /<title>School Management Software \| SMPIS<\/title>/);
-      assert.match(html, /<h1>School administration in one workspace\.<\/h1>/);
+      assert.match(html, /<h1>Less chasing records\. More time for your school\.<\/h1>/);
       assert.match(html, /href="\/signup">Start your 30-day free trial<\/a>/);
       assert.doesNotMatch(html, /maidensail|Featured on|calmer, smarter/);
     }

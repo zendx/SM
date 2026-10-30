@@ -1,12 +1,10 @@
 import { BrandLogo } from "../brand-logo";
 import { schoolManagementFaq } from "../../server/public-faq.js";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowUpRight,
   Check,
   ShieldCheck,
-  Users,
-  CalendarCheck,
   ChartNoAxesCombined,
   ArrowRight,
   Menu,
@@ -16,8 +14,10 @@ import { Form, Button } from "../components";
 import { post } from "../api";
 import { useData } from "../hooks";
 import "../saas.css";
-import { WhatsAppHelp } from "./whatsapp-help";
-import { FeatureCards, ProductSnapshots } from "./product-features";
+import { HeroShowcase, ProductSnapshots } from "./product-features";
+import { productModules, featurePath } from "../../server/product-catalog.js";
+import { BackToTop, PublicEnquiries, useViewportEntrance } from "../public-ui";
+import "../public-design.css";
 
 export const planPrice = (cycle, config = {}) => {
   const monthly = Number(
@@ -299,6 +299,7 @@ export function Signup() {
   );
 }
 export function Landing() {
+  const entranceRef = useViewportEntrance();
   const [yearly, setYearly] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const plans = useData("/saas/plans", null);
@@ -316,61 +317,23 @@ export function Landing() {
           maximumFractionDigits: 2,
           minimumFractionDigits: 0,
         }).format(amount * displayRate);
-  const page = useRef(null);
   useEffect(() => {
-    const root = page.current;
-    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let observer;
-    const reveal = () => {
-      observer?.disconnect();
-      root.classList.remove("motion-ready");
-      if (preference.matches || !window.IntersectionObserver) return;
-      const items = root.querySelectorAll(
-        ".hero-copy,.product-preview,.sales-strip,.section-intro,.feature-grid article,.intelligence-band,.steps-grid article,.pricing-card,.faq-list details,.sales-cta",
-      );
-      items.forEach((item, index) => {
-        item.classList.add("reveal-item");
-        item.style.setProperty("--reveal-delay", `${(index % 3) * 70}ms`);
-      });
-      root.classList.add("motion-ready");
-      observer = new IntersectionObserver(
-        (entries) =>
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add("is-visible");
-              observer.unobserve(entry.target);
-            }
-          }),
-        { threshold: 0.12, rootMargin: "0px 0px -24px 0px" },
-      );
-      items.forEach((item) => observer.observe(item));
+    if (!menuOpen) return;
+    const close = (event) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        document.querySelector(".sales-menu-toggle")?.focus();
+      }
     };
-    reveal();
-    preference.addEventListener("change", reveal);
-    return () => {
-      observer?.disconnect();
-      preference.removeEventListener("change", reveal);
-    };
-  }, []);
-  const movePreview = (event) => {
-    if (
-      event.pointerType !== "mouse" ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    )
-      return;
-    const box = event.currentTarget.getBoundingClientRect();
-    event.currentTarget.style.setProperty(
-      "--tilt-x",
-      `${(0.5 - (event.clientY - box.top) / box.height) * 4}deg`,
-    );
-    event.currentTarget.style.setProperty(
-      "--tilt-y",
-      `${((event.clientX - box.left) / box.width - 0.5) * 4}deg`,
-    );
-  };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [menuOpen]);
   const proLink = `/signup?plan=PRO&cycle=${yearly ? "YEARLY" : "MONTHLY"}`;
   return (
-    <div className="sales-page" ref={page}>
+    <div className="sales-page school-desk" ref={entranceRef}>
+      <a className="public-skip" href="#public-main">
+        Skip to content
+      </a>
       <header className="sales-nav">
         <PublicBrand />
         <nav
@@ -403,28 +366,35 @@ export function Landing() {
             Sign in
           </a>
           <a className="btn" href="/signup">
-            Start free <ArrowUpRight size={16} />
+            Start free trial <ArrowUpRight size={16} />
           </a>
         </div>
       </header>
-      <main>
-        <section className="sales-hero">
+      <main id="public-main" tabIndex={-1}>
+        <section
+          className="sales-hero sales-hero--expanded"
+          aria-labelledby="landing-title"
+        >
           <div className="hero-copy">
             <div className="hero-tag">
-              <span /> ONE SCHOOL. ONE CONNECTED WORKSPACE.
+              <span /> SMPIS / SCHOOL MANAGEMENT SOFTWARE
             </div>
-            <h1>School administration in one workspace.</h1>
+            <h1 id="landing-title">
+              Less chasing records.
+              <br />
+              <em>More time for your school.</em>
+            </h1>
             <p>
-              Bring admissions, attendance, school fees, exams, report cards,
-              teaching plans and staff records together. Give your team one
-              place to handle the school day and keep families informed.
+              Keep admissions, attendance, fees and term reports in one school
+              workspace. Give staff the records they need and parents a clearer
+              view of their children’s school day.
             </p>
             <div className="hero-actions">
               <a className="btn" href="/signup">
                 Start your 30-day free trial <ArrowUpRight size={18} />
               </a>
               <a className="sales-text-link" href="#features">
-                Explore features <ArrowRight size={17} />
+                See what your team can do <ArrowRight size={17} />
               </a>
             </div>
             <div className="hero-promises">
@@ -446,80 +416,7 @@ export function Landing() {
               <span>Staff records</span>
             </div>
           </div>
-          <div
-            className="product-preview"
-            onPointerMove={movePreview}
-            onPointerLeave={(event) => {
-              event.currentTarget.style.setProperty("--tilt-x", "0deg");
-              event.currentTarget.style.setProperty("--tilt-y", "0deg");
-            }}
-            aria-label="Illustrative school dashboard"
-          >
-            <div className="preview-top">
-              <span>
-                <BrandLogo />
-              </span>
-              <span>
-                School overview <span className="preview-dot" />
-              </span>
-            </div>
-            <div className="preview-body">
-              <div className="preview-heading">
-                <div>
-                  <small>EVERY SCHOOL DAY, IN FOCUS</small>
-                  <h2>Your school, at a glance.</h2>
-                </div>
-                <span className="preview-pill">Dashboard preview</span>
-              </div>
-              <div className="preview-metrics">
-                <div>
-                  <Users size={18} />
-                  <small>Students enrolled</small>
-                  <strong>1,248</strong>
-                  <span>Connected student records</span>
-                </div>
-                <div>
-                  <CalendarCheck size={18} />
-                  <small>Attendance</small>
-                  <strong>
-                    96.4<small>%</small>
-                  </strong>
-                  <span>Daily visibility</span>
-                </div>
-              </div>
-              <div className="preview-chart">
-                <div>
-                  <strong>Academic performance</strong>
-                  <span>Illustrative data</span>
-                </div>
-                <div className="chart-bars">
-                  {[48, 63, 54, 72, 67, 83, 77, 90].map((h, i) => (
-                    <span key={i} style={{ height: `${h}%` }}>
-                      <i />
-                    </span>
-                  ))}
-                </div>
-                <div className="chart-labels">
-                  <span>Term 1</span>
-                  <span>Term 2</span>
-                  <span>Term 3</span>
-                </div>
-              </div>
-              <div className="preview-alert">
-                <ShieldCheck size={22} />
-                <div>
-                  <strong>See what needs your attention</strong>
-                  <small>
-                    Attendance, fees, academics and school operations.
-                  </small>
-                </div>
-                <ArrowUpRight size={18} />
-              </div>
-            </div>
-            <div className="preview-caption">
-              Illustration only. Your dashboard reflects your school’s records.
-            </div>
-          </div>
+          <HeroShowcase />
         </section>
         <div className="sales-strip">
           <span>Built for the whole school community</span>
@@ -530,11 +427,11 @@ export function Landing() {
         </div>
         <section id="features" className="sales-section">
           <div className="section-intro">
-            <div className="eyebrow">A SCHOOL DAY, THOUGHTFULLY CONNECTED</div>
+            <div className="eyebrow">THE TOOLS BEHIND THE SCHOOL DAY</div>
             <h2>
-              School records and workflows.
+              From the first application
               <br />
-              Tools for your team.
+              to the final term report.
             </h2>
             <p>
               Manage the records described below in a shared workspace, with
@@ -549,7 +446,21 @@ export function Landing() {
               12 areas of school life, with guides to help you get started
             </span>
           </div>
-          <FeatureCards />
+          <div className="school-module-index">
+            {productModules.map((module, index) => (
+              <a href={featurePath(module)} key={module.slug}>
+                <span className="module-index-number">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <span className="catalog-category">{module.category}</span>
+                  <h3>{module.title}</h3>
+                  <p>{module.summary}</p>
+                </div>
+                <ArrowUpRight size={20} aria-hidden="true" />
+              </a>
+            ))}
+          </div>
           <div className="intelligence-band">
             <ChartNoAxesCombined size={42} />
             <div>
@@ -566,7 +477,7 @@ export function Landing() {
         </section>
         <section className="sales-section product-spotlight">
           <div>
-            <div className="eyebrow">YES, EXAMS AND REPORT CARDS TOO</div>
+            <div className="eyebrow">FOR TEACHERS & SCHOOL LEADERS</div>
             <h2>
               Record assessments.
               <br />
@@ -784,7 +695,7 @@ export function Landing() {
         </section>
         <section id="faq" className="sales-section faq-section">
           <div className="section-intro">
-            <div className="eyebrow">A FEW THINGS YOU MAY BE WONDERING</div>
+            <div className="eyebrow">QUESTIONS BEFORE YOU REGISTER</div>
             <h2>Before your first school day.</h2>
           </div>
           <div className="faq-list">
@@ -851,11 +762,12 @@ export function Landing() {
             accounts.
           </p>
           <a className="btn" href="/signup">
-            Get started free <ArrowUpRight size={18} />
+            Create your school portal <ArrowUpRight size={18} />
           </a>
+          <PublicEnquiries />
         </section>
       </main>
-      <WhatsAppHelp />
+      <BackToTop />
     </div>
   );
 }

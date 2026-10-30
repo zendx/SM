@@ -155,179 +155,6 @@
   font-weight: 700;
   letter-spacing: 0.2px;
 }
-.product-preview {
-  border: 1px solid #dce6da;
-  border-radius: 16px;
-  background: white;
-  box-shadow: 0 22px 75px #284e3614;
-  transform: rotate(-1deg);
-  position: relative;
-}
-.product-preview:before {
-  content: "";
-  position: absolute;
-  inset: -25px;
-  z-index: -1;
-  background: radial-gradient(ellipse, #d9e7cf80, transparent 70%);
-}
-.preview-top {
-  background: #f5f8f3;
-  border-radius: 16px 16px 0 0;
-  border-bottom: 1px solid #e6ece3;
-  padding: 17px 20px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-}
-.preview-top > span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.preview-top > span:first-child {
-  font-weight: 800;
-}
-.preview-dot {
-  height: 6px;
-  width: 6px;
-  background: #5b9b77;
-  border-radius: 50%;
-}
-.preview-body {
-  padding: 25px;
-}
-.preview-heading {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-.preview-heading small {
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: #899588;
-}
-.preview-heading h2 {
-  font-size: 20px;
-  margin: 8px 0 0;
-  letter-spacing: -0.6px;
-}
-.preview-pill {
-  font-size: 8px;
-  padding: 7px;
-  background: #eef5e9;
-  border-radius: 5px;
-  white-space: nowrap;
-}
-.preview-metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-.preview-metrics > div {
-  position: relative;
-  padding: 17px;
-  border: 1px solid #e7ece3;
-  border-radius: 9px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.preview-metrics svg {
-  position: absolute;
-  right: 14px;
-  top: 15px;
-  color: #7f997f;
-}
-.preview-metrics small {
-  font-size: 10px;
-  color: #718070;
-}
-.preview-metrics strong {
-  font-size: 29px;
-  letter-spacing: -1px;
-}
-.preview-metrics strong small {
-  font-size: 16px;
-}
-.preview-metrics span {
-  font-size: 8px;
-  color: #779179;
-}
-.preview-chart {
-  margin-top: 18px;
-  border: 1px solid #e7ece3;
-  border-radius: 9px;
-  padding: 18px;
-}
-.preview-chart > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-}
-.preview-chart > div:first-child span {
-  font-size: 8px;
-  color: #859282;
-}
-.chart-bars {
-  height: 118px;
-  display: flex;
-  gap: 16px;
-  align-items: end;
-  margin: 15px 8px 5px;
-  border-bottom: 1px solid #e4eadf;
-  background: repeating-linear-gradient(
-    to top,
-    transparent 0,
-    transparent 28px,
-    #f1f4ef 29px
-  );
-}
-.chart-bars > span {
-  flex: 1;
-  max-width: 34px;
-  display: block;
-  background: #a4c1a0;
-  border-radius: 4px 4px 0 0;
-}
-.chart-bars > span:nth-child(2n) {
-  background: #397b5e;
-}
-.chart-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 8px;
-  color: #8a9486;
-  margin-top: 9px;
-}
-.preview-alert {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  background: #f5f7ee;
-  margin-top: 17px;
-  border-radius: 8px;
-  padding: 13px;
-  color: #687e54;
-}
-.preview-alert div {
-  flex: 1;
-}
-.preview-alert strong {
-  font-size: 10px;
-  display: block;
-  margin-bottom: 4px;
-}
-.preview-alert small {
-  font-size: 8px;
-}
-.preview-caption {
-  text-align: center;
-  font-size: 8px;
-  color: #8b9684;
-  padding: 0 15px 16px;
-}
 .sales-strip {
   border-top: 1px solid #e1e8de;
   border-bottom: 1px solid #e1e8de;
@@ -885,13 +712,6 @@
     flex-direction: column;
     gap: 16px;
   }
-  .preview-body {
-    padding: 17px;
-  }
-  .preview-heading {
-    align-items: start;
-    flex-direction: column;
-  }
   .feature-grid {
     gap: 14px;
   }
@@ -918,9 +738,6 @@
   }
 }
 @media (max-width: 700px) {
-  .product-preview:before {
-    display: none;
-  }
   .sales-nav {
     padding: 20px;
   }
@@ -956,18 +773,6 @@
   }
   .hero-promises {
     gap: 10px;
-  }
-  .product-preview {
-    transform: none;
-    max-width: 450px;
-    width: 100%;
-    margin: auto;
-  }
-  .preview-heading {
-    flex-direction: row;
-  }
-  .preview-heading h2 {
-    font-size: 18px;
   }
   .sales-strip {
     flex-wrap: wrap;
@@ -1379,30 +1184,6 @@
 .owner-shell .toast {
   z-index: 60;
 }
-.sales-page .reveal-item {
-  transition:
-    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-    translate 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-.sales-page.motion-ready .reveal-item:not(.is-visible) {
-  opacity: 0;
-  translate: 0 26px;
-}
-.sales-page .is-visible {
-  opacity: 1;
-  translate: 0 0;
-}
-.sales-page .product-preview {
-  transform: perspective(1400px) rotateX(var(--tilt-x, 0deg))
-    rotateY(var(--tilt-y, 0deg));
-  transition:
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.6s ease;
-}
-.sales-page .product-preview:hover {
-  box-shadow: 0 32px 90px #1b4a3026;
-}
 .sales-page .btn,
 .sales-page .sales-text-link {
   transition:
@@ -1555,13 +1336,6 @@
     transition: none !important;
     scroll-behavior: auto !important;
   }
-  .sales-page .reveal-item {
-    opacity: 1 !important;
-    translate: none !important;
-  }
-  .sales-page .product-preview {
-    transform: none !important;
-  }
 }
 .sales-page .sales-nav {
   position: sticky;
@@ -1700,170 +1474,6 @@
 .pricing-card .price-note {
   overflow-wrap: anywhere;
 }
-.whatsapp-help {
-  position: fixed;
-  right: 24px;
-  bottom: var(--help-bottom, 24px);
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 13px;
-  max-width: calc(100vw - 32px);
-  transition: bottom 0.3s ease;
-  animation: help-arrive 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.whatsapp-greeting {
-  background: #fff;
-  border: 1px solid #d5e5d4;
-  border-radius: 16px 16px 4px 16px;
-  box-shadow: 0 10px 35px #193e2c18;
-  padding: 19px 34px 17px 19px;
-  display: grid;
-  gap: 7px;
-  position: relative;
-  max-width: 250px;
-}
-.whatsapp-greeting > button {
-  position: absolute;
-  right: 5px;
-  top: 5px;
-}
-.whatsapp-greeting strong {
-  font-size: 14px;
-  color: #224f39;
-}
-.whatsapp-greeting span {
-  font-size: 12px;
-  color: #526b58;
-}
-.whatsapp-greeting small {
-  font-size: 10px;
-  color: #7a8e7d;
-}
-.sales-page .whatsapp-launcher {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #158b49;
-  color: #fff;
-  padding: 14px 18px;
-  border: 1px solid #11773f;
-  border-radius: 30px;
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 8px 25px #16844735;
-  transition:
-    background 0.25s ease,
-    box-shadow 0.25s ease;
-}
-.sales-page .whatsapp-launcher:hover {
-  background: #11773f;
-  box-shadow: 0 10px 30px #16844755;
-}
-.whatsapp-launcher:focus-visible {
-  outline: 3px solid #dfba65;
-  outline-offset: 5px;
-}
-.whatsapp-icon {
-  width: 25px;
-  height: 25px;
-  flex-shrink: 0;
-}
-.smpis-help-mascot {
-  position: absolute;
-  width: 78px;
-  height: 86px;
-  right: calc(100% - 8px);
-  bottom: -3px;
-  overflow: visible;
-  pointer-events: none;
-  animation: mascot-bob 4s ease-in-out 3;
-}
-.mascot-wave {
-  transform-origin: 70px 65px;
-  animation: mascot-wave 3.5s ease-in-out 3;
-}
-.mascot-eyes {
-  transform-origin: 49px 43px;
-  animation: mascot-blink 5s ease-in-out 3;
-}
-.sales-page .whatsapp-launcher:hover > svg {
-  transform: none;
-}
-@keyframes help-arrive {
-  from {
-    opacity: 0;
-    translate: 0 18px;
-  }
-  to {
-    opacity: 1;
-    translate: 0 0;
-  }
-}
-@keyframes mascot-bob {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  45% {
-    translate: 0 -5px;
-  }
-}
-@keyframes mascot-wave {
-  0%,
-  25%,
-  100% {
-    rotate: 0deg;
-  }
-  5%,
-  15% {
-    rotate: 14deg;
-  }
-  10%,
-  20% {
-    rotate: -10deg;
-  }
-}
-@keyframes mascot-blink {
-  0%,
-  44%,
-  48%,
-  100% {
-    scale: 1 1;
-  }
-  46% {
-    scale: 1 0.15;
-  }
-}
-@media (max-width: 700px) {
-  .whatsapp-help {
-    right: 16px;
-  }
-  .whatsapp-greeting {
-    max-width: 225px;
-    padding: 16px 32px 15px 17px;
-  }
-  .sales-page .whatsapp-launcher {
-    padding: 12px 15px;
-    font-size: 12px;
-  }
-  .smpis-help-mascot {
-    width: 66px;
-    height: 73px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .whatsapp-help,
-  .smpis-help-mascot,
-  .mascot-wave,
-  .mascot-eyes {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
 /* Public product directory and module guides */
 .catalog-section-link {
   display: flex;

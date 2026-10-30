@@ -1,0 +1,1241 @@
+/* Public school-desk theme. Scoped to marketing routes, leaving school workspaces independent. */
+.school-desk {
+  --public-brand: #226653;
+  --public-ink: #143e35;
+  --public-muted: #52675c;
+  --public-paper: #fafbf8;
+  --public-cream: #f4f0e7;
+  --public-sage: #dce8de;
+  --public-line: #cdd9ce;
+  --public-danger: #a52c32;
+  --public-success: #226653;
+  --public-space: clamp(20px, 4vw, 56px);
+  --public-radius: 8px;
+  --public-shadow: 0 12px 32px #143e3510;
+  background: var(--public-paper);
+  color: var(--public-ink);
+  font-size: 16px;
+  line-height: 1.65;
+}
+.school-desk :is(h1, h2) {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.school-desk :is(h3, p) {
+  text-wrap: pretty;
+}
+.school-desk p {
+  color: var(--public-muted);
+}
+.school-desk :is(a, button, input, summary):focus-visible {
+  outline: 3px solid #226653;
+  outline-offset: 5px;
+}
+.school-desk :is(.btn, button, summary) {
+  min-height: 44px;
+}
+.school-desk .btn {
+  border-radius: var(--public-radius);
+  padding: 12px 20px;
+  font-size: 14px;
+  background: var(--public-brand);
+  box-shadow: none;
+}
+.school-desk .btn.secondary {
+  background: white;
+  border: 1px solid var(--public-brand);
+  color: var(--public-ink);
+}
+.school-desk .btn:hover {
+  background: #194f40;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+.school-desk a:hover > svg {
+  transform: none;
+}
+.school-desk :is(.feature-grid article, .pricing-card):hover {
+  translate: none;
+  box-shadow: none;
+}
+.school-desk .public-skip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 200;
+  padding: 12px 20px;
+  background: white;
+  border: 2px solid var(--public-brand);
+  transform: translateY(-160%);
+}
+.school-desk .public-skip:focus {
+  transform: none;
+}
+.school-desk .sales-nav {
+  position: sticky;
+  top: 0;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 22px var(--public-space);
+  border: 0;
+  border-bottom: 1px solid var(--public-line);
+  border-radius: 0;
+  background: var(--public-paper);
+  backdrop-filter: none;
+  box-shadow: 0 8px 24px #143e3508;
+  z-index: 95;
+}
+.school-desk .sales-nav nav {
+  gap: 25px;
+}
+.school-desk .sales-nav :is(nav a, .sales-signin) {
+  font-size: 14px;
+  color: var(--public-ink);
+}
+.school-desk .sales-nav nav a::after {
+  display: none;
+}
+.school-desk .sales-nav nav a:hover {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.school-desk .sales-hero {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 72px var(--public-space) 64px;
+  grid-template-columns: 1.04fr 1fr;
+  gap: 54px;
+  border-radius: 0;
+  background: var(--public-paper);
+  box-shadow: none;
+}
+.school-desk .sales-hero::before {
+  display: none;
+}
+.school-desk .hero-tag {
+  color: var(--public-brand);
+  font-size: 11px;
+  line-height: 1.6;
+  letter-spacing: 0.11em;
+}
+.school-desk .hero-tag > span {
+  display: none;
+}
+.school-desk .hero-copy h1 {
+  font-size: clamp(40px, 4.4vw, 64px);
+  line-height: 1.07;
+  margin: 23px 0;
+  letter-spacing: -0.045em;
+}
+.school-desk .hero-copy h1 em {
+  font-family: inherit;
+  color: var(--public-brand);
+  font-style: normal;
+}
+.school-desk .hero-copy > p {
+  font-size: 17px;
+  line-height: 1.8;
+  max-width: 50ch;
+}
+.school-desk .hero-actions {
+  gap: 18px;
+}
+.school-desk .sales-text-link {
+  display: inline-flex;
+  font-size: 14px;
+  min-height: 44px;
+  color: var(--public-brand);
+}
+.school-desk .hero-promises {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--public-muted);
+  gap: 10px 16px;
+}
+.school-desk .hero-promises svg {
+  width: 15px;
+}
+.school-desk .hero-banner {
+  border-top: 1px solid var(--public-line);
+  padding-top: 18px;
+  gap: 8px 16px;
+}
+.school-desk .hero-banner span {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+.hero-evidence {
+  min-width: 0;
+  padding: 22px;
+  background: var(--public-cream);
+  border-radius: 8px;
+  border: 1px solid #e1dfd2;
+}
+.evidence-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  margin-bottom: 18px;
+}
+
+.hero-evidence img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.evidence-caption {
+  margin-top: 22px;
+}
+.evidence-caption strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.4;
+}
+.evidence-caption p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+.evidence-caption > span {
+  display: block;
+  font-size: 11px;
+  color: var(--public-muted);
+}
+.hero-evidence > .sales-text-link {
+  margin-top: 12px;
+}
+.school-desk .sales-strip {
+  max-width: 1168px;
+  padding: 22px 0;
+  color: var(--public-muted);
+  gap: 20px;
+}
+.school-desk .sales-strip > span {
+  font-size: 13px;
+  max-width: 190px;
+}
+.school-desk .sales-strip strong {
+  color: var(--public-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.school-desk .sales-section {
+  max-width: 1280px;
+  padding: 80px var(--public-space);
+  scroll-margin-top: 120px;
+}
+.school-desk .section-intro {
+  text-align: left;
+  max-width: 720px;
+  margin: 0 0 32px;
+}
+.school-desk .eyebrow {
+  font-size: 11px;
+  color: var(--public-brand);
+  letter-spacing: 0.1em;
+}
+.school-desk .section-intro h2,
+.school-desk .product-spotlight h2,
+.school-desk .product-fit h2 {
+  font-size: clamp(32px, 3.3vw, 46px);
+  line-height: 1.15;
+  margin: 14px 0 18px;
+}
+.school-desk .section-intro p {
+  font-size: 16px;
+  line-height: 1.8;
+}
+.school-desk .catalog-section-link {
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.school-desk .catalog-section-link > span {
+  color: var(--public-muted);
+  font-size: 13px;
+}
+.school-module-index {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--public-line);
+}
+.school-module-index > a {
+  display: grid;
+  grid-template-columns: 28px 1fr 20px;
+  gap: 16px;
+  padding: 25px 22px 25px 0;
+  border-bottom: 1px solid var(--public-line);
+  color: var(--public-ink);
+}
+.school-module-index > a:nth-child(even) {
+  padding-left: 26px;
+  border-left: 1px solid var(--public-line);
+}
+.school-module-index > a:hover {
+  background: #edf4ee;
+}
+.module-index-number {
+  font-size: 12px;
+  color: var(--public-brand);
+  padding-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.school-desk .catalog-category {
+  color: var(--public-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.school-module-index h3 {
+  font-size: 19px;
+  margin: 4px 0 8px;
+  line-height: 1.4;
+}
+.school-module-index p {
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0;
+}
+.school-desk .intelligence-band {
+  margin-top: 32px;
+  border-radius: 8px;
+  background: var(--public-sage);
+  box-shadow: none;
+}
+.school-desk .intelligence-band p {
+  color: var(--public-muted);
+  font-size: 14px;
+}
+.school-desk .intelligence-band a {
+  color: var(--public-ink);
+}
+.school-desk .product-spotlight {
+  background: var(--public-cream);
+  border-radius: 0;
+  gap: 64px;
+}
+.school-desk .product-spotlight p {
+  font-size: 16px;
+  line-height: 1.8;
+}
+.school-desk .product-spotlight li {
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--public-line);
+}
+.school-desk .product-spotlight li > span {
+  border-radius: 0;
+  background: none;
+  color: var(--public-brand);
+}
+.school-desk .product-snapshots {
+  gap: 24px;
+}
+.school-desk .product-snapshots figure {
+  border-radius: 6px;
+  box-shadow: none;
+  border-color: var(--public-line);
+}
+.school-desk .product-snapshots figcaption {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.school-desk .product-snapshots figcaption span {
+  font-size: 12px;
+  color: var(--public-muted);
+}
+.school-desk .sales-steps {
+  border-top: 1px solid var(--public-line);
+}
+.school-desk .steps-grid {
+  gap: 32px;
+}
+.school-desk .steps-grid article {
+  padding: 24px 0 0;
+  border-top: 2px solid var(--public-brand);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.school-desk .steps-grid article > span {
+  background: none;
+  color: var(--public-brand);
+  padding: 0;
+  font-family: Georgia, serif;
+  font-size: 30px;
+}
+.school-desk .steps-grid h3 {
+  font-size: 19px;
+  line-height: 1.5;
+}
+.school-desk .steps-grid p {
+  font-size: 15px;
+  line-height: 1.8;
+}
+.school-desk .pricing-section {
+  background: var(--public-cream);
+  border-radius: 0;
+}
+.school-desk .billing-toggle {
+  margin-left: 0;
+  border: 1px solid var(--public-line);
+  box-shadow: none;
+}
+.school-desk .billing-toggle button {
+  font-size: 14px;
+}
+.school-desk .pricing-grid {
+  max-width: none;
+  gap: 24px;
+}
+.school-desk .pricing-card {
+  border-radius: 8px;
+  box-shadow: none;
+  border: 1px solid var(--public-line);
+  padding: 32px;
+}
+.school-desk .pricing-card.pro-card {
+  border: 2px solid var(--public-brand);
+}
+.school-desk .pricing-card :is(p, li) {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.school-desk .pricing-card small {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.school-desk .pricing-card h3 {
+  font-size: 28px;
+}
+.school-desk .pro-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.school-desk .faq-section {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 64px;
+}
+.school-desk .faq-list {
+  width: 100%;
+  max-width: none;
+}
+.school-desk .faq-list details {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--public-line);
+  border-radius: 0;
+  padding: 8px 0;
+}
+.school-desk .faq-list summary {
+  padding: 14px 0;
+  font-size: 16px;
+  line-height: 1.6;
+  gap: 18px;
+}
+.school-desk .faq-list details p {
+  font-size: 15px;
+  line-height: 1.8;
+  animation: none;
+  padding: 0 24px 12px 0;
+}
+.school-desk .sales-cta {
+  background: var(--public-ink);
+  border-radius: 0;
+  padding: 64px var(--public-space);
+  margin: 0;
+}
+.school-desk .sales-cta h2 {
+  color: white;
+  font-size: clamp(34px, 4vw, 52px);
+}
+.school-desk .sales-cta :is(p, .eyebrow, .product-pricing-link) {
+  color: #dce8de;
+}
+.school-desk .sales-cta .btn {
+  background: var(--public-cream);
+  color: var(--public-ink);
+}
+.school-desk .catalog-hero {
+  background: var(--public-cream);
+  border-radius: 0;
+  padding-top: 56px;
+  padding-bottom: 56px;
+}
+.school-desk .catalog-hero h1 {
+  font-size: clamp(38px, 4.7vw, 62px);
+  line-height: 1.12;
+  max-width: 900px;
+}
+.school-desk .catalog-hero > p {
+  font-size: 17px;
+  max-width: 70ch;
+  color: var(--public-muted);
+}
+.school-desk .catalog-toolbar h2,
+.school-desk .module-content h2 {
+  font-size: 32px;
+  line-height: 1.25;
+}
+.school-desk .catalog-filters {
+  flex-wrap: wrap;
+}
+.school-desk .catalog-filters button {
+  white-space: normal;
+  font-size: 13px;
+}
+.school-desk .catalog-search {
+  min-height: 48px;
+}
+.school-desk .feature-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.school-desk .feature-grid article {
+  border-radius: 6px;
+  border: 1px solid var(--public-line);
+  padding: 28px;
+  box-shadow: none;
+}
+.school-desk .feature-grid h3 {
+  font-size: 21px;
+}
+.school-desk .feature-grid :is(p, li) {
+  font-size: 14px;
+  color: var(--public-muted);
+  line-height: 1.8;
+}
+.school-desk .feature-icon {
+  background: var(--public-sage);
+  color: var(--public-brand);
+  border-radius: 6px;
+}
+.school-desk .module-note {
+  background: var(--public-cream);
+  border-radius: 6px;
+}
+.school-desk .module-content :is(p, li),
+.school-desk .product-fit :is(p, li) {
+  font-size: 16px;
+  line-height: 1.8;
+}
+.school-desk .module-content aside {
+  border-radius: 6px;
+  box-shadow: none;
+}
+@media (max-width: 1000px) {
+  .school-desk .sales-hero {
+    gap: 28px;
+  }
+  .school-desk .sales-strip {
+    margin-inline: var(--public-space);
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .school-desk .faq-section {
+    gap: 32px;
+  }
+}
+@media (max-width: 760px) {
+  .school-desk .sales-nav {
+    margin: 0;
+    padding: 16px 20px;
+    gap: 12px;
+  }
+  .school-desk .sales-nav > div {
+    gap: 8px;
+  }
+  .school-desk .sales-nav .btn {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .school-desk .sales-hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding-top: 42px;
+    padding-bottom: 36px;
+    gap: 32px;
+  }
+  .school-desk .hero-copy h1 {
+    font-size: clamp(39px, 7.5vw, 54px);
+  }
+  .school-desk .hero-copy > p {
+    font-size: 16px;
+  }
+  .school-desk .hero-actions {
+    align-items: flex-start;
+  }
+  .school-desk .hero-actions .btn {
+    width: auto;
+    max-width: 100%;
+  }
+  .school-desk .hero-promises {
+    font-size: 12px;
+  }
+  .hero-evidence {
+    padding: 18px;
+  }
+  .school-desk .sales-section {
+    padding-top: 48px;
+    padding-bottom: 48px;
+  }
+  .school-desk .school-module-index {
+    grid-template-columns: 1fr;
+  }
+  .school-module-index > a:nth-child(even) {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .school-module-index > a {
+    padding-right: 0;
+  }
+  .school-desk .catalog-section-link {
+    align-items: flex-start;
+  }
+  .school-desk .product-spotlight,
+  .school-desk .faq-section,
+  .school-desk .module-content,
+  .school-desk .product-fit {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .school-desk .steps-grid,
+  .school-desk .pricing-grid,
+  .school-desk .feature-grid {
+    grid-template-columns: 1fr;
+  }
+  .school-desk .pricing-card {
+    padding: 26px 22px;
+  }
+  .school-desk .pro-label {
+    white-space: normal;
+    max-width: 100%;
+  }
+  .school-desk .catalog-toolbar {
+    align-items: stretch;
+  }
+  .school-desk .catalog-search {
+    width: 100%;
+    min-width: 0;
+  }
+  .school-desk .catalog-hero h1 {
+    font-size: 40px;
+  }
+  .school-desk .catalog-hero h1 br {
+    display: none;
+  }
+  .school-desk .sales-cta {
+    padding-block: 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .school-desk *,
+  .school-desk *::before,
+  .school-desk *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+.school-desk .billing-toggle button,
+.school-desk .billing-toggle button > span,
+.school-desk .plan-price > span,
+.school-desk .pricing-card > small {
+  color: var(--public-muted);
+}
+.school-desk .billing-toggle button.selected {
+  color: var(--public-ink);
+}
+.school-desk .sales-nav {
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .school-desk .sales-nav .brand {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .school-desk .sales-nav .brand .brand-logo {
+    width: 132px;
+    max-width: 100%;
+    height: auto;
+  }
+  .school-desk .sales-nav > div {
+    flex-shrink: 0;
+  }
+  .school-desk .sales-nav .btn {
+    white-space: nowrap;
+  }
+}
+@media (max-width: 359px) {
+  .school-desk .sales-nav .brand .brand-logo {
+    width: 110px;
+  }
+  .school-desk .sales-nav {
+    padding-inline: 16px;
+    gap: 8px;
+  }
+}
+/* A stronger product stage, with the existing header kept in view. */
+.school-desk .sales-hero {
+  background:
+    radial-gradient(ellipse at 90% 35%, #dce8de 0, transparent 55%),
+    var(--public-paper);
+  padding-top: 64px;
+  padding-bottom: 72px;
+  gap: 48px;
+}
+.school-desk .hero-copy h1 em {
+  text-decoration: underline;
+  text-decoration-color: #b7ceba;
+  text-decoration-thickness: 0.055em;
+  text-underline-offset: 0.1em;
+}
+.school-desk .hero-tag {
+  border-left: 3px solid var(--public-brand);
+  padding-left: 12px;
+}
+.school-desk .hero-evidence {
+  background: var(--public-ink);
+  border: 1px solid var(--public-ink);
+  border-radius: 16px;
+  padding: 24px;
+  color: white;
+  box-shadow:
+    12px 12px 0 var(--public-sage),
+    0 24px 50px #143e3518;
+}
+.school-desk .evidence-heading {
+  color: #dce8de;
+  align-items: center;
+}
+.showcase-switcher {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+}
+.school-desk .showcase-switcher button {
+  border: 1px solid #708f81;
+  background: transparent;
+  color: #fff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.school-desk .showcase-switcher button[aria-pressed="true"] {
+  background: var(--public-cream);
+  color: var(--public-ink);
+  border-color: var(--public-cream);
+}
+.school-desk .hero-evidence .evidence-caption p,
+.school-desk .hero-evidence .evidence-caption > span {
+  color: #dce8de;
+}
+.school-desk .hero-evidence .sales-text-link {
+  color: #fff;
+  border-bottom: 1px solid #708f81;
+}
+.school-desk .hero-evidence :is(button, a):focus-visible {
+  outline-color: var(--public-cream);
+}
+.school-desk .public-image-trigger {
+  display: block;
+  position: relative;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--public-line);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: zoom-in;
+  background: #eef4ef;
+  color: var(--public-ink);
+  line-height: 0;
+}
+.public-image-trigger > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 280ms ease-out;
+}
+@media (hover: hover) {
+  .public-image-trigger:hover > img {
+    transform: scale(1.025);
+  }
+}
+.image-zoom-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid #dce8de;
+  border-radius: 5px;
+  background: #fff;
+  color: #143e35;
+  line-height: 1.4;
+  font-size: 11px;
+  font-weight: 650;
+}
+.school-desk .product-snapshots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+.school-desk .product-snapshots.single {
+  grid-template-columns: 1fr;
+}
+.school-desk .product-snapshots.single > figure {
+  max-width: 960px;
+  width: 100%;
+}
+.school-desk .product-spotlight {
+  border-left: 5px solid var(--public-brand);
+}
+.school-desk .intelligence-band {
+  border-left: 4px solid var(--public-brand);
+}
+.school-desk .school-module-index > a {
+  transition: background 160ms ease;
+}
+.school-desk .public-back-top {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 10px;
+  border: 1px solid var(--public-brand);
+  border-radius: 50%;
+  color: var(--public-ink);
+  background: var(--public-paper);
+  box-shadow: var(--public-shadow);
+  font-size: 13px;
+  font-weight: 650;
+}
+.school-desk .public-back-top:hover {
+  background: var(--public-sage);
+}
+.school-desk .public-lightbox {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 24px;
+  border: 0;
+  background: transparent;
+  color: white;
+  overflow: auto;
+}
+.public-lightbox::backdrop {
+  background: #071e19ed;
+  animation: lightbox-backdrop-in 240ms ease-out both;
+}
+.public-lightbox[open] {
+  display: grid;
+  place-items: center;
+}
+.lightbox-content {
+  width: min(1200px, 100%);
+  min-width: 0;
+  background: #143e35;
+  border: 1px solid #708f81;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 32px 100px #0006;
+  animation: lightbox-image-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lightbox-content header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 16px;
+}
+.school-desk .lightbox-content header p {
+  margin: 0;
+  font-size: 14px;
+  color: white;
+  line-height: 1.6;
+}
+.lightbox-content header button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #b7ceba;
+  border-radius: 6px;
+  background: transparent;
+  color: white;
+}
+.school-desk .lightbox-content button:focus-visible {
+  outline-color: #f4f0e7;
+}
+.lightbox-image {
+  background: #edf4ee;
+  line-height: 0;
+}
+.lightbox-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 190px);
+  object-fit: contain;
+}
+.school-desk .lightbox-note {
+  margin: 0;
+  padding: 12px 16px;
+  color: #dce8de;
+  font-size: 12px;
+}
+.public-lightbox.is-closing .lightbox-content {
+  animation: lightbox-image-out 180ms ease-in both;
+}
+.public-lightbox.is-closing::backdrop {
+  animation: lightbox-backdrop-out 180ms ease-in both;
+}
+@keyframes lightbox-image-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lightbox-image-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+@keyframes lightbox-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lightbox-backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+@media (max-width: 760px) {
+  .school-desk .sales-hero {
+    padding-top: 36px;
+    padding-bottom: 44px;
+    gap: 34px;
+  }
+  .school-desk .hero-evidence {
+    padding: 18px;
+    box-shadow: 6px 6px 0 var(--public-sage);
+  }
+  .school-desk .product-snapshots {
+    grid-template-columns: 1fr;
+  }
+  .school-desk .product-snapshots > figure:first-child {
+    grid-row: auto;
+  }
+  .school-desk .public-back-top {
+    right: 16px;
+    bottom: 24px;
+    width: 44px;
+    padding: 10px;
+    justify-content: center;
+  }
+  .school-desk .public-lightbox {
+    padding: 12px;
+  }
+  .lightbox-content header {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .school-desk .lightbox-content header p {
+    font-size: 12px;
+  }
+  .school-desk .lightbox-note {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-lightbox::backdrop {
+    animation: none !important;
+  }
+}
+/* A generous hero and an aligned gallery share one consistent page grid. */
+.school-desk {
+  --public-page-width: 1480px;
+  --public-space: clamp(20px, 4.5vw, 72px);
+}
+.school-desk .sales-section {
+  max-width: var(--public-page-width);
+  padding-block: 104px;
+}
+.school-desk .sales-strip {
+  max-width: 1336px;
+  margin-inline: auto;
+  padding: 28px var(--public-space);
+}
+.school-desk .sales-hero.sales-hero--expanded {
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 56px;
+  padding: 80px var(--public-space) 88px;
+  background: linear-gradient(180deg, #fafbf8 0%, #edf4ee 72%, #dce8de 100%);
+  border-bottom: 1px solid var(--public-line);
+}
+.sales-hero--expanded .hero-copy {
+  width: 100%;
+  max-width: 1060px;
+  text-align: center;
+}
+.school-desk .sales-hero--expanded .hero-tag {
+  justify-content: center;
+  border: 0;
+  padding: 0;
+}
+.school-desk .sales-hero--expanded .hero-copy h1 {
+  max-width: none;
+  font-size: clamp(44px, 5.5vw, 80px);
+  margin-block: 26px;
+  line-height: 1.08;
+}
+.school-desk .sales-hero--expanded .hero-copy h1 em {
+  text-decoration: none;
+}
+.school-desk .sales-hero--expanded .hero-copy > p {
+  max-width: 68ch;
+  margin: 0 auto;
+  font-size: 18px;
+}
+.school-desk .sales-hero--expanded .hero-actions {
+  justify-content: center;
+  gap: 24px;
+}
+.school-desk .sales-hero--expanded .hero-promises {
+  justify-content: center;
+  font-size: 13px;
+}
+.school-desk .sales-hero--expanded .hero-banner {
+  justify-content: center;
+  margin: 28px auto 0;
+  padding-top: 22px;
+  max-width: 800px;
+  gap: 12px 28px;
+}
+.school-desk .sales-hero--expanded .hero-banner span {
+  font-size: 13px;
+}
+.school-desk .sales-hero--expanded .hero-evidence {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  column-gap: 36px;
+  row-gap: 20px;
+  width: 100%;
+  max-width: 1240px;
+  padding: 28px;
+  box-shadow: 0 24px 64px #143e3524;
+  border-radius: 16px;
+}
+.sales-hero--expanded .evidence-heading {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #708f81;
+}
+.sales-hero--expanded .showcase-switcher {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 0;
+  align-self: start;
+}
+.sales-hero--expanded .public-image-trigger {
+  grid-column: 1;
+  grid-row: 2 / 5;
+  align-self: center;
+}
+.sales-hero--expanded .evidence-caption {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: center;
+  margin: 0;
+}
+.sales-hero--expanded .evidence-caption strong {
+  font-family: Georgia, serif;
+  font-size: clamp(25px, 2.3vw, 34px);
+  font-weight: 400;
+  line-height: 1.25;
+}
+.sales-hero--expanded .evidence-caption p {
+  margin-block: 16px;
+  font-size: 15px;
+}
+.school-desk .sales-hero--expanded .hero-evidence > .sales-text-link {
+  grid-column: 2;
+  grid-row: 4;
+  justify-self: start;
+  align-self: end;
+  margin: 0;
+}
+.school-desk .product-snapshots {
+  gap: 28px;
+}
+.school-desk .product-snapshots > figure {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-width: 0;
+}
+.school-desk .product-snapshots .public-image-trigger {
+  aspect-ratio: 36 / 25;
+  flex-shrink: 0;
+  border: 0;
+  border-bottom: 1px solid var(--public-line);
+  border-radius: 0;
+}
+.school-desk .product-snapshots .public-image-trigger > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.school-desk .product-snapshots figcaption {
+  padding: 22px;
+  flex: 1;
+}
+@media (min-width: 761px) and (max-width: 1000px) {
+  .school-desk .sales-hero--expanded .hero-evidence {
+    grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
+    gap: 18px;
+    padding: 22px;
+  }
+  .school-desk .product-snapshots {
+    gap: 16px;
+  }
+  .school-desk .product-snapshots figcaption {
+    padding: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .school-desk .sales-section {
+    padding-block: 56px;
+  }
+  .school-desk .sales-strip {
+    margin-inline: 0;
+    padding-inline: var(--public-space);
+  }
+  .school-desk .sales-hero.sales-hero--expanded {
+    padding: 44px var(--public-space) 48px;
+    gap: 34px;
+  }
+  .school-desk .sales-hero--expanded .hero-copy h1 {
+    font-size: clamp(39px, 7.8vw, 54px);
+    margin-block: 22px;
+  }
+  .school-desk .sales-hero--expanded .hero-copy > p {
+    font-size: 16px;
+  }
+  .school-desk .sales-hero--expanded .hero-actions {
+    gap: 14px;
+    align-items: center;
+  }
+  .school-desk .sales-hero--expanded .hero-banner {
+    gap: 10px 18px;
+  }
+  .school-desk .sales-hero--expanded .hero-evidence {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 18px;
+  }
+  .sales-hero--expanded .evidence-heading {
+    align-self: stretch;
+    font-size: 9px;
+  }
+  .sales-hero--expanded .showcase-switcher {
+    align-self: stretch;
+  }
+  .sales-hero--expanded .evidence-caption strong {
+    font-size: 28px;
+  }
+  .school-desk .sales-hero--expanded .hero-evidence > .sales-text-link {
+    align-self: start;
+  }
+  .school-desk .product-snapshots {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+.school-desk .viewport-pending {
+  opacity: 0;
+  transform: translateY(48px) scale(0.975);
+}
+.school-desk .viewport-entered {
+  animation: product-viewport-enter 1000ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--entrance-delay, 0ms);
+}
+@keyframes product-viewport-enter {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.school-desk .viewport-pending:focus-within,
+.school-desk .viewport-entered:focus-within {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .school-desk .viewport-pending,
+  .school-desk .viewport-entered {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+.school-desk .sales-cta .public-enquiries {
+  margin: 26px 0 0;
+  font-size: 15px;
+  line-height: 1.8;
+}
+.school-desk .public-enquiries a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: white;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+.school-desk .sales-cta .public-enquiries a:focus-visible {
+  outline-color: #f4f0e7;
+}
