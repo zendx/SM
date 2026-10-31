@@ -38,6 +38,7 @@ export function serveFrontend(app, directory, { origin = siteOrigin() } = {}) {
   app.get("/assets", (req, res) => res.sendStatus(404));
   app.get("/{*route}", async (req, res) => {
     res.set("Cache-Control", "no-cache");
+    res.set("Content-Disposition", "inline");
     template ||= readFile(path.join(directory, "index.html"), "utf8");
     res.type("html").send(renderSeoHtml(await template, req.path, origin));
   });

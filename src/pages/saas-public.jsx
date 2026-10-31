@@ -1,4 +1,5 @@
 import { BrandLogo } from "../brand-logo";
+import { followPublicSection } from "../../shared/public-section-navigation.js";
 import { schoolManagementFaq } from "../../server/public-faq.js";
 import React, { useState, useEffect } from "react";
 import {
@@ -299,6 +300,7 @@ export function Signup() {
   );
 }
 export function Landing() {
+  useEffect(() => followPublicSection(window, document), []);
   const entranceRef = useViewportEntrance();
   const [yearly, setYearly] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
