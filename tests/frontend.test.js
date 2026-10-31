@@ -41,6 +41,14 @@ test("frontend file routes serve JS/CSS bytes, reject missing assets and retain 
     assert.equal(page.status, 200);
     assert.match(page.headers.get("content-type"), /text\/html/);
     assert.match(await page.text(), /SPA/);
+    for (const route of ["/", "/#pricing", "/features", "/features/exams-report-cards"]) {
+      const response = await fetch(`${base}${route}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1" },
+      });
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("content-type"), /text\/html/);
+      assert.equal(response.headers.get("content-disposition"), "inline");
+    }
     assert.deepEqual(await (await fetch(`${base}/api/test`)).json(), { ok: true });
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
