@@ -1,5 +1,17 @@
 # SMPIS
 
+**SMPIS helps schools manage everyday work in one place.** It brings student records, learning, communication and school finances together, so staff and families can stay informed without juggling separate tools.
+
+## What you can do
+
+- Keep track of students, classes, attendance and academic progress.
+- Share learning materials, assignments, results and school updates.
+- Give parents a place to follow their children's progress and communicate with the school.
+- Manage school fees, payments, staff and other day-to-day administration.
+- See useful summaries that help school leaders understand how things are going.
+
+# SMPIS
+
 School administration software built with React, Express, Supabase PostgreSQL and private Supabase Storage. Requires Node.js 22.12 or later.
 
 ## Development
@@ -76,3 +88,20 @@ Embedded tests use an isolated PGlite database. Alternatively, set `TEST_DATABAS
 Public feature descriptions are in `server/product-catalog.js`, shared FAQs in `server/public-faq.js`, policy text in `src/pages/legal.jsx`, and policy/marketer versions in their shared modules. Keep these descriptions consistent with routes, role restrictions and provider configuration. Example screenshots use fictional data and may show older layouts.
 
 This README is the maintained setup, deployment and recovery reference. Obsolete exported guides, promotional video deliverables and duplicate historical how-to documents have been removed. Keep application source, tests, migration SQL, operational scripts, active assets and deployment configuration. Do not delete `.env`, `data/` or `backups/` as source cleanup.
+Access depends on each person's role. For example, teachers, administrators and parents see the parts of the school information they need.
+
+## Getting started
+
+SMPIS is a web application for schools. To use it as a school, visit the web address provided by your school or sign up through the application. The sign-in page is for existing users.
+
+## For developers
+
+The project uses React for the website and Node.js for its server. It stores application data in PostgreSQL through Supabase. Node.js 22.12 or later is required.
+
+To run a local development copy:
+
+1. Install Node.js and copy `.env.example` to `.env`.
+2. Fill in the required service settings in `.env`.
+3. Run `npm ci`, then `npm run dev`.
+
+The local site runs at `http://127.0.0.1:3000`. Some background tasks need the worker, started separately with `npm run worker`. Keep `.env` and school records private; do not commit them to the project.
